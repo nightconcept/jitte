@@ -1,1 +1,66 @@
 @import 'tailwindcss';
+
+@theme {
+	/* Moxfield-inspired dark theme color palette */
+
+	/* Primary colors */
+	--color-bg-primary: #1a1d23;
+	--color-bg-secondary: #22262e;
+	--color-bg-tertiary: #2a2f3a;
+	--color-bg-elevated: #2f3542;
+
+	/* Surface colors */
+	--color-surface: #2a2f3a;
+	--color-surface-hover: #343a47;
+	--color-surface-active: #3d4452;
+
+	/* Border colors */
+	--color-border: #3d4452;
+	--color-border-light: #4a5264;
+	--color-border-focus: #5b82db;
+
+	/* Text colors */
+	--color-text-primary: #e8eaed;
+	--color-text-secondary: #b8bcc4;
+	--color-text-tertiary: #8b92a0;
+	--color-text-muted: #6b7280;
+
+	/* Brand colors */
+	--color-brand-primary: #5b82db;
+	--color-brand-secondary: #4a6bc5;
+	--color-brand-tertiary: #3a5ab5;
+
+	/* Accent colors */
+	--color-accent-blue: #5b82db;
+	--color-accent-green: #4ade80;
+	--color-accent-red: #ef4444;
+	--color-accent-yellow: #fbbf24;
+	--color-accent-purple: #a78bfa;
+
+	/* MTG color identity */
+	--color-mana-white: #f0f0d8;
+	--color-mana-blue: #0e68ab;
+	--color-mana-black: #150b00;
+	--color-mana-red: #d3202a;
+	--color-mana-green: #00733e;
+	--color-mana-colorless: #cac5c0;
+	--color-mana-multicolor: #f0e68c;
+
+	/* Status colors */
+	--color-success: #22c55e;
+	--color-warning: #f59e0b;
+	--color-error: #ef4444;
+	--color-info: #3b82f6;
+
+	/* Semantic tokens */
+	--color-primary: var(--color-brand-primary);
+	--color-secondary: var(--color-bg-secondary);
+	--color-background: var(--color-bg-primary);
+	--color-foreground: var(--color-text-primary);
+}
+
+/* Base styles */
+body {
+	background-color: var(--color-bg-primary);
+	color: var(--color-text-primary);
+}

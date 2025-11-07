@@ -1,0 +1,222 @@
+/**
+ * Plaintext decklist parser and serializer
+ * Supports Arena/MTGO format with optional set codes
+ */
+
+import type { Card } from '$lib/types';
+
+/**
+ * Parse result from plaintext decklist
+ */
+export interface ParseResult {
+	/** Successfully parsed cards */
+	cards: Card[];
+
+	/** Lines that failed to parse */
+	errors: ParseError[];
+
+	/** Total lines processed */
+	totalLines: number;
+}
+
+/**
+ * Parse error information
+ */
+export interface ParseError {
+	line: number;
+	text: string;
+	reason: string;
+}
+
+/**
+ * Parses a plaintext decklist into Card objects
+ *
+ * Supported formats:
+ * - "1 Lightning Bolt"
+ * - "1 Sol Ring (2XM) 97"
+ * - "2x Lightning Bolt"
+ * - "Lightning Bolt" (assumes quantity 1)
+ *
+ * @param text - The plaintext decklist
+ * @returns ParseResult with cards and any errors
+ */
+export function parsePlaintext(text: string): ParseResult {
+	const lines = text.split('\n');
+	const cards: Card[] = [];
+	const errors: ParseError[] = [];
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i].trim();
+		const lineNumber = i + 1;
+
+		// Skip empty lines and comments
+		if (!line || line.startsWith('//') || line.startsWith('#')) {
+			continue;
+		}
+
+		// Skip section headers (e.g., "Commander:", "Deck:", "Sideboard:")
+		if (line.endsWith(':')) {
+			continue;
+		}
+
+		try {
+			const card = parseLine(line);
+			if (card) {
+				cards.push(card);
+			}
+		} catch (error) {
+			errors.push({
+				line: lineNumber,
+				text: line,
+				reason: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}
+
+	return {
+		cards,
+		errors,
+		totalLines: lines.length
+	};
+}
+
+/**
+ * Parses a single line into a Card object
+ *
+ * Examples:
+ * - "1 Lightning Bolt" -> { name: "Lightning Bolt", quantity: 1 }
+ * - "1 Sol Ring (2XM) 97" -> { name: "Sol Ring", quantity: 1, setCode: "2XM", collectorNumber: "97" }
+ * - "2x Counterspell" -> { name: "Counterspell", quantity: 2 }
+ *
+ * @param line - Single line from decklist
+ * @returns Card object or null if invalid
+ */
+function parseLine(line: string): Card | null {
+	// Pattern: [quantity][x?] [card name] [(set) collector]?
+	// Examples:
+	//   1 Lightning Bolt
+	//   2x Counterspell
+	//   1 Sol Ring (2XM) 97
+
+	const patterns = [
+		// Pattern 1: "1 CardName (SET) 123"
+		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)\s+(\d+[a-z]?)$/i,
+		// Pattern 2: "1 CardName (SET)"
+		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)$/i,
+		// Pattern 3: "1 CardName" or "1x CardName"
+		/^(\d+)x?\s+(.+)$/i,
+		// Pattern 4: "CardName" (no quantity, assume 1)
+		/^([^0-9].+)$/
+	];
+
+	for (const pattern of patterns) {
+		const match = line.match(pattern);
+		if (match) {
+			// Pattern 1: full format with set and collector number
+			if (match.length === 5) {
+				return {
+					quantity: parseInt(match[1], 10),
+					name: match[2].trim(),
+					setCode: match[3].toUpperCase(),
+					collectorNumber: match[4]
+				};
+			}
+
+			// Pattern 2: with set code only
+			if (match.length === 4 && match[3]) {
+				return {
+					quantity: parseInt(match[1], 10),
+					name: match[2].trim(),
+					setCode: match[3].toUpperCase()
+				};
+			}
+
+			// Pattern 3: quantity and name only
+			if (match.length === 3 && match[1].match(/^\d+$/)) {
+				return {
+					quantity: parseInt(match[1], 10),
+					name: match[2].trim()
+				};
+			}
+
+			// Pattern 4: name only (quantity = 1)
+			if (match.length === 2) {
+				return {
+					quantity: 1,
+					name: match[1].trim()
+				};
+			}
+		}
+	}
+
+	throw new Error(`Unable to parse line: ${line}`);
+}
+
+/**
+ * Serializes cards to plaintext format
+ *
+ * @param cards - Array of cards to serialize
+ * @param includeSetCodes - Whether to include set codes (default: true)
+ * @returns Plaintext decklist string
+ */
+export function serializePlaintext(cards: Card[], includeSetCodes = true): string {
+	const lines: string[] = [];
+
+	for (const card of cards) {
+		let line = `${card.quantity} ${card.name}`;
+
+		if (includeSetCodes && card.setCode) {
+			line += ` (${card.setCode})`;
+
+			if (card.collectorNumber) {
+				line += ` ${card.collectorNumber}`;
+			}
+		}
+
+		lines.push(line);
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Validates a card name (basic sanitization)
+ */
+export function isValidCardName(name: string): boolean {
+	return name.length > 0 && name.length <= 200;
+}
+
+/**
+ * Validates a set code format
+ */
+export function isValidSetCode(setCode: string): boolean {
+	// Set codes are typically 3-4 uppercase letters/numbers
+	return /^[A-Z0-9]{2,5}$/i.test(setCode);
+}
+
+/**
+ * Counts total cards in a deck
+ */
+export function countCards(cards: Card[]): number {
+	return cards.reduce((sum, card) => sum + card.quantity, 0);
+}
+
+/**
+ * Merges duplicate cards by name (combines quantities)
+ */
+export function mergeDuplicates(cards: Card[]): Card[] {
+	const cardMap = new Map<string, Card>();
+
+	for (const card of cards) {
+		const key = `${card.name}|${card.setCode || ''}`;
+
+		if (cardMap.has(key)) {
+			const existing = cardMap.get(key)!;
+			existing.quantity += card.quantity;
+		} else {
+			cardMap.set(key, { ...card });
+		}
+	}
+
+	return Array.from(cardMap.values());
+}
