@@ -203,17 +203,17 @@
 	</div>
 
 	<!-- Card List -->
-	<div class="space-y-2">
+	<div class="space-y-2 overflow-visible">
 		{#each categoryOrder as category}
 			{@const cards = getCategoryCards(category)}
 			{@const count = getCategoryCount(category)}
 
 			{#if cards.length > 0}
-				<div class="bg-[var(--color-surface)] rounded-lg overflow-hidden">
+				<div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
 					<!-- Category Header -->
 					<button
 						on:click={() => toggleCategory(category)}
-						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-surface-hover)] transition-colors"
+						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-surface-hover)] transition-colors rounded-t-lg"
 					>
 						<div class="flex items-center gap-3">
 							<svg
@@ -237,8 +237,8 @@
 					<!-- Card List in Columns -->
 					{#if !collapsed[category]}
 						{@const columns = splitIntoColumns(cards, 4)}
-						<div class="px-4 pb-2">
-							<div class="grid grid-cols-4 gap-x-4">
+						<div class="px-4 pb-2 rounded-b-lg overflow-visible">
+							<div class="grid grid-cols-4 gap-x-4 overflow-visible">
 								{#each columns as column}
 									<div class="space-y-0">
 										{#each column as card}
@@ -276,7 +276,7 @@
 
 													<!-- Card Menu Dropdown -->
 													{#if openCardMenu === card.name}
-														<div class="absolute right-0 mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-20">
+														<div class="absolute right-0 mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
 															<button
 																on:click={() => { closeCardMenu(); /* TODO: Add one */ }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
