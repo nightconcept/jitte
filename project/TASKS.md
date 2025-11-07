@@ -3,12 +3,66 @@
 ## Phase 0: Research & Planning
 
 ### 0.1 Project Scaffolding Research
-- [ ] Research SvelteKit project initialization best practices
-- [ ] Research Tailwind CSS integration with SvelteKit
-- [ ] Identify and test SvelteKit + Tailwind starter templates
-- [ ] Research project structure conventions for SvelteKit apps
-- [ ] Document recommended folder structure and file organization
-- [ ] Research TypeScript configuration for SvelteKit
+- [x] Research SvelteKit project initialization best practices
+  - **Research Findings**: SvelteKit uses Vite as build tool, supports TypeScript out of the box
+  - **Best Practices**: Use `npm create svelte@latest` or manual setup with proper adapters
+  - **Verification Checklist**:
+    - [ ] Review package.json for correct SvelteKit dependencies (@sveltejs/kit, @sveltejs/vite-plugin-svelte)
+    - [ ] Verify svelte.config.js has proper adapter configuration
+    - [ ] Check that vite.config.ts/js exists and includes sveltekit() plugin
+
+- [x] Research Tailwind CSS integration with SvelteKit
+  - **Research Findings**: Tailwind v4 uses new Vite plugin `@tailwindcss/vite`
+  - **Integration Method**: Import in Vite config + CSS file with `@import 'tailwindcss'`
+  - **Verification Checklist**:
+    - [ ] Verify @tailwindcss/vite and tailwindcss are in devDependencies (package.json)
+    - [ ] Check vite.config.ts includes `tailwindcss()` plugin
+    - [ ] Verify app.css exists with `@import 'tailwindcss'` directive
+    - [ ] Confirm +layout.svelte imports app.css
+
+- [x] Identify and test SvelteKit + Tailwind starter templates
+  - **Template Used**: Manual setup with SvelteKit + Tailwind v4
+  - **Verification Checklist**:
+    - [ ] Run `pnpm dev` and verify server starts without errors
+    - [ ] Check http://localhost:5173 loads successfully
+    - [ ] Verify Tailwind classes work (inspect any styled elements)
+
+- [x] Research project structure conventions for SvelteKit apps
+  - **Standard Structure**:
+    - `src/routes/` - File-based routing
+    - `src/lib/` - Reusable components and utilities
+    - `static/` - Static assets
+  - **Verification Checklist**:
+    - [ ] Verify `src/routes/` directory exists
+    - [ ] Verify `src/lib/` directory exists
+    - [ ] Verify `static/` directory exists
+    - [ ] Check that +page.svelte exists in src/routes/
+
+- [x] Document recommended folder structure and file organization
+  - **Recommended Structure**:
+    ```
+    src/
+    ├── lib/
+    │   ├── components/     # Reusable UI components
+    │   ├── stores/         # Svelte stores
+    │   ├── types/          # TypeScript interfaces
+    │   ├── utils/          # Helper functions
+    │   └── api/            # API clients
+    ├── routes/             # SvelteKit routes
+    └── app.css             # Global styles
+    ```
+  - **Verification Checklist**:
+    - [ ] Review current folder structure matches conventions
+    - [ ] Check that future components will go in appropriate directories
+
+- [x] Research TypeScript configuration for SvelteKit
+  - **Configuration**: TypeScript strict mode, proper module resolution
+  - **Key Settings**: `moduleResolution: "bundler"`, `strict: true`
+  - **Verification Checklist**:
+    - [ ] Verify tsconfig.json exists and extends .svelte-kit/tsconfig.json
+    - [ ] Check that strict mode is enabled
+    - [ ] Run `pnpm check` to verify TypeScript compilation works
+    - [ ] Confirm no TypeScript errors in existing files
 
 ### 0.2 API Integration Research
 - [ ] **Scryfall API Research**
@@ -67,12 +121,68 @@
 ## Phase 1: Project Setup & Core Infrastructure
 
 ### 1.1 Project Initialization
-- [ ] Create SvelteKit project with Tailwind CSS using init template
-- [ ] Set up project structure (routes, lib, components)
+- [x] Create SvelteKit project with Tailwind CSS using init template
+  - **Status**: ✅ Complete - Project created with SvelteKit + Tailwind v4
+  - **Verification Checklist**:
+    - [ ] Run `pnpm install` to ensure all dependencies install correctly
+    - [ ] Run `pnpm dev` and verify dev server starts on http://localhost:5173
+    - [ ] Visit http://localhost:5173 in browser and confirm page loads
+    - [ ] Check browser console for any errors
+    - [ ] Verify Vite HMR (Hot Module Replacement) works by editing +page.svelte
+
+- [x] Set up project structure (routes, lib, components)
+  - **Current Structure**:
+    - `src/routes/` - Contains +page.svelte and +layout.svelte
+    - `src/lib/` - Contains index.ts and assets/
+  - **Verification Checklist**:
+    - [ ] Verify `src/routes/+page.svelte` exists
+    - [ ] Verify `src/routes/+layout.svelte` exists and imports app.css
+    - [ ] Verify `src/lib/` directory exists
+    - [ ] Check `src/lib/index.ts` exists for exports
+    - [ ] Verify `static/` directory exists with robots.txt
+
 - [ ] Configure Tailwind with custom theme (Moxfield-inspired)
+  - **TODO**: Create custom Tailwind theme configuration
+  - **Verification Checklist**:
+    - [ ] Create tailwind.config.js or add theme to app.css using @theme
+    - [ ] Define custom colors matching Moxfield (dark theme)
+    - [ ] Test custom theme by using theme colors in a component
+    - [ ] Verify CSS variables are applied correctly
+    - [ ] Check responsive design utilities work
+
 - [ ] Set up TypeScript types for deck structures
-- [ ] Configure build and dev scripts
-- [ ] Set up linting and formatting (ESLint, Prettier)
+  - **TODO**: Create type definitions in `src/lib/types/`
+  - **Verification Checklist**:
+    - [ ] Create `src/lib/types/` directory
+    - [ ] Create deck.ts with Deck, Card, Branch interfaces
+    - [ ] Create version.ts with Version metadata types
+    - [ ] Create maybeboard.ts with Maybeboard types
+    - [ ] Run `pnpm check` to verify types compile
+    - [ ] Import and use types in a test file to verify they work
+
+- [x] Configure build and dev scripts
+  - **Status**: ✅ Complete - Scripts configured in package.json
+  - **Available Scripts**:
+    - `pnpm dev` - Development server
+    - `pnpm build` - Production build
+    - `pnpm preview` - Preview production build
+  - **Verification Checklist**:
+    - [ ] Run `pnpm dev` and verify it starts successfully
+    - [ ] Run `pnpm build` and verify build completes without errors
+    - [ ] Check `.svelte-kit/` directory is created after build
+    - [ ] Run `pnpm preview` and verify production build works
+    - [ ] Verify build output is optimized (check build output size)
+
+- [x] Set up linting and formatting (ESLint, Prettier)
+  - **Status**: ✅ Complete - Prettier configured
+  - **Note**: ESLint not yet configured (Prettier-only setup)
+  - **Verification Checklist**:
+    - [ ] Verify .prettierrc exists with configuration
+    - [ ] Verify .prettierignore exists
+    - [ ] Run `pnpm format` and verify it formats files
+    - [ ] Run `pnpm lint` and verify it checks formatting
+    - [ ] Test formatting by creating a poorly formatted file and running format
+    - [ ] Optional: Add ESLint if stricter linting is needed
 
 ### 1.2 File Format & Storage
 - [ ] Define TypeScript interfaces for:
