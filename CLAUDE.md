@@ -69,6 +69,8 @@ Cards are always displayed in this canonical order:
 
 ## Development Commands
 
+**IMPORTANT FOR CLAUDE CODE**: Never start dev servers, build processes, or long-running commands automatically. Always prompt the user to run these commands themselves. Only run quick verification commands like `pnpm check` or file system operations.
+
 Once the SvelteKit project is initialized, typical commands will be:
 
 ### Development
