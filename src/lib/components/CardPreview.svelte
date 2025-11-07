@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { Card } from '$lib/types/card';
 	import { deckStore } from '$lib/stores/deck-store';
+	import VendorIcon from './VendorIcon.svelte';
 
 	export let hoveredCard: Card | null = null;
 
 	$: deck = $deckStore?.deck;
-	$: statistics = $deckStore?.statistics;
 	$: commander = deck?.cards.commander?.[0];
 
 	// Use hovered card if available, otherwise default to commander
@@ -56,13 +56,45 @@
 		</div>
 	{/if}
 
-	<!-- Total Deck Price -->
-	<div class="mt-auto pt-4 border-t border-[var(--color-border)]">
-		<div class="flex justify-between items-center text-sm">
-			<span class="text-[var(--color-text-tertiary)]">Total Deck Price:</span>
-			<span class="font-bold text-[var(--color-accent-green)]">
-				${statistics?.totalPrice?.toFixed(2) || '0.00'}
-			</span>
+	<!-- Vendor Pricing (Non-Foil) -->
+	{#if displayCard?.prices}
+		<div class="mt-auto pt-4 border-t border-[var(--color-border)]">
+			<div class="text-xs text-[var(--color-text-tertiary)] mb-2">Non-Foil Prices</div>
+			<div class="space-y-1.5">
+				{#if displayCard.prices.cardkingdom !== undefined}
+					<div class="flex items-center justify-between text-sm">
+						<div class="flex items-center gap-2">
+							<VendorIcon vendor="cardkingdom" size={14} />
+							<span class="text-[var(--color-text-secondary)]">Card Kingdom</span>
+						</div>
+						<span class="font-medium text-[var(--color-accent-green)]">
+							${displayCard.prices.cardkingdom.toFixed(2)}
+						</span>
+					</div>
+				{/if}
+				{#if displayCard.prices.tcgplayer !== undefined}
+					<div class="flex items-center justify-between text-sm">
+						<div class="flex items-center gap-2">
+							<VendorIcon vendor="tcgplayer" size={15} />
+							<span class="text-[var(--color-text-secondary)]">TCGplayer</span>
+						</div>
+						<span class="font-medium text-[var(--color-accent-green)]">
+							${displayCard.prices.tcgplayer.toFixed(2)}
+						</span>
+					</div>
+				{/if}
+				{#if displayCard.prices.manapool !== undefined}
+					<div class="flex items-center justify-between text-sm">
+						<div class="flex items-center gap-2">
+							<VendorIcon vendor="manapool" size={15} />
+							<span class="text-[var(--color-text-secondary)]">Mana Pool</span>
+						</div>
+						<span class="font-medium text-[var(--color-accent-green)]">
+							${displayCard.prices.manapool.toFixed(2)}
+						</span>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 </aside>

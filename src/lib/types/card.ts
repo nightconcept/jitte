@@ -49,8 +49,15 @@ export interface Card {
 		borderCrop?: string;
 	};
 
-	/** Pricing information (USD non-foil) */
+	/** Pricing information (USD non-foil) - legacy single price field */
 	price?: number;
+
+	/** Vendor-specific pricing (USD non-foil) */
+	prices?: {
+		cardkingdom?: number;
+		tcgplayer?: number;
+		manapool?: number;
+	};
 
 	/** Timestamp of last price update */
 	priceUpdatedAt?: number;

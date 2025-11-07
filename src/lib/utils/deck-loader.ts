@@ -55,6 +55,13 @@ export async function loadDeckFromPlaintext(text: string, deckName: string): Pro
 						borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
 					},
 					price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
+					// Mock vendor pricing based on Scryfall USD price
+					// TODO: Replace with real vendor API integration
+					prices: scryfallCard.prices.usd ? {
+						cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05, // Card Kingdom typically 5% higher
+						tcgplayer: parseFloat(scryfallCard.prices.usd), // TCGPlayer as baseline
+						manapool: parseFloat(scryfallCard.prices.usd) * 0.95 // Mana Pool typically 5% lower
+					} : undefined,
 					priceUpdatedAt: Date.now()
 				});
 			} else {
