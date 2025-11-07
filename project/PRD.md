@@ -1,5 +1,5 @@
 # Product Requirements Document (PRD)
-## Local MTG Commander Deck Management Tool
+## Local MTG Commander Deck Management Tool, Jitte
 
 ### Overview
 A local-first web application for managing Magic: The Gathering Commander/EDH decklists with version control, diff tracking, and export capabilities to popular deck-building platforms.

@@ -159,3 +159,40 @@ Display below main deck list with collapsible sections that update in real-time.
 - **Auto-stash**: Every 60 seconds
 - **Prompt on reload**: Option to load stash or last saved version
 - **Prompt on branch switch**: Save or discard unsaved changes
+
+## Task Management & Verification
+
+When working on this project, Claude Code must:
+
+### Task Tracking (TASKS.md)
+1. **Update TASKS.md at the end of each phase** with completion status
+2. Check off completed items with [x]
+3. Add any discovered subtasks or issues that need addressing
+4. Update verification checklists as tasks are completed
+
+### Automated Verification
+For verification tasks in TASKS.md that **do not require human visual inspection**, Claude Code must perform these checks automatically:
+
+**Automated Checks (DO THESE):**
+- File existence checks (e.g., "Verify package.json exists")
+- Package dependency verification (e.g., "Check that tailwindcss is in devDependencies")
+- Command execution verification (e.g., "Run `pnpm check` and verify no errors")
+- TypeScript compilation checks (e.g., "Run `pnpm check` to verify types compile")
+- Test execution (e.g., "Run `pnpm test` and verify all tests pass")
+- Code structure verification (e.g., "Check that function exists in file")
+- Configuration validation (e.g., "Verify config file has required settings")
+- Build process checks (e.g., "Run `pnpm build` and verify success")
+
+**Manual Checks (SKIP THESE):**
+- Browser visual inspection (e.g., "Visit http://localhost:5173 and confirm page loads")
+- UI/UX validation (e.g., "Verify Tailwind classes work by inspecting styled elements")
+- Interactive testing (e.g., "Test HMR by editing a file")
+- Visual design verification (e.g., "Check responsive design")
+
+### Phase Completion Protocol
+At the end of each phase:
+1. Run all automated verification checks for that phase
+2. Update TASKS.md with [x] for completed items
+3. Document any issues or blockers discovered
+4. List verification items that require manual testing for the user
+5. Commit the updated TASKS.md

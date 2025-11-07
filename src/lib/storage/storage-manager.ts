@@ -59,7 +59,11 @@ export class StorageManager {
 
 				providerType = StorageProvider.LocalStorage;
 			} else {
-				return initResult;
+				return {
+					success: false,
+					error: initResult.error || 'Storage initialization failed',
+					errorCode: initResult.errorCode || StorageErrorCode.Unknown
+				};
 			}
 		}
 
@@ -112,7 +116,7 @@ export class StorageManager {
 	 * Check if storage is initialized
 	 */
 	isInitialized(): boolean {
-		return this.provider?.isInitialized();
+		return this.provider?.isInitialized() ?? false;
 	}
 
 	/**
