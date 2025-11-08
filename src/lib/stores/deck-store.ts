@@ -387,6 +387,148 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Move a card from deck to maybeboard
+		 */
+		moveToMaybeboard(cardName: string, category: CardCategory, categoryId?: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Find the card in the deck
+				const categoryCards = state.deck.cards[category];
+				const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+
+				if (cardIndex === -1) return state;
+
+				const card = categoryCards[cardIndex];
+
+				// Add to maybeboard
+				const targetCategoryId = categoryId || state.maybeboard.defaultCategoryId;
+				const mbCategoryIndex = state.maybeboard.categories.findIndex(c => c.id === targetCategoryId);
+
+				if (mbCategoryIndex === -1) return state;
+
+				const newMaybeboard = { ...state.maybeboard };
+				const mbCategory = newMaybeboard.categories[mbCategoryIndex];
+				const mbCards = [...mbCategory.cards];
+
+				// Check if card exists in maybeboard
+				const mbCardIndex = mbCards.findIndex(c => c.name === cardName);
+				if (mbCardIndex !== -1) {
+					mbCards[mbCardIndex] = {
+						...mbCards[mbCardIndex],
+						quantity: mbCards[mbCardIndex].quantity + card.quantity
+					};
+				} else {
+					mbCards.push(card);
+				}
+
+				// Update maybeboard category
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, mbCategoryIndex),
+					{
+						...mbCategory,
+						cards: mbCards,
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(mbCategoryIndex + 1)
+				];
+
+				// Remove from deck
+				const newDeck = { ...state.deck };
+				newDeck.cards = {
+					...newDeck.cards,
+					[category]: [
+						...categoryCards.slice(0, cardIndex),
+						...categoryCards.slice(cardIndex + 1)
+					]
+				};
+				newDeck.cardCount = calculateTotalCards(newDeck.cards);
+				newDeck.updatedAt = new Date().toISOString();
+
+				return {
+					...state,
+					deck: newDeck,
+					maybeboard: newMaybeboard,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Move a card from maybeboard to deck
+		 */
+		moveToDeck(cardName: string, categoryId: string, targetCategory?: CardCategory): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Find card in maybeboard
+				const mbCategoryIndex = state.maybeboard.categories.findIndex(c => c.id === categoryId);
+				if (mbCategoryIndex === -1) return state;
+
+				const mbCategory = state.maybeboard.categories[mbCategoryIndex];
+				const mbCardIndex = mbCategory.cards.findIndex(c => c.name === cardName);
+
+				if (mbCardIndex === -1) return state;
+
+				const card = mbCategory.cards[mbCardIndex];
+				const deckCategory = targetCategory || inferCategory(card);
+
+				// Add to deck
+				const newDeck = { ...state.deck };
+				const deckCategoryCards = newDeck.cards[deckCategory] || [];
+				const deckCardIndex = deckCategoryCards.findIndex(c => c.name === cardName);
+
+				if (deckCardIndex !== -1) {
+					// Increment quantity
+					newDeck.cards = {
+						...newDeck.cards,
+						[deckCategory]: [
+							...deckCategoryCards.slice(0, deckCardIndex),
+							{
+								...deckCategoryCards[deckCardIndex],
+								quantity: deckCategoryCards[deckCardIndex].quantity + card.quantity
+							},
+							...deckCategoryCards.slice(deckCardIndex + 1)
+						]
+					};
+				} else {
+					// Add new card
+					newDeck.cards = {
+						...newDeck.cards,
+						[deckCategory]: [...deckCategoryCards, card]
+					};
+				}
+
+				newDeck.cardCount = calculateTotalCards(newDeck.cards);
+				newDeck.updatedAt = new Date().toISOString();
+
+				// Remove from maybeboard
+				const newMaybeboard = { ...state.maybeboard };
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, mbCategoryIndex),
+					{
+						...mbCategory,
+						cards: [
+							...mbCategory.cards.slice(0, mbCardIndex),
+							...mbCategory.cards.slice(mbCardIndex + 1)
+						],
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(mbCategoryIndex + 1)
+				];
+
+				return {
+					...state,
+					deck: newDeck,
+					maybeboard: newMaybeboard,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
 		 * Clear the deck
 		 */
 		clear(): void {
