@@ -485,6 +485,9 @@
 - [x] Top navbar with:
   - [x] Deck name display
   - [x] Settings button
+  - [x] New/Load buttons
+  - [x] Uniform 38px button heights
+  - [x] Conditional display based on deck state
 - [x] Branch/version selector (in CommanderHeader)
 - [x] View/Edit mode toggle
 - [x] Save button (disabled in View mode)
@@ -518,7 +521,8 @@
 - [x] Tab-based interface for categories
 - [x] Default "Main" category
 - [x] Card list within each category
-- [ ] Search box for adding cards to maybeboard
+- [x] Search box for adding cards to maybeboard
+- [x] Cards added to active category
 - [ ] Category management (create/rename/delete) (UI exists, logic TODO)
 - [ ] Drag and drop between categories
 - [ ] Drag and drop to main deck
@@ -533,12 +537,15 @@
 - [x] Real-time updates
 - [x] Make sections collapsible
 
-**Phase 4 Status**: ✅ Mostly complete (26/33 tasks)
+**Phase 4 Status**: ✅ Mostly complete (30/37 tasks)
 - All major UI components implemented and styled
 - Comprehensive theming system with Tokyo Night, Kanagawa, Rose Pine
 - Responsive layouts with dynamic column sizing
 - Card menu UIs exist (action logic deferred to Phase 5)
-- Missing: Keyboard shortcuts, loading states, validation icons, drag-and-drop, some interactive logic
+- Navbar with uniform heights and conditional display
+- Maybeboard search integrated
+- Statistics panel collapsible by default
+- Missing: Keyboard shortcuts, loading states, validation icons, drag-and-drop, category management
 
 ---
 
@@ -557,6 +564,8 @@
 - [x] Display card details in results (name, type, mana, price)
 - [x] "Search for more" opens Scryfall in new tab
 - [x] Add card to deck on selection (without set code)
+- [x] Card search can target main deck or maybeboard
+- [x] Maybeboard has integrated card search
 - [ ] Handle keyboard navigation in dropdown
 - [x] Add loading and error states
 
@@ -582,11 +591,13 @@
 - [ ] Show success/error feedback (currently using alert, needs toast/notification)
 - [x] Clear diff state after save
 
-**Phase 5 Status**: ⚠️ Mostly complete (21/29 tasks)
+**Phase 5 Status**: ⚠️ Mostly complete (23/31 tasks)
 - All UI components implemented and functional
 - Diff tracking working correctly
 - Save & commit modal with semver suggestions complete
 - Card search, add, remove, and printing switch all working
+- Maybeboard card search integrated
+- Commander pricing data displaying correctly
 - Still needed:
   - Keyboard shortcuts
   - Visual change indicators
@@ -598,16 +609,16 @@
 ## Phase 5.5: Core Workflow & Deck Lifecycle
 
 ### 5.5.1 Deck Lifecycle
-- [ ] New deck modal (commander selection, deck name input)
-- [ ] Deck picker UI (list all decks in storage)
-- [ ] Load deck from storage into active state
+- [x] New deck modal (commander selection, deck name input)
+- [x] Deck picker UI (list all decks in storage)
+- [x] Load deck from storage into active state
 - [ ] Switch between decks (with unsaved changes prompt)
-- [ ] Delete deck (with confirmation)
-- [ ] Save deck to storage (integrate commit modal with storage layer):
-  - [ ] Create new version on save
-  - [ ] Store full decklist snapshot
-  - [ ] Update metadata with timestamp and commit message
-  - [ ] Show success/error feedback (toast/notification system)
+- [x] Delete deck (with confirmation)
+- [x] Save deck to storage (integrate commit modal with storage layer):
+  - [x] Create new version on save
+  - [x] Store full decklist snapshot
+  - [x] Update metadata with timestamp and commit message
+  - [ ] Show success/error feedback (toast/notification system needed)
 
 ### 5.5.2 Basic Import/Export (MVP)
 - [ ] Export to plaintext (clipboard)
@@ -616,20 +627,25 @@
 - [ ] Import deck from zip file (upload with validation)
 
 ### 5.5.3 First-Time Experience
-- [ ] Empty state: "Create New Deck" or "Import Deck" buttons
-- [ ] Settings modal: Choose storage mode (FileSystem vs localStorage)
-- [ ] Storage directory picker (FileSystem API)
-- [ ] First deck creation wizard
+- [x] Empty state: "Create New Deck" or "Import Deck" buttons
+- [x] Settings modal: Theme selection, data management
+- [x] Storage directory picker (FileSystem API)
+- [x] First deck creation wizard (NewDeckModal with commander search)
 
 ### 5.5.4 Deck State Management
-- [ ] Active deck store (current working deck)
-- [ ] Deck list store (all available decks)
-- [ ] Auto-load last opened deck on app start
-- [ ] Persist active deck ID to localStorage
+- [x] Active deck store (current working deck)
+- [x] Deck list store (all available decks)
+- [x] Auto-load last opened deck on app start
+- [x] Persist active deck ID to localStorage
 
-**Phase 5.5 Status**: ⏳ Not started
-- Critical for app usability - creates complete workflow loop
-- Pulls forward essential tasks from Phases 7, 8, 10
+**Phase 5.5 Status**: ✅ Mostly complete (13/17 tasks)
+- Critical workflow loop implemented
+- Deck creation, loading, saving all working
+- FileSystem API integration complete
+- Still needed:
+  - Import/export plaintext functionality
+  - Switch between decks with unsaved changes prompt
+  - Toast/notification system for feedback
 
 ---
 
