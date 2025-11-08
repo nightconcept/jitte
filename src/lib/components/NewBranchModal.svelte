@@ -19,13 +19,26 @@
 		selectedVersion = availableVersions[0];
 	}
 
+	function sanitizeBranchName(name: string): string {
+		return name
+			.toLowerCase()
+			.replace(/\s+/g, '-') // Convert spaces to dashes
+			.replace(/[^a-z0-9\/-]/g, ''); // Only allow alphanumeric and /
+	}
+
 	function handleCreate() {
 		if (!branchName.trim()) {
 			return;
 		}
 
+		const sanitizedName = sanitizeBranchName(branchName.trim());
+
+		if (!sanitizedName) {
+			return;
+		}
+
 		dispatch('create', {
-			branchName: branchName.trim(),
+			branchName: sanitizedName,
 			mode,
 			fromVersion: mode === 'version' ? selectedVersion : undefined
 		});
@@ -70,7 +83,7 @@
 			<div class="px-6 py-4 border-b border-[var(--color-border)]">
 				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Create New Branch</h2>
 				<p class="text-sm text-[var(--color-text-secondary)] mt-1">
-					Branching from <span class="text-[var(--color-brand-primary)] font-medium">{currentBranch}</span>
+					Branch from version on <span class="text-[var(--color-brand-primary)] font-medium">{currentBranch}</span>
 				</p>
 			</div>
 
@@ -84,17 +97,21 @@
 					<input
 						type="text"
 						bind:value={branchName}
-						placeholder="experimental"
+						placeholder="experimental or feature/new-cards"
 						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-						autofocus
 					/>
+					{#if branchName.trim()}
+						<div class="text-xs text-[var(--color-text-secondary)] mt-1">
+							Will be created as: <span class="font-mono text-[var(--color-brand-primary)]">{sanitizeBranchName(branchName.trim())}</span>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Branch Mode -->
 				<div>
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<div class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 						Branch Mode
-					</label>
+					</div>
 					<div class="space-y-2">
 						<!-- Bring current changes -->
 						<label
@@ -113,7 +130,7 @@
 									Bring current changes
 								</div>
 								<div class="text-xs text-[var(--color-text-secondary)] mt-0.5">
-									Start the new branch with your current working state
+									Start the new branch with your current working state (includes unsaved changes)
 								</div>
 							</div>
 						</label>

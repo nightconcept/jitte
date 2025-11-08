@@ -553,7 +553,7 @@ function createDeckManager() {
 	 * Load version data without setting it as active
 	 * Used for diff comparison
 	 */
-	async function loadVersionData(version: string): Promise<Deck | null> {
+	async function loadVersionData(version: string, branchName?: string): Promise<Deck | null> {
 		const appState = get({ subscribe });
 		if (!appState.activeDeckName || !appState.activeManifest) {
 			return null;
@@ -571,9 +571,9 @@ function createDeckManager() {
 
 			const archive = await decompressDeckArchive(loadResult.data);
 
-			// Use the current branch from the deck store
+			// Use the provided branch name, or fall back to current branch from deck store or manifest
 			const deckStoreState = get(deckStore);
-			const currentBranch = deckStoreState?.deck.currentBranch || appState.activeManifest.currentBranch;
+			const currentBranch = branchName || deckStoreState?.deck.currentBranch || appState.activeManifest.currentBranch;
 
 			// Load the specific version file
 			const jsonFileName = `v${version}.json`;
@@ -615,6 +615,235 @@ function createDeckManager() {
 	}
 
 	/**
+	 * Create a new branch
+	 */
+	async function createNewBranch(
+		branchName: string,
+		mode: 'current' | 'version',
+		fromVersion?: string
+	): Promise<boolean> {
+		const currentState = get(deckStore);
+		const appState = get({ subscribe });
+
+		if (!currentState || !appState.activeManifest || !appState.activeDeckName) {
+			update((state) => ({ ...state, error: 'No active deck to create branch' }));
+			return false;
+		}
+
+		try {
+			const { createBranch } = await import('$lib/utils/version-control');
+			const { serializeDeckToJSON, createDeckArchive } = await import('$lib/utils/deck-serializer');
+			const { compressDeckArchive } = await import('$lib/utils/zip');
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+
+			// Load the current deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				throw new Error('Failed to load deck for branching');
+			}
+
+			const archive = await decompressDeckArchive(loadResult.data);
+
+			// Create the branch in the manifest
+			const options = {
+				name: branchName,
+				sourceBranch: currentState.deck.currentBranch,
+				sourceVersion: mode === 'version' ? fromVersion : currentState.deck.currentVersion,
+				fromScratch: false
+			};
+
+			const updatedManifest = createBranch(archive.manifest, options);
+
+			// Copy version files from source branch to new branch
+			const newBranchMetadata = updatedManifest.branches.find((b) => b.name === branchName);
+			if (!newBranchMetadata) {
+				throw new Error('Failed to create branch metadata');
+			}
+
+			// Initialize the new branch directory in versions
+			const newBranchVersions: Record<string, string> = {};
+
+			// Copy all version files that are in the new branch's metadata
+			if (archive.versions[options.sourceBranch]) {
+				for (const versionMeta of newBranchMetadata.versions) {
+					const jsonFileName = `v${versionMeta.version}.json`;
+					const txtFileName = `v${versionMeta.version}.txt`;
+
+					// Copy whichever file exists
+					if (archive.versions[options.sourceBranch][jsonFileName]) {
+						newBranchVersions[jsonFileName] = archive.versions[options.sourceBranch][jsonFileName];
+					} else if (archive.versions[options.sourceBranch][txtFileName]) {
+						newBranchVersions[txtFileName] = archive.versions[options.sourceBranch][txtFileName];
+					}
+				}
+			}
+
+			// Update the archive with the new manifest and version files
+			const updatedArchive = {
+				...archive,
+				manifest: updatedManifest,
+				versions: {
+					...archive.versions,
+					[branchName]: newBranchVersions
+				}
+			};
+
+			// Save the updated archive
+			const zipBlob = await compressDeckArchive(updatedArchive, currentState.deck.name);
+			const result = await storage.saveDeck(appState.activeDeckName, zipBlob);
+
+			if (result.success) {
+				// Update the active manifest
+				update((state) => ({
+					...state,
+					activeManifest: updatedManifest
+				}));
+				return true;
+			} else {
+				update((state) => ({
+					...state,
+					error: result.error || 'Failed to create branch'
+				}));
+				return false;
+			}
+		} catch (error) {
+			update((state) => ({
+				...state,
+				error: error instanceof Error ? error.message : 'Failed to create branch'
+			}));
+			return false;
+		}
+	}
+
+	/**
+	 * Switch to a different branch
+	 */
+	async function switchToBranch(branchName: string): Promise<boolean> {
+		const appState = get({ subscribe });
+
+		if (!appState.activeManifest || !appState.activeDeckName) {
+			update((state) => ({ ...state, error: 'No active deck to switch branch' }));
+			return false;
+		}
+
+		try {
+			const { switchBranch } = await import('$lib/utils/version-control');
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+			const { compressDeckArchive } = await import('$lib/utils/zip');
+
+			// Update the manifest to switch branches
+			const updatedManifest = switchBranch(appState.activeManifest, branchName);
+
+			// Load the deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				throw new Error('Failed to load deck for branch switching');
+			}
+
+			const archive = await decompressDeckArchive(loadResult.data);
+
+			// Update the archive with the new manifest
+			const updatedArchive = {
+				...archive,
+				manifest: updatedManifest
+			};
+
+			// Save the updated archive
+			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+
+			if (!saveResult.success) {
+				throw new Error('Failed to save branch switch');
+			}
+
+			// Load the version data for the new branch's current version
+			const versionDeck = await loadVersionData(updatedManifest.currentVersion, branchName);
+			if (!versionDeck) {
+				throw new Error('Failed to load version data for new branch');
+			}
+
+			// Update the deck store with the new branch's data
+			deckStore.load(versionDeck, archive.maybeboard || { categories: {} });
+
+			// Update the active manifest
+			update((state) => ({
+				...state,
+				activeManifest: updatedManifest
+			}));
+
+			return true;
+		} catch (error) {
+			update((state) => ({
+				...state,
+				error: error instanceof Error ? error.message : 'Failed to switch branch'
+			}));
+			return false;
+		}
+	}
+
+	/**
+	 * Delete a branch
+	 */
+	async function deleteBranchFromDeck(branchName: string): Promise<boolean> {
+		const appState = get({ subscribe });
+
+		if (!appState.activeManifest || !appState.activeDeckName) {
+			update((state) => ({ ...state, error: 'No active deck' }));
+			return false;
+		}
+
+		try {
+			const { deleteBranch } = await import('$lib/utils/version-control');
+			const { compressDeckArchive } = await import('$lib/utils/zip');
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+
+			// Load the current deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				throw new Error('Failed to load deck for branch deletion');
+			}
+
+			const archive = await decompressDeckArchive(loadResult.data);
+
+			// Delete the branch from manifest (also validates we're not deleting main or current branch)
+			const updatedManifest = deleteBranch(archive.manifest, branchName);
+
+			// Remove version files for this branch from archive
+			const updatedVersions = { ...archive.versions };
+			delete updatedVersions[branchName];
+
+			// Update the archive
+			const updatedArchive = {
+				...archive,
+				manifest: updatedManifest,
+				versions: updatedVersions
+			};
+
+			// Save the updated archive
+			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+
+			if (!saveResult.success) {
+				throw new Error('Failed to save after branch deletion');
+			}
+
+			// Update the active manifest
+			update((state) => ({
+				...state,
+				activeManifest: updatedManifest
+			}));
+
+			return true;
+		} catch (error) {
+			update((state) => ({
+				...state,
+				error: error instanceof Error ? error.message : 'Failed to delete branch'
+			}));
+			return false;
+		}
+	}
+
+	/**
 	 * Clear error
 	 */
 	function clearError(): void {
@@ -632,6 +861,9 @@ function createDeckManager() {
 		createDeck,
 		deleteDeck,
 		renameDeck,
+		createNewBranch,
+		switchToBranch,
+		deleteBranchFromDeck,
 		clearError
 	};
 }

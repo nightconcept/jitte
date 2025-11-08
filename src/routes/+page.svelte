@@ -27,6 +27,7 @@
 	let showSettingsModal = false;
 	let showNewBranchModal = false;
 	let showEditDecklistModal = false;
+	let showCompareModal = false;
 	let currentDecklistPlaintext = '';
 
 	const cardService = new CardService();
@@ -134,11 +135,22 @@
 	async function handleCreateBranch(event: CustomEvent<{ branchName: string; mode: 'current' | 'version'; fromVersion?: string }>) {
 		const { branchName, mode, fromVersion } = event.detail;
 
-		// TODO: Implement branch creation in deckManager
-		// For now, just log the intent
-		console.log('Creating branch:', { branchName, mode, fromVersion });
+		const success = await deckManager.createNewBranch(branchName, mode, fromVersion);
 
-		showNewBranchModal = false;
+		if (success) {
+			showNewBranchModal = false;
+
+			// Automatically switch to the new branch
+			const switchSuccess = await deckManager.switchToBranch(branchName);
+
+			if (switchSuccess) {
+				toastStore.success(`Branch "${branchName}" created and switched to successfully!`);
+			} else {
+				toastStore.warning(`Branch "${branchName}" created but failed to switch: ${$deckManager.error}`);
+			}
+		} else {
+			toastStore.error($deckManager.error || 'Failed to create branch');
+		}
 	}
 
 	async function handleExport() {
@@ -325,10 +337,47 @@
 		await deckManager.loadVersion(version);
 	}
 
+	async function handleSwitchBranch(branch: string) {
+		if (!$deckStore || !$deckManager.activeDeckName) return;
+
+		// Warn if there are unsaved changes
+		if ($deckStore.hasUnsavedChanges) {
+			const confirmed = confirm('You have unsaved changes. Switching branches will discard them. Continue?');
+			if (!confirmed) return;
+		}
+
+		const success = await deckManager.switchToBranch(branch);
+
+		if (success) {
+			toastStore.success(`Switched to branch "${branch}"`);
+		} else {
+			toastStore.error($deckManager.error || 'Failed to switch branch');
+		}
+	}
+
+	async function handleDeleteBranch(branch: string) {
+		if (!$deckStore || !$deckManager.activeDeckName) return;
+
+		const success = await deckManager.deleteBranchFromDeck(branch);
+		if (success) {
+			toastStore.success(`Branch "${branch}" deleted successfully!`);
+		} else {
+			toastStore.error($deckManager.error || 'Failed to delete branch');
+		}
+	}
+
+	function handleCompare() {
+		showCompareModal = true;
+	}
+
 	// Get available versions for branch modal
 	$: availableVersions = $deckManager.activeManifest?.branches
 		?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
 		?.versions?.map(v => v.version) || [];
+
+	// Get available branches
+	$: availableBranches = $deckManager.activeManifest?.branches
+		?.map(b => b.name) || ['main'];
 </script>
 
 <div class="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
@@ -341,6 +390,7 @@
 		currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 		currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
 		availableVersions={availableVersions}
+		availableBranches={availableBranches}
 		onToggleEdit={handleToggleEdit}
 		onSave={handleSave}
 		onNewDeck={handleNewDeck}
@@ -349,7 +399,10 @@
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
 		onImport={handleImport}
+		onCompare={handleCompare}
 		onSwitchVersion={handleSwitchVersion}
+		onSwitchBranch={handleSwitchBranch}
+		onDeleteBranch={handleDeleteBranch}
 	/>
 
 	{#if $deckManager.isLoading}

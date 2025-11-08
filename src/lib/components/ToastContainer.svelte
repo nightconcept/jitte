@@ -15,8 +15,8 @@
 	let toasts = $derived(toastStoreState?.toasts ?? []);
 </script>
 
-<!-- Toast container positioned at top-right -->
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+<!-- Toast container positioned at bottom-right -->
+<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
 	{#each toasts as toast (toast.id)}
 		<div class="pointer-events-auto">
 			<Toast {toast} />

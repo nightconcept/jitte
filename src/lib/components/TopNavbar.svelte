@@ -9,6 +9,7 @@
 	export let currentBranch = 'main';
 	export let currentVersion = '1.0.0';
 	export let availableVersions: string[] = [];
+	export let availableBranches: string[] = ['main'];
 	export let hasDeck = false;
 	export let onToggleEdit: (() => void) | undefined = undefined;
 	export let onSave: (() => void) | undefined = undefined;
@@ -20,6 +21,8 @@
 	export let onImport: (() => void) | undefined = undefined;
 	export let onCompare: (() => void) | undefined = undefined;
 	export let onSwitchVersion: ((version: string) => void) | undefined = undefined;
+	export let onSwitchBranch: ((branch: string) => void) | undefined = undefined;
+	export let onDeleteBranch: ((branch: string) => void) | undefined = undefined;
 
 	// Save button is enabled if:
 	// - Deck is in edit mode AND
@@ -28,6 +31,7 @@
 
 	// Dropdown state
 	let versionDropdownOpen = false;
+	let branchDropdownOpen = false;
 </script>
 
 <nav class="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3 sticky top-0 z-50">
@@ -129,14 +133,61 @@
 		{#if hasDeck}
 			<div class="flex items-center gap-3">
 				<!-- Branch Selector -->
-				<div class="flex items-center gap-2">
+				<div class="flex items-center gap-2 relative">
 					<span class="text-sm text-[var(--color-text-secondary)] font-semibold">Branch:</span>
-					<button class="px-4 py-2 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium flex items-center gap-2 h-[38px]">
+					<button
+						on:click={() => branchDropdownOpen = !branchDropdownOpen}
+						class="px-4 py-2 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium flex items-center gap-2 h-[38px]"
+					>
 						{currentBranch}
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 						</svg>
 					</button>
+
+					<!-- Branch Dropdown -->
+					{#if branchDropdownOpen && availableBranches.length > 0}
+						<div class="absolute top-full mt-1 left-0 min-w-[200px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50 max-h-64 overflow-y-auto">
+							{#each availableBranches as branch}
+								<div class="flex items-center hover:bg-[var(--color-surface-hover)]">
+									<button
+										on:click={() => {
+											if (onSwitchBranch) onSwitchBranch(branch);
+											branchDropdownOpen = false;
+										}}
+										class="flex-1 px-4 py-2 text-left text-sm {branch === currentBranch ? 'text-[var(--color-brand-primary)] font-semibold' : 'text-[var(--color-text-primary)]'} flex items-center justify-between"
+									>
+										<span>{branch}</span>
+										{#if branch === currentBranch}
+											<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+											</svg>
+										{/if}
+									</button>
+									{#if branch !== 'main'}
+										<button
+											on:click={() => {
+												if (onDeleteBranch) {
+													const confirmed = confirm(`Delete branch "${branch}"? This cannot be undone.`);
+													if (confirmed) {
+														onDeleteBranch(branch);
+														branchDropdownOpen = false;
+													}
+												}
+											}}
+											class="px-3 py-2 text-red-500 hover:text-red-600 hover:bg-red-500/10 border-l border-[var(--color-border)]"
+											title="Delete branch"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+											</svg>
+										</button>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
+
 					<!-- New Branch Button -->
 					<button
 						on:click={onNewBranch}
