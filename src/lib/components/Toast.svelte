@@ -1,8 +1,11 @@
 <script lang="ts">
 	import type { Toast } from '$lib/stores/toast-store';
 	import { toastStore } from '$lib/stores/toast-store';
+	import { createEventDispatcher } from 'svelte';
 
 	let { toast }: { toast: Toast } = $props();
+
+	const dispatch = createEventDispatcher<{ showDetails: { toast: Toast } }>();
 
 	const icons = {
 		success: '✓',
@@ -28,6 +31,10 @@
 	function handleClose() {
 		toastStore.dismiss(toast.id);
 	}
+
+	function handleShowDetails() {
+		dispatch('showDetails', { toast });
+	}
 </script>
 
 <div
@@ -42,8 +49,19 @@
 	</div>
 
 	<!-- Message -->
-	<div class="flex-1 text-sm leading-relaxed">
-		{toast.message}
+	<div class="flex-1 flex flex-col gap-2">
+		<div class="text-sm leading-relaxed">
+			{toast.message}
+		</div>
+		{#if toast.details}
+			<button
+				type="button"
+				onclick={handleShowDetails}
+				class="text-xs underline text-left hover:opacity-80 transition-opacity"
+			>
+				View Details
+			</button>
+		{/if}
 	</div>
 
 	<!-- Close button -->

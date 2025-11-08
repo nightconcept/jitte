@@ -247,14 +247,18 @@
 			}
 		}
 
-		// Second pass: fetch only new cards from Scryfall (using batch API)
+		// Second pass: fetch only new cards from Scryfall (using batch API with set/collector support)
 		if (newCardsNeeded.length > 0) {
-			const cardNames = newCardsNeeded.map(c => c.name);
-			const batchResult = await cardService.getCardsByNames(cardNames);
+			const batchResult = await cardService.getCardsBatch(newCardsNeeded);
 
 			// Process found cards
 			for (const parsedCard of newCardsNeeded) {
-				const scryfallCard = batchResult.cards.get(parsedCard.name.toLowerCase());
+				// Try to find by set+collector first, fallback to name
+				const lookupKey = parsedCard.setCode && parsedCard.collectorNumber
+					? `${parsedCard.setCode.toLowerCase()}|${parsedCard.collectorNumber}`
+					: parsedCard.name.toLowerCase();
+
+				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
 
 				if (scryfallCard) {
 					// Convert to our Card type (same as CardSearch.svelte)
@@ -298,9 +302,13 @@
 			}
 
 			// Add any cards from the not_found array that weren't already tracked
-			for (const notFoundName of batchResult.notFound) {
-				if (!failedCards.includes(notFoundName)) {
-					failedCards.push(notFoundName);
+			for (const notFoundCard of batchResult.notFound) {
+				const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
+					? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
+					: notFoundCard.name;
+
+				if (!failedCards.includes(displayName)) {
+					failedCards.push(displayName);
 				}
 			}
 		}

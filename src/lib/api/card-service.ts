@@ -88,6 +88,32 @@ export class CardService {
 	}
 
 	/**
+	 * Get a card by set code and collector number (for specific printings)
+	 * Falls back to name lookup if set/collector lookup fails
+	 */
+	async getCardBySetAndNumber(
+		setCode: string,
+		collectorNumber: string,
+		fallbackName?: string
+	): Promise<ScryfallCard | null> {
+		try {
+			const card = await scryfallClient.getCardBySetAndNumber(setCode, collectorNumber);
+			await cardCache.cacheCard(card);
+			return card;
+		} catch (error) {
+			console.error(`Get card by set/collector error (${setCode} ${collectorNumber}):`, error);
+
+			// Fall back to name lookup if provided
+			if (fallbackName) {
+				console.log(`Falling back to name lookup: ${fallbackName}`);
+				return this.getCardByName(fallbackName);
+			}
+
+			return null;
+		}
+	}
+
+	/**
 	 * Get multiple cards by name in batch (up to 75 per call)
 	 * Much more efficient than individual requests
 	 * @param names - Array of card names to fetch
@@ -128,6 +154,91 @@ export class CardService {
 				}
 			} catch (error) {
 				console.error('Get cards by names error:', error);
+				// Add all cards in this batch to not found
+				notFound.push(...batch);
+			}
+		}
+
+		return { cards, notFound };
+	}
+
+	/**
+	 * Get multiple cards in batch with set/collector support (up to 75 per call)
+	 * Prefers set+collector when available, falls back to name only
+	 * @param cardIdentifiers - Array of card identifiers with name and optional set/collector
+	 * @returns Object with found cards and array of not found identifiers
+	 */
+	async getCardsBatch(cardIdentifiers: Array<{
+		name: string;
+		setCode?: string;
+		collectorNumber?: string;
+	}>): Promise<{
+		cards: Map<string, ScryfallCard>;
+		notFound: Array<{ name: string; setCode?: string; collectorNumber?: string }>;
+	}> {
+		const cards = new Map<string, ScryfallCard>();
+		const notFound: Array<{ name: string; setCode?: string; collectorNumber?: string }> = [];
+
+		// Create a lookup map from input
+		const inputMap = new Map<string, typeof cardIdentifiers[0]>();
+		for (const card of cardIdentifiers) {
+			const key = card.setCode && card.collectorNumber
+				? `${card.setCode}|${card.collectorNumber}`.toLowerCase()
+				: card.name.toLowerCase();
+			inputMap.set(key, card);
+		}
+
+		// Split into batches of 75
+		const batches: typeof cardIdentifiers[] = [];
+		for (let i = 0; i < cardIdentifiers.length; i += 75) {
+			batches.push(cardIdentifiers.slice(i, i + 75));
+		}
+
+		// Process each batch
+		for (const batch of batches) {
+			try {
+				const identifiers = batch.map((card) => {
+					// Prefer set+collector, fallback to name
+					if (card.setCode && card.collectorNumber) {
+						return {
+							set: card.setCode.toLowerCase(),
+							collector_number: card.collectorNumber
+						};
+					}
+					return { name: card.name };
+				});
+
+				const result = await scryfallClient.getCardCollection(identifiers);
+
+				// Add found cards to map
+				for (const card of result.data) {
+					await cardCache.cacheCard(card);
+					// Key by set+collector if available, otherwise by name
+					const key = `${card.set}|${card.collector_number}`.toLowerCase();
+					cards.set(key, card);
+					// Also add by name for fallback lookups
+					cards.set(card.name.toLowerCase(), card);
+				}
+
+				// Track not found cards
+				if (result.not_found && Array.isArray(result.not_found)) {
+					for (const identifier of result.not_found) {
+						if (typeof identifier === 'object' && identifier !== null) {
+							const typedId = identifier as any;
+							if ('set' in typedId && 'collector_number' in typedId) {
+								const key = `${typedId.set}|${typedId.collector_number}`.toLowerCase();
+								const original = inputMap.get(key);
+								if (original) notFound.push(original);
+							} else if ('name' in typedId) {
+								const key = typedId.name.toLowerCase();
+								const original = inputMap.get(key);
+								if (original) notFound.push(original);
+							}
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Get cards batch error:', error);
 				// Add all cards in this batch to not found
 				notFound.push(...batch);
 			}

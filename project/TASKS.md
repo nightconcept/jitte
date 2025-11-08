@@ -381,6 +381,12 @@
   - **Features**: Supported via card_faces in Scryfall types
 - [x] Handle special card types (tokens, emblems)
   - **Features**: Scryfall types include layout field for all types
+- [x] Fetch specific printings by set code and collector number
+  - **Location**: `src/lib/api/scryfall-client.ts` - `getCardBySetAndNumber()` method
+  - **Features**: Fetches exact printing variants (showcase, borderless, etc.)
+- [x] Batch fetch with set/collector support
+  - **Location**: `src/lib/api/card-service.ts` - `getCardsBatch()` method
+  - **Features**: Prefers set+collector, falls back to name-only
 - [ ] Sort printings by date or price
   - **Status**: Can be done in UI layer as needed
 - [ ] Write tests for printing data
@@ -388,6 +394,8 @@
   - **Verification Checklist**:
     - [x] `getCardPrintings()` method exists
     - [x] Returns array of cards with full data
+    - [x] `getCardBySetAndNumber()` method exists
+    - [x] `getCardsBatch()` method exists
 
 ### 2.5 Bulk Data (Optional)
 - [x] Settings option to download Scryfall bulk data
@@ -635,6 +643,8 @@
   - [x] Batch API optimization (Scryfall collection endpoint, 75 cards per request)
   - [x] Reuse existing card data to avoid redundant API calls
   - [x] Disable bulk edit button when not in edit mode
+  - [x] Support special characters in collector numbers (★, •, †, ‡, §, ¶, #, *)
+  - [x] Fetch exact printings using set+collector when available (Moxfield imports)
 - [ ] Export deck as zip file (download)
 - [ ] Import deck from zip file (upload with validation)
 
@@ -745,6 +755,10 @@
 - [x] Add cards to existing deck
 - [x] Handle parsing errors
 - [x] Show validation warnings in preview
+- [x] Support Moxfield format with special collector numbers (e.g., "54★")
+- [x] Fetch exact card printings using set+collector codes
+- [x] Persistent error toasts with detailed error information
+- [x] Error details modal with stack traces and copy-to-clipboard
 - [ ] Write tests for plaintext import
 
 ### 7.6 Import/Export Zip Files
@@ -816,6 +830,11 @@
 - [ ] Offline mode indicators
 - [ ] Add skeleton loaders
 - [x] Toast notifications for actions (fully implemented with success/error/warning/info variants)
+- [x] Persistent error toasts (don't auto-dismiss, manual close required)
+- [x] Error details modal with full error messages and stack traces
+- [x] "View Details" button on error toasts
+- [x] Copy-to-clipboard for error details
+- [x] Detailed error context (card name, set, collector number, etc.)
 
 ### 10.3 Responsive Design
 - [ ] Optimize for 1080p (primary target)

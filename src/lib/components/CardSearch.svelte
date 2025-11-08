@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
+	import { toastStore } from '$lib/stores/toast-store';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
 
@@ -80,10 +81,31 @@
 	}
 
 	async function selectCard(result: CardSearchResult) {
-		// Fetch full card data
-		const scryfallCard = await cardService.getCardByName(result.name);
+		try {
+			// Fetch full card data - prefer set/collector for exact printing, fallback to name
+			let scryfallCard;
 
-		if (scryfallCard) {
+			if (result.set && result.collector_number) {
+				// Try to fetch the exact printing from the search result
+				scryfallCard = await cardService.getCardBySetAndNumber(
+					result.set,
+					result.collector_number,
+					result.name // Fallback to name if set/collector fails
+				);
+			} else {
+				// No set/collector info, fetch by name only
+				scryfallCard = await cardService.getCardByName(result.name);
+			}
+
+			if (!scryfallCard) {
+				toastStore.error(
+					`Failed to fetch card: ${result.name}`,
+					0,
+					`The card was found in search results but could not be fetched from Scryfall.\n\nCard Name: ${result.name}\nSet: ${result.set}\nCollector Number: ${result.collector_number}\n\nThis might be due to:\n- Network connectivity issues\n- Scryfall API being temporarily unavailable\n- The card data being incomplete or malformed`
+				);
+				return;
+			}
+
 			// Convert to our Card type
 			const card: Card = {
 				name: scryfallCard.name,
@@ -122,12 +144,28 @@
 			} else {
 				deckStore.addCard(card);
 			}
-		}
 
-		// Clear search
-		searchQuery = '';
-		results = [];
-		showDropdown = false;
+			// Clear search
+			searchQuery = '';
+			results = [];
+			showDropdown = false;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			const errorStack = error instanceof Error ? error.stack : '';
+
+			toastStore.error(
+				`Failed to add card: ${result.name}`,
+				0,
+				`An error occurred while trying to add the card to your deck.\n\nCard Name: ${result.name}\nSet: ${result.set} (${result.collector_number})\n\nError: ${errorMessage}\n\n${errorStack ? `Stack Trace:\n${errorStack}` : ''}`
+			);
+
+			console.error('Error adding card:', {
+				cardName: result.name,
+				set: result.set,
+				collectorNumber: result.collector_number,
+				error
+			});
+		}
 	}
 
 	function searchOnScryfall() {

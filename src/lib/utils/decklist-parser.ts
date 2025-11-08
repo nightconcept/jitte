@@ -101,8 +101,9 @@ function parseLine(line: string): Card | null {
 	//   1 Kenrith (plst) ELD-303
 
 	const patterns = [
-		// Pattern 1: "1 CardName (SET) 123" or "1 CardName (SET) ELD-123"
-		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)\s+([A-Z0-9\-]+)$/i,
+		// Pattern 1: "1 CardName (SET) 123" or "1 CardName (SET) ELD-123" or "1 CardName (SET) 54★"
+		// Allow alphanumeric, hyphens, and special symbols (★, •, etc.) in collector numbers
+		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)\s+([A-Z0-9\-★•†‡§¶#*]+)$/i,
 		// Pattern 2: "1 CardName (SET)"
 		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)$/i,
 		// Pattern 3: "1 CardName" or "1x CardName"

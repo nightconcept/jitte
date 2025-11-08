@@ -189,6 +189,15 @@ export class ScryfallClient {
 	}
 
 	/**
+	 * Get a card by set code and collector number
+	 * @param setCode - The set code (e.g., "war", "2xm")
+	 * @param collectorNumber - The collector number (e.g., "97", "54★")
+	 */
+	async getCardBySetAndNumber(setCode: string, collectorNumber: string): Promise<ScryfallCard> {
+		return this.request<ScryfallCard>(`/cards/${setCode.toLowerCase()}/${collectorNumber}`);
+	}
+
+	/**
 	 * Get multiple cards by collection lookup (batch request)
 	 * Maximum 75 cards per request
 	 * @param identifiers - Array of card identifiers (name, id, etc.)
