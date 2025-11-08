@@ -41,8 +41,8 @@
 	<div class="relative h-full overflow-hidden">
 		<!-- Gradient Background with Commander Image -->
 		<div class="absolute inset-0 transition-opacity duration-300 {isScrolled ? 'opacity-0' : 'opacity-100'}">
-			<!-- Theme-aware gradient on the left -->
-			<div class="absolute inset-0" style="background: linear-gradient(to right, var(--color-brand-primary), var(--color-accent-purple) 50%, transparent);"></div>
+			<!-- Theme-aware gradient from brand color to dark -->
+			<div class="absolute inset-0" style="background: linear-gradient(to right, var(--color-brand-primary) 0%, var(--color-brand-primary) 40%, rgba(0,0,0,0.6) 70%, transparent 100%);"></div>
 
 			<!-- Commander card art -->
 			{#if commanderImageUrl}
