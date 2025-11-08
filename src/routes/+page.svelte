@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { deckStore, currentDiff } from '$lib/stores/deck-store';
 	import { deckManager } from '$lib/stores/deck-manager';
+	import { toastStore } from '$lib/stores/toast-store';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import CommanderHeader from '$lib/components/CommanderHeader.svelte';
 	import CardPreview from '$lib/components/CardPreview.svelte';
@@ -68,10 +69,11 @@
 		if (success) {
 			console.log('[handleCommit] Commit successful, closing modal');
 			showCommitModal = false;
+			toastStore.success('Deck saved successfully!');
 		} else {
 			console.error('[handleCommit] Commit failed:', $deckManager.error);
 			// Error is stored in deckManager state
-			alert($deckManager.error || 'Failed to save deck');
+			toastStore.error($deckManager.error || 'Failed to save deck');
 		}
 	}
 
@@ -101,7 +103,7 @@
 		} catch (error) {
 			console.error('[handleCreateDeck] Error:', error);
 			showNewDeckModal = false; // Close modal even on error
-			alert(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			toastStore.error(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 
@@ -142,22 +144,22 @@
 	async function handleExport() {
 		const plaintext = deckStore.exportToPlaintext(true);
 		if (!plaintext) {
-			alert('No deck loaded to export');
+			toastStore.warning('No deck loaded to export');
 			return;
 		}
 
 		try {
 			await navigator.clipboard.writeText(plaintext);
-			alert('Deck exported to clipboard!');
+			toastStore.success('Deck exported to clipboard!');
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
-			alert('Failed to copy to clipboard. Check console for details.');
+			toastStore.error('Failed to copy to clipboard. Check console for details.');
 		}
 	}
 
 	function handleImport() {
 		if (!$deckStore) {
-			alert('Please create or load a deck first');
+			toastStore.warning('Please create or load a deck first');
 			return;
 		}
 
@@ -171,7 +173,7 @@
 		const { decklist } = event.detail;
 
 		if (!$deckStore) {
-			alert('No deck loaded');
+			toastStore.error('No deck loaded');
 			return;
 		}
 
@@ -179,7 +181,7 @@
 		const parseResult = parsePlaintext(decklist);
 
 		if (parseResult.cards.length === 0) {
-			alert('No valid cards found in decklist');
+			toastStore.warning('No valid cards found in decklist');
 			return;
 		}
 
@@ -301,11 +303,11 @@
 				errorMessage.push(`${parseResult.errors.length} parsing errors (lines skipped)`);
 			}
 			if (failedCards.length > 0) {
-				errorMessage.push(`${failedCards.length} cards not found:\n${failedCards.join(', ')}`);
+				errorMessage.push(`${failedCards.length} cards not found: ${failedCards.join(', ')}`);
 			}
-			alert(`Decklist updated!\n\n${successCount} cards loaded successfully.\n\n${errorMessage.join('\n')}`);
+			toastStore.warning(`Decklist updated! ${successCount} cards loaded successfully. ${errorMessage.join('. ')}`, 5000);
 		} else {
-			alert(`Decklist updated successfully! ${successCount} cards loaded.`);
+			toastStore.success(`Decklist updated successfully! ${successCount} cards loaded.`);
 		}
 
 		showEditDecklistModal = false;

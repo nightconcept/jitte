@@ -550,6 +550,71 @@ function createDeckManager() {
 	}
 
 	/**
+	 * Load version data without setting it as active
+	 * Used for diff comparison
+	 */
+	async function loadVersionData(version: string): Promise<Deck | null> {
+		const appState = get({ subscribe });
+		if (!appState.activeDeckName || !appState.activeManifest) {
+			return null;
+		}
+
+		try {
+			// Load the deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				return null;
+			}
+
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+			const { deserializeDeck } = await import('$lib/utils/deck-serializer');
+
+			const archive = await decompressDeckArchive(loadResult.data);
+
+			// Use the current branch from the deck store
+			const deckStoreState = get(deckStore);
+			const currentBranch = deckStoreState?.deck.currentBranch || appState.activeManifest.currentBranch;
+
+			// Load the specific version file
+			const jsonFileName = `v${version}.json`;
+			const txtFileName = `v${version}.txt`;
+			const versionContent = archive.versions[currentBranch]?.[jsonFileName] ||
+			                       archive.versions[currentBranch]?.[txtFileName];
+
+			if (!versionContent) {
+				return null;
+			}
+
+			// Parse the decklist into categorized cards
+			const cards = await deserializeDeck(versionContent);
+
+			// Calculate total card count
+			const cardCount = Object.values(cards).reduce(
+				(sum, category) => sum + category.reduce((s, c) => s + c.quantity, 0),
+				0
+			);
+
+			// Reconstruct the deck object
+			const deck: Deck = {
+				name: archive.manifest.name,
+				cards,
+				cardCount,
+				format: archive.manifest.format,
+				colorIdentity: [], // TODO: Calculate from commander
+				currentBranch,
+				currentVersion: version,
+				createdAt: archive.manifest.createdAt,
+				updatedAt: new Date().toISOString()
+			};
+
+			return deck;
+		} catch (error) {
+			console.error('Failed to load version data:', error);
+			return null;
+		}
+	}
+
+	/**
 	 * Clear error
 	 */
 	function clearError(): void {
@@ -563,6 +628,7 @@ function createDeckManager() {
 		loadDeck,
 		saveDeck,
 		loadVersion,
+		loadVersionData,
 		createDeck,
 		deleteDeck,
 		renameDeck,

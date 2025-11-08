@@ -1,13 +1,18 @@
 <script lang="ts">
-	import { deckStore } from '$lib/stores/deck-store';
+	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
 	import { deckManager } from '$lib/stores/deck-manager';
+	import { toastStore } from '$lib/stores/toast-store';
 	import { CardCategory } from '$lib/types/card';
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
+	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 
 	$: deck = $deckStore?.deck;
 	$: statistics = $deckStore?.statistics;
 	$: commander = deck?.cards.commander?.[0];
 	$: commanderImageUrl = commander?.imageUrls?.artCrop || commander?.imageUrls?.large;
+
+	// Get deck-wide warnings (not specific to a card)
+	$: deckWideWarnings = $validationWarnings.filter(w => !w.cardName);
 
 	// Calculate type distribution
 	$: typeDistribution = {
@@ -50,7 +55,7 @@
 		// Check for name collision
 		const existingDecks = $deckManager.decks;
 		if (existingDecks.some(d => d.name === newName)) {
-			alert('A deck with this name already exists. Please choose a different name.');
+			toastStore.error('A deck with this name already exists. Please choose a different name.');
 			return;
 		}
 
@@ -112,8 +117,12 @@
 				</div>
 
 				<div class="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
-					<div>
+					<div class="flex items-center gap-2">
 						<span class="font-semibold">{mainDeckCount}</span> cards
+						<!-- Deck-wide validation warnings -->
+						{#each deckWideWarnings as warning}
+							<ValidationWarningIcon {warning} position="right" />
+						{/each}
 					</div>
 				</div>
 			</div>

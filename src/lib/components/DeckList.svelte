@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { deckStore } from '$lib/stores/deck-store';
+	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
 	import { CardCategory } from '$lib/types/card';
 	import type { Card } from '$lib/types/card';
 	import AddQuantityModal from './AddQuantityModal.svelte';
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import CardSearch from './CardSearch.svelte';
+	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 
 	let { onCardHover = undefined }: { onCardHover?: ((card: Card | null) => void) | undefined } = $props();
 
@@ -20,6 +21,21 @@
 
 	let deck = $derived(deckStoreState?.deck);
 	let isEditing = $derived(deckStoreState?.isEditing ?? false);
+
+	// Validation warnings subscription
+	let warnings = $state($validationWarnings);
+
+	$effect(() => {
+		const unsubscribe = validationWarnings.subscribe(value => {
+			warnings = value;
+		});
+		return unsubscribe;
+	});
+
+	// Helper function to get warnings for a specific card
+	function getCardWarnings(cardName: string) {
+		return warnings.filter(w => w.cardName === cardName);
+	}
 
 	// View options
 	type ViewMode = 'text' | 'condensed';
@@ -311,6 +327,11 @@
 													<span class="text-[var(--color-text-primary)] text-sm truncate">
 														{card.name}
 													</span>
+
+													<!-- Validation Warnings -->
+													{#each getCardWarnings(card.name) as warning}
+														<ValidationWarningIcon {warning} position="right" />
+													{/each}
 												</div>
 
 												<!-- Card Menu Icon -->

@@ -18,6 +18,7 @@
 	export let onNewBranch: (() => void) | undefined = undefined;
 	export let onExport: (() => void) | undefined = undefined;
 	export let onImport: (() => void) | undefined = undefined;
+	export let onCompare: (() => void) | undefined = undefined;
 	export let onSwitchVersion: ((version: string) => void) | undefined = undefined;
 
 	// Save button is enabled if:
@@ -108,6 +109,18 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
 					</svg>
 					Bulk Edit
+				</button>
+
+				<!-- Compare Versions -->
+				<button
+					on:click={onCompare}
+					class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
+					title="Compare Versions"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+					</svg>
+					Compare
 				</button>
 			{/if}
 		</div>

@@ -513,7 +513,7 @@
   - [x] Switch printing (UI exists, logic TODO)
 - [x] Hover updates card preview
 - [x] Add mana symbols rendering
-- [ ] Add validation warning icons
+- [x] Add validation warning icons (with tooltips)
 - [x] Implement smooth animations
 - [x] Responsive column layout (1-4 columns based on width)
 
@@ -539,7 +539,7 @@
 - [x] Real-time updates
 - [x] Make sections collapsible
 
-**Phase 4 Status**: ✅ Mostly complete (32/39 tasks)
+**Phase 4 Status**: ✅ Mostly complete (33/39 tasks)
 - All major UI components implemented and styled
 - Comprehensive theming system with Tokyo Night, Kanagawa, Rose Pine
 - Responsive layouts with dynamic column sizing
@@ -547,7 +547,8 @@
 - Navbar with uniform heights and conditional display
 - Maybeboard search integrated with card menu actions
 - Statistics panel collapsible by default
-- Missing: Keyboard shortcuts, loading states, validation icons, drag-and-drop, category management
+- Validation warning icons with tooltips fully implemented
+- Missing: Keyboard shortcuts, loading states, drag-and-drop, category management
 
 ---
 
@@ -591,7 +592,7 @@
 - [ ] Create new version on save (TODO: Integrate with version-control utilities)
 - [ ] Store full decklist snapshot (TODO: Integrate with storage layer)
 - [ ] Update metadata with timestamp and commit message (TODO: Part of version creation)
-- [ ] Show success/error feedback (currently using alert, needs toast/notification)
+- [x] Show success/error feedback (toast notification system implemented)
 - [x] Clear diff state after save
 
 **Phase 5 Status**: ⚠️ Mostly complete (24/32 tasks)
@@ -622,7 +623,7 @@
   - [x] Create new version on save
   - [x] Store full decklist snapshot
   - [x] Update metadata with timestamp and commit message
-  - [ ] Show success/error feedback (toast/notification system needed)
+  - [x] Show success/error feedback (toast notification system implemented)
 
 ### 5.5.2 Basic Import/Export (MVP)
 - [x] Export to plaintext (clipboard)
@@ -631,6 +632,9 @@
   - [x] Syntax validation on save only (not live)
   - [x] Errors displayed in modal without closing
   - [x] Commander cards preserved on save
+  - [x] Batch API optimization (Scryfall collection endpoint, 75 cards per request)
+  - [x] Reuse existing card data to avoid redundant API calls
+  - [x] Disable bulk edit button when not in edit mode
 - [ ] Export deck as zip file (download)
 - [ ] Import deck from zip file (upload with validation)
 
@@ -646,15 +650,27 @@
 - [x] Auto-load last opened deck on app start
 - [x] Persist active deck ID to localStorage
 
-**Phase 5.5 Status**: ✅ Mostly complete (16/18 tasks)
+### 5.5.5 Deck Management Features
+- [x] Inline deck renaming in commander header
+  - [x] Hover-to-reveal edit button (no layout shift)
+  - [x] Enter/Escape keyboard support
+  - [x] Rename files in storage (FileSystem API and localStorage)
+  - [x] Prevent name collisions with existing decks
+  - [x] Update active deck name when renamed
+- [x] Visual improvements to commander panel
+  - [x] Add bottom border to commander header
+  - [x] Fix layout shifts when editing
+
+**Phase 5.5 Status**: ✅ Mostly complete (20/21 tasks)
 - Critical workflow loop implemented
 - Deck creation, loading, saving all working
 - FileSystem API integration complete
-- Bulk edit functionality complete with validation
+- Bulk edit functionality complete with batch API optimization
 - Export/import plaintext functionality complete
+- Inline deck renaming with file system integration
+- Toast notification system fully implemented
 - Still needed:
   - Switch between decks with unsaved changes prompt
-  - Toast/notification system for feedback
   - Zip file import/export (deferred to later phase)
 
 ---
@@ -752,14 +768,14 @@
 - [ ] Add commander validation
 
 ### 8.2 Validation Warnings
-- [ ] Check banned list (via Scryfall)
-- [ ] Warn on illegal cards (⚠️ icon)
-- [ ] Warn on 100-card limit violations
-- [ ] Warn on duplicate cards (including non-basics)
-- [ ] Warn on color identity violations
-- [ ] Display warnings next to cards (Moxfield-style)
-- [ ] Add tooltip explanations for warnings
-- [ ] Update warnings in real-time
+- [ ] Check banned list (via Scryfall) (TODO: Integrate with Scryfall legalities API)
+- [x] Warn on illegal cards (⚠️ icon)
+- [x] Warn on 100-card limit violations
+- [x] Warn on duplicate cards (including non-basics)
+- [x] Warn on color identity violations
+- [x] Display warnings next to cards (Moxfield-style)
+- [x] Add tooltip explanations for warnings
+- [x] Update warnings in real-time (via derived stores)
 
 ---
 
@@ -799,7 +815,7 @@
 - [ ] Retry buttons on failures
 - [ ] Offline mode indicators
 - [ ] Add skeleton loaders
-- [ ] Toast notifications for actions
+- [x] Toast notifications for actions (fully implemented with success/error/warning/info variants)
 
 ### 10.3 Responsive Design
 - [ ] Optimize for 1080p (primary target)
