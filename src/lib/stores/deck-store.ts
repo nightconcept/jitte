@@ -18,6 +18,7 @@ import { createEmptyDeck } from '$lib/utils/deck-factory';
 import { calculateStatistics } from '$lib/utils/deck-statistics';
 import { validateDeck } from '$lib/utils/deck-validation';
 import { categorizeDeck } from '$lib/utils/deck-categorization';
+import { calculateDiff } from '$lib/utils/diff';
 
 /**
  * The main deck store
@@ -223,6 +224,25 @@ function createDeckStore() {
 		setEditMode(isEditing: boolean): void {
 			update((state) => {
 				if (!state) return state;
+
+				// When entering edit mode, capture the initial state for diff calculation
+				if (isEditing && !state.isEditing) {
+					return {
+						...state,
+						isEditing,
+						initialDeckState: JSON.parse(JSON.stringify(state.deck)) // Deep clone
+					};
+				}
+
+				// When leaving edit mode, clear the initial state
+				if (!isEditing && state.isEditing) {
+					return {
+						...state,
+						isEditing,
+						initialDeckState: undefined
+					};
+				}
+
 				return { ...state, isEditing };
 			});
 		},
@@ -316,4 +336,15 @@ export const validationWarnings = derived(deckStore, ($deck) => {
 export const isDeckValid = derived(deckStore, ($deck) => {
 	if (!$deck) return false;
 	return validateDeck($deck.deck).isValid;
+});
+
+/**
+ * Derived store for current edit diff
+ * Calculates difference between initial state and current state
+ */
+export const currentDiff = derived(deckStore, ($deck) => {
+	if (!$deck || !$deck.initialDeckState || !$deck.isEditing) {
+		return null;
+	}
+	return calculateDiff($deck.initialDeckState, $deck.deck);
 });

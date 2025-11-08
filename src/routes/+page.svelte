@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { deckStore } from '$lib/stores/deck-store';
+	import { deckStore, currentDiff } from '$lib/stores/deck-store';
 	import { loadDeckFromPlaintext } from '$lib/utils/deck-loader';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import CommanderHeader from '$lib/components/CommanderHeader.svelte';
@@ -8,12 +8,14 @@
 	import DeckList from '$lib/components/DeckList.svelte';
 	import Maybeboard from '$lib/components/Maybeboard.svelte';
 	import Statistics from '$lib/components/Statistics.svelte';
+	import CommitModal from '$lib/components/CommitModal.svelte';
 	import type { Card } from '$lib/types/card';
 	import type { Maybeboard as MaybeboardType } from '$lib/types/maybeboard';
 
 	let hoveredCard: Card | null = null;
 	let isLoading = true;
 	let loadError: string | null = null;
+	let showCommitModal = false;
 
 	// Load example deck on mount
 	onMount(async () => {
@@ -65,8 +67,23 @@
 	}
 
 	function handleSave() {
-		console.log('Save clicked');
-		// TODO: Implement save functionality
+		// Show commit modal
+		showCommitModal = true;
+	}
+
+	function handleCommit(version: string, message: string) {
+		console.log('Committing version:', version, 'with message:', message);
+
+		// TODO: Actually create the version using version-control utilities
+		// TODO: Save to storage (filesystem or localStorage)
+
+		// For now, just mark as saved and exit edit mode
+		deckStore.markAsSaved();
+		deckStore.setEditMode(false);
+		showCommitModal = false;
+
+		// TODO: Show success toast/notification
+		alert(`Successfully committed version ${version}`);
 	}
 
 	function handleToggleEdit() {
@@ -77,7 +94,14 @@
 
 <div class="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
 	<!-- Top Navigation Bar -->
-	<TopNavbar />
+	<TopNavbar
+		isEditing={$deckStore?.isEditing ?? false}
+		hasUnsavedChanges={$deckStore?.hasUnsavedChanges ?? false}
+		currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
+		currentVersion={$deckStore?.deck.currentVersion ?? '1.0.0'}
+		onToggleEdit={handleToggleEdit}
+		onSave={handleSave}
+	/>
 
 	{#if isLoading}
 		<!-- Loading State -->
@@ -99,7 +123,7 @@
 		</div>
 	{:else}
 		<!-- Commander Header with Gradient -->
-		<CommanderHeader onSave={handleSave} onToggleEdit={handleToggleEdit} />
+		<CommanderHeader />
 
 		<!-- Main Content -->
 		<div class="flex">
@@ -122,3 +146,13 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Commit Modal -->
+{#if showCommitModal && $deckStore}
+	<CommitModal
+		currentVersion={$deckStore.deck.currentVersion}
+		diff={$currentDiff}
+		onCommit={handleCommit}
+		onCancel={() => showCommitModal = false}
+	/>
+{/if}

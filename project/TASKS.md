@@ -545,42 +545,53 @@
 ## Phase 5: User Interface - Edit Mode
 
 ### 5.1 Edit Mode Activation
-- [ ] Toggle to Edit mode starts new diff
-- [ ] Track all changes in diff state
+- [x] Toggle to Edit mode starts new diff
+- [x] Track all changes in diff state
 - [ ] Visual indicators for changed cards
-- [ ] Disable certain actions in view mode
-- [ ] Add confirmation prompt when leaving edit mode
+- [x] Disable certain actions in view mode (card menus only show in edit mode)
+- [ ] Add confirmation prompt when leaving edit mode with unsaved changes
 
 ### 5.2 Card Search & Add
-- [ ] Search input with 4-character activation
-- [ ] Dropdown with top 10 results
-- [ ] Display card details in results (name, type, mana, price)
-- [ ] "Search for more" opens Scryfall in new tab
-- [ ] Add card to deck on selection (without set code)
+- [x] Search input with 4-character activation
+- [x] Dropdown with top 10 results
+- [x] Display card details in results (name, type, mana, price)
+- [x] "Search for more" opens Scryfall in new tab
+- [x] Add card to deck on selection (without set code)
 - [ ] Handle keyboard navigation in dropdown
-- [ ] Add loading and error states
+- [x] Add loading and error states
 
 ### 5.3 Card Menu Actions
-- [ ] "Add one" increments quantity
-- [ ] "Add more..." shows quantity input modal
-- [ ] "Remove" decrements quantity by 1
-- [ ] "Switch printing" shows all printings modal:
-  - [ ] Display all printings with images
-  - [ ] Show price per printing
-  - [ ] Select printing updates deck file with set code
-- [ ] Close menu on outside click
+- [x] "Add one" increments quantity
+- [x] "Add more..." shows quantity input modal
+- [x] "Remove" decrements quantity by 1
+- [x] "Switch printing" shows all printings modal:
+  - [x] Display all printings with images
+  - [x] Show price per printing
+  - [x] Select printing updates deck file with set code
+- [x] Close menu on outside click
 - [ ] Add keyboard shortcuts for actions
 
 ### 5.4 Save & Commit
-- [ ] Save button opens commit modal
-- [ ] Semver auto-suggestion based on changes
-- [ ] Edit button for manual version override
-- [ ] Commit message input (required)
-- [ ] Create new version on save
-- [ ] Store full decklist snapshot
-- [ ] Update metadata with timestamp and commit message
-- [ ] Show success/error feedback
-- [ ] Clear diff state after save
+- [x] Save button opens commit modal
+- [x] Semver auto-suggestion based on changes
+- [x] Edit button for manual version override
+- [x] Commit message input (required)
+- [ ] Create new version on save (TODO: Integrate with version-control utilities)
+- [ ] Store full decklist snapshot (TODO: Integrate with storage layer)
+- [ ] Update metadata with timestamp and commit message (TODO: Part of version creation)
+- [ ] Show success/error feedback (currently using alert, needs toast/notification)
+- [x] Clear diff state after save
+
+**Phase 5 Status**: ⚠️ Mostly complete (21/29 tasks)
+- All UI components implemented and functional
+- Diff tracking working correctly
+- Save & commit modal with semver suggestions complete
+- Card search, add, remove, and printing switch all working
+- Still needed:
+  - Keyboard shortcuts
+  - Visual change indicators
+  - Confirmation prompts
+  - Actual version/storage persistence (will be Phase 7+ work)
 
 ---
 

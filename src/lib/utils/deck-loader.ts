@@ -39,6 +39,7 @@ export async function loadDeckFromPlaintext(text: string, deckName: string): Pro
 					setCode: card.setCode || scryfallCard.set.toUpperCase(),
 					collectorNumber: card.collectorNumber || scryfallCard.collector_number,
 					scryfallId: scryfallCard.id,
+					oracleId: scryfallCard.oracle_id,
 					types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
 						['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
 					),

@@ -2,6 +2,9 @@
 	import { deckStore } from '$lib/stores/deck-store';
 	import { CardCategory } from '$lib/types/card';
 	import type { Card } from '$lib/types/card';
+	import AddQuantityModal from './AddQuantityModal.svelte';
+	import ChangePrintingModal from './ChangePrintingModal.svelte';
+	import CardSearch from './CardSearch.svelte';
 
 	export let onCardHover: ((card: Card | null) => void) | undefined = undefined;
 
@@ -99,9 +102,55 @@
 		if (!isEditing) return;
 		// TODO: Show card menu
 	}
+
+	// Card menu actions
+	function handleAddOne(card: Card, category: CardCategory) {
+		deckStore.updateCardQuantity(card.name, category, 1);
+		closeCardMenu();
+	}
+
+	function handleRemove(card: Card, category: CardCategory) {
+		deckStore.removeCard(card.name, category);
+		closeCardMenu();
+	}
+
+	// Modal states
+	let addMoreCard: { card: Card; category: CardCategory } | null = null;
+	let changePrintingCard: { card: Card; category: CardCategory } | null = null;
+
+	function showAddMoreModal(card: Card, category: CardCategory) {
+		addMoreCard = { card, category };
+		closeCardMenu();
+	}
+
+	function showChangePrintingModal(card: Card, category: CardCategory) {
+		changePrintingCard = { card, category };
+		closeCardMenu();
+	}
+
+	function handleAddQuantity(quantity: number) {
+		if (addMoreCard) {
+			deckStore.updateCardQuantity(addMoreCard.card.name, addMoreCard.category, quantity);
+			addMoreCard = null;
+		}
+	}
+
+	function handleChangePrinting(newCard: Card) {
+		if (changePrintingCard) {
+			deckStore.switchPrinting(changePrintingCard.card.name, changePrintingCard.category, newCard);
+			changePrintingCard = null;
+		}
+	}
 </script>
 
 <div class="flex-1 p-6" on:click={closeCardMenu} on:keydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
+	<!-- Card Search (Edit Mode Only) -->
+	{#if isEditing}
+		<div class="mb-4">
+			<CardSearch />
+		</div>
+	{/if}
+
 	<!-- Header with dropdowns -->
 	<div class="flex items-center justify-between mb-4">
 		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Decklist</h2>
@@ -266,7 +315,7 @@
 													{#if openCardMenu === card.name}
 														<div class="absolute right-0 mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
 															<button
-																on:click={() => { closeCardMenu(); /* TODO: Add one */ }}
+																on:click|stopPropagation={() => handleAddOne(card, category)}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +324,7 @@
 																Add one
 															</button>
 															<button
-																on:click={() => { closeCardMenu(); /* TODO: Add more */ }}
+																on:click|stopPropagation={() => showAddMoreModal(card, category)}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,7 +333,7 @@
 																Add more...
 															</button>
 															<button
-																on:click={() => { closeCardMenu(); /* TODO: Remove */ }}
+																on:click|stopPropagation={() => handleRemove(card, category)}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,7 +343,7 @@
 															</button>
 															<div class="border-t border-[var(--color-border)] my-1"></div>
 															<button
-																on:click={() => { closeCardMenu(); /* TODO: Change printing */ }}
+																on:click|stopPropagation={() => showChangePrintingModal(card, category)}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,6 +364,25 @@
 		{/each}
 	</div>
 </div>
+
+<!-- Modals -->
+{#if addMoreCard}
+	<AddQuantityModal
+		card={addMoreCard.card}
+		category={addMoreCard.category}
+		onConfirm={handleAddQuantity}
+		onClose={() => addMoreCard = null}
+	/>
+{/if}
+
+{#if changePrintingCard}
+	<ChangePrintingModal
+		card={changePrintingCard.card}
+		category={changePrintingCard.category}
+		onConfirm={handleChangePrinting}
+		onClose={() => changePrintingCard = null}
+	/>
+{/if}
 
 <style>
 	.responsive-card-grid {

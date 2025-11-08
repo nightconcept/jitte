@@ -21,6 +21,9 @@ export interface Card {
 	/** Scryfall ID for this specific printing */
 	scryfallId?: string;
 
+	/** Oracle ID (unique across all printings of this card) */
+	oracleId?: string;
+
 	/** Card types (e.g., ["Creature", "Legendary"]) */
 	types?: string[];
 

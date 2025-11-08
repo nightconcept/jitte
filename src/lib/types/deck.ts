@@ -113,6 +113,9 @@ export interface WorkingDeck {
 	/** Has unsaved changes */
 	hasUnsavedChanges: boolean;
 
+	/** Snapshot of deck when edit mode was activated (for diff calculation) */
+	initialDeckState?: Deck;
+
 	/** Timestamp of last auto-stash */
 	lastStashAt?: string;
 }

@@ -4,13 +4,8 @@
 	import { CardCategory } from '$lib/types/card';
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
 
-	export let onSave: (() => void) | undefined = undefined;
-	export let onToggleEdit: (() => void) | undefined = undefined;
-
 	$: deck = $deckStore?.deck;
 	$: statistics = $deckStore?.statistics;
-	$: isEditing = $deckStore?.isEditing ?? false;
-	$: hasUnsavedChanges = $deckStore?.hasUnsavedChanges ?? false;
 	$: commander = deck?.cards.commander?.[0];
 	$: commanderImageUrl = commander?.imageUrls?.artCrop || commander?.imageUrls?.large;
 
@@ -125,37 +120,14 @@
 				</div>
 			</div>
 
-			<!-- Right: Price and Actions -->
-			<div class="flex items-center gap-4">
-				<!-- Total Price -->
-				<div class="text-right transition-all duration-300">
-					<div class="font-bold transition-all duration-300 {isScrolled ? 'text-lg text-green-500' : 'text-2xl text-green-400'}">
-						${statistics?.totalPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-					</div>
-					{#if !isScrolled}
-						<div class="text-xs text-white/70">Total Deck Value</div>
-					{/if}
+			<!-- Right: Price -->
+			<div class="text-right transition-all duration-300">
+				<div class="font-bold transition-all duration-300 {isScrolled ? 'text-lg text-green-500' : 'text-2xl text-green-400'}">
+					${statistics?.totalPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
 				</div>
-
-				<!-- Action Buttons -->
-				<div class="flex items-center gap-2">
-					<button
-						on:click={onToggleEdit}
-						class="px-4 py-2 rounded transition-all duration-300 text-sm font-medium {isScrolled
-							? 'bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]'
-							: 'bg-white/10 hover:bg-white/20 text-white border border-white/30'}"
-					>
-						{isEditing ? 'View Mode' : 'Edit Mode'}
-					</button>
-
-					<button
-						on:click={onSave}
-						disabled={!isEditing || !hasUnsavedChanges}
-						class="px-4 py-2 rounded text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium theme-button"
-					>
-						Save
-					</button>
-				</div>
+				{#if !isScrolled}
+					<div class="text-xs text-white/70">Total Deck Value</div>
+				{/if}
 			</div>
 		</div>
 
