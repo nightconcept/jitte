@@ -683,11 +683,11 @@
 ## Phase 7: Export & Import
 
 ### 7.1 Export Plaintext
-- [ ] Generate plaintext format (compatible with all tools)
-- [ ] Copy to clipboard button
-- [ ] Include set codes if specified
-- [ ] Handle special characters properly
-- [ ] Add success feedback
+- [x] Generate plaintext format (compatible with all tools)
+- [x] Copy to clipboard button
+- [x] Include set codes if specified
+- [x] Handle special characters properly
+- [x] Add success feedback
 
 ### 7.2 Export to Moxfield
 - [ ] Implement based on research from Phase 0.3
