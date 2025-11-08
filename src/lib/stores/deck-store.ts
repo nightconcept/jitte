@@ -81,34 +81,39 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
-				const newDeck = { ...state.deck };
 				const targetCategory = category || inferCategory(card);
-				const categoryCards = newDeck.cards[targetCategory] || [];
+				const categoryCards = state.deck.cards[targetCategory] || [];
 
 				// Check if card already exists in this category
 				const existingIndex = categoryCards.findIndex((c) => c.name === card.name);
 
+				let updatedCategoryCards: Card[];
 				if (existingIndex !== -1) {
 					// Card exists - increment quantity
 					const existingCard = categoryCards[existingIndex];
-					newDeck.cards = {
-						...newDeck.cards,
-						[targetCategory]: [
-							...categoryCards.slice(0, existingIndex),
-							{ ...existingCard, quantity: existingCard.quantity + card.quantity },
-							...categoryCards.slice(existingIndex + 1)
-						]
-					};
+					updatedCategoryCards = [
+						...categoryCards.slice(0, existingIndex),
+						{ ...existingCard, quantity: existingCard.quantity + card.quantity },
+						...categoryCards.slice(existingIndex + 1)
+					];
 				} else {
 					// New card - add to category
-					newDeck.cards = {
-						...newDeck.cards,
-						[targetCategory]: [...categoryCards, card]
-					};
+					updatedCategoryCards = [...categoryCards, card];
 				}
 
-				newDeck.cardCount = calculateTotalCards(newDeck.cards);
-				newDeck.updatedAt = new Date().toISOString();
+				// Create new cards object with updated category
+				const updatedCards = {
+					...state.deck.cards,
+					[targetCategory]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
 
 				return {
 					...state,
@@ -126,31 +131,42 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
-				const newDeck = { ...state.deck };
-				const categoryCards = newDeck.cards[category];
+				const categoryCards = state.deck.cards[category];
 
 				// Find the card and decrement quantity or remove it
 				const cardIndex = categoryCards.findIndex((c) => c.name === cardName);
 				if (cardIndex === -1) return state;
 
 				const card = categoryCards[cardIndex];
+				let updatedCategoryCards: Card[];
 				if (card.quantity > 1) {
 					// Decrement quantity
-					newDeck.cards[category] = [
+					updatedCategoryCards = [
 						...categoryCards.slice(0, cardIndex),
 						{ ...card, quantity: card.quantity - 1 },
 						...categoryCards.slice(cardIndex + 1)
 					];
 				} else {
 					// Remove the card entirely
-					newDeck.cards[category] = [
+					updatedCategoryCards = [
 						...categoryCards.slice(0, cardIndex),
 						...categoryCards.slice(cardIndex + 1)
 					];
 				}
 
-				newDeck.cardCount = calculateTotalCards(newDeck.cards);
-				newDeck.updatedAt = new Date().toISOString();
+				// Create new cards object with updated category
+				const updatedCards = {
+					...state.deck.cards,
+					[category]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
 
 				return {
 					...state,
@@ -168,8 +184,7 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
-				const newDeck = { ...state.deck };
-				const categoryCards = newDeck.cards[category];
+				const categoryCards = state.deck.cards[category];
 				const cardIndex = categoryCards.findIndex((c) => c.name === cardName);
 
 				if (cardIndex === -1) return state;
@@ -177,23 +192,35 @@ function createDeckStore() {
 				const card = categoryCards[cardIndex];
 				const newQuantity = Math.max(0, card.quantity + delta);
 
+				let updatedCategoryCards: Card[];
 				if (newQuantity === 0) {
 					// Remove the card
-					newDeck.cards[category] = [
+					updatedCategoryCards = [
 						...categoryCards.slice(0, cardIndex),
 						...categoryCards.slice(cardIndex + 1)
 					];
 				} else {
 					// Update quantity
-					newDeck.cards[category] = [
+					updatedCategoryCards = [
 						...categoryCards.slice(0, cardIndex),
 						{ ...card, quantity: newQuantity },
 						...categoryCards.slice(cardIndex + 1)
 					];
 				}
 
-				newDeck.cardCount = calculateTotalCards(newDeck.cards);
-				newDeck.updatedAt = new Date().toISOString();
+				// Create new cards object with updated category
+				const updatedCards = {
+					...state.deck.cards,
+					[category]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
 
 				return {
 					...state,
@@ -211,21 +238,31 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
-				const newDeck = { ...state.deck };
-				const categoryCards = newDeck.cards[category];
+				const categoryCards = state.deck.cards[category];
 				const cardIndex = categoryCards.findIndex((c) => c.name === cardName);
 
 				if (cardIndex === -1) return state;
 
 				// Keep the same quantity, but update the card data
 				const oldCard = categoryCards[cardIndex];
-				newDeck.cards[category] = [
+				const updatedCategoryCards = [
 					...categoryCards.slice(0, cardIndex),
 					{ ...newCard, quantity: oldCard.quantity },
 					...categoryCards.slice(cardIndex + 1)
 				];
 
-				newDeck.updatedAt = new Date().toISOString();
+				// Create new cards object with updated category
+				const updatedCards = {
+					...state.deck.cards,
+					[category]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
 
 				return {
 					...state,
@@ -435,16 +472,22 @@ function createDeckStore() {
 				];
 
 				// Remove from deck
-				const newDeck = { ...state.deck };
-				newDeck.cards = {
-					...newDeck.cards,
-					[category]: [
-						...categoryCards.slice(0, cardIndex),
-						...categoryCards.slice(cardIndex + 1)
-					]
+				const updatedCategoryCards = [
+					...categoryCards.slice(0, cardIndex),
+					...categoryCards.slice(cardIndex + 1)
+				];
+
+				const updatedCards = {
+					...state.deck.cards,
+					[category]: updatedCategoryCards
 				};
-				newDeck.cardCount = calculateTotalCards(newDeck.cards);
-				newDeck.updatedAt = new Date().toISOString();
+
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
 
 				return {
 					...state,
@@ -476,33 +519,36 @@ function createDeckStore() {
 				const deckCategory = targetCategory || inferCategory(card);
 
 				// Add to deck
-				const newDeck = { ...state.deck };
-				const deckCategoryCards = newDeck.cards[deckCategory] || [];
+				const deckCategoryCards = state.deck.cards[deckCategory] || [];
 				const deckCardIndex = deckCategoryCards.findIndex(c => c.name === cardName);
 
+				let updatedDeckCategoryCards: Card[];
 				if (deckCardIndex !== -1) {
 					// Increment quantity
-					newDeck.cards = {
-						...newDeck.cards,
-						[deckCategory]: [
-							...deckCategoryCards.slice(0, deckCardIndex),
-							{
-								...deckCategoryCards[deckCardIndex],
-								quantity: deckCategoryCards[deckCardIndex].quantity + card.quantity
-							},
-							...deckCategoryCards.slice(deckCardIndex + 1)
-						]
-					};
+					updatedDeckCategoryCards = [
+						...deckCategoryCards.slice(0, deckCardIndex),
+						{
+							...deckCategoryCards[deckCardIndex],
+							quantity: deckCategoryCards[deckCardIndex].quantity + card.quantity
+						},
+						...deckCategoryCards.slice(deckCardIndex + 1)
+					];
 				} else {
 					// Add new card
-					newDeck.cards = {
-						...newDeck.cards,
-						[deckCategory]: [...deckCategoryCards, card]
-					};
+					updatedDeckCategoryCards = [...deckCategoryCards, card];
 				}
 
-				newDeck.cardCount = calculateTotalCards(newDeck.cards);
-				newDeck.updatedAt = new Date().toISOString();
+				const updatedCards = {
+					...state.deck.cards,
+					[deckCategory]: updatedDeckCategoryCards
+				};
+
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
 
 				// Remove from maybeboard
 				const newMaybeboard = { ...state.maybeboard };

@@ -153,6 +153,7 @@ $effect(() => {
 - If you see `export let isOpen = false`, convert to `let { isOpen = false } = $props()`
 - If you see reactive `let` declarations, convert to `$state()`
 - Replace `$:` with `$derived` for computations or `$effect` for side effects
+- **CRITICAL:** When consuming Svelte stores in runes mode, use `$state` + `$effect` subscription pattern (see "Working with Svelte Stores in Runes Mode" section below)
 
 ### Common Patterns
 
@@ -192,6 +193,65 @@ const isValid = $derived(
   formData.name.length > 0 &&
   formData.email.includes('@')
 );
+```
+
+### Working with Svelte Stores in Runes Mode
+
+**CRITICAL:** When using Svelte 5 runes in components that consume Svelte stores, you **MUST NOT** use the `$store` auto-subscription syntax with reactive declarations (`$:`). This will cause reactivity issues.
+
+**❌ WRONG - Do not use this pattern:**
+```javascript
+import { myStore } from './stores';
+
+// BAD: Using $: with $store in runes mode
+$: value = $myStore?.someProperty;
+```
+
+**✅ CORRECT - Use this pattern instead:**
+```javascript
+import { myStore } from './stores';
+
+// Create a reactive state to hold store value
+let storeState = $state($myStore);
+
+// Subscribe to store updates using $effect
+$effect(() => {
+  const unsubscribe = myStore.subscribe(value => {
+    storeState = value;
+  });
+  return unsubscribe; // Cleanup on component destroy
+});
+
+// Derive values from the store state
+let value = $derived(storeState?.someProperty);
+```
+
+**Why this matters:**
+- In Svelte 5 runes mode, `$:` reactive statements don't properly track store updates
+- Using `$state` + `$effect` + `$derived` ensures proper reactivity
+- The `$effect` cleanup function (return value) automatically unsubscribes when the component is destroyed
+
+**Example - Component consuming a deck store:**
+```javascript
+import { deckStore } from '$lib/stores/deck-store';
+
+// Props using runes
+let { onCardHover = undefined } = $props();
+
+// Store subscription
+let deckStoreState = $state($deckStore);
+
+$effect(() => {
+  const unsubscribe = deckStore.subscribe(value => {
+    deckStoreState = value;
+  });
+  return unsubscribe;
+});
+
+// Derived values
+let deck = $derived(deckStoreState?.deck);
+let isEditing = $derived(deckStoreState?.isEditing ?? false);
+let cardCount = $derived(deck?.cardCount || 0);
 ```
 
 ## Key Architecture Concepts

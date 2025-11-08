@@ -6,10 +6,20 @@
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import CardSearch from './CardSearch.svelte';
 
-	export let onCardHover: ((card: Card | null) => void) | undefined = undefined;
+	let { onCardHover = undefined }: { onCardHover?: ((card: Card | null) => void) | undefined } = $props();
 
-	$: deck = $deckStore?.deck;
-	$: isEditing = $deckStore?.isEditing ?? false;
+	let deckStoreState = $state($deckStore);
+
+	// Subscribe to store updates
+	$effect(() => {
+		const unsubscribe = deckStore.subscribe(value => {
+			deckStoreState = value;
+		});
+		return unsubscribe;
+	});
+
+	let deck = $derived(deckStoreState?.deck);
+	let isEditing = $derived(deckStoreState?.isEditing ?? false);
 
 	// View options
 	type ViewMode = 'text' | 'condensed';
