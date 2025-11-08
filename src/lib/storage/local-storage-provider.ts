@@ -288,6 +288,79 @@ export class LocalStorageProvider implements IStorageProvider {
 		const filtered = metadata.filter((m) => m.filename !== filename);
 		localStorage.setItem(DECK_METADATA_KEY, JSON.stringify(filtered));
 	}
+
+	/**
+	 * Add deck to metadata
+	 */
+	private async addToMetadata(filename: string, size: number): Promise<void> {
+		const metadata = this.getMetadata();
+		const name = filename.replace('.zip', '');
+
+		metadata.push({
+			name,
+			filename,
+			lastModified: Date.now(),
+			size
+		});
+
+		localStorage.setItem(DECK_METADATA_KEY, JSON.stringify(metadata));
+	}
+
+	async renameDeck(oldName: string, newName: string): Promise<StorageResult<void>> {
+		if (!this.initialized) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const oldFilename = getDeckFilename(oldName);
+			const newFilename = getDeckFilename(newName);
+			const oldKey = STORAGE_KEY_PREFIX + oldFilename;
+			const newKey = STORAGE_KEY_PREFIX + newFilename;
+
+			// Check if new name already exists
+			if (localStorage.getItem(newKey) !== null) {
+				return {
+					success: false,
+					error: `A deck with the name "${newName}" already exists`,
+					errorCode: StorageErrorCode.AlreadyExists
+				};
+			}
+
+			// Get old deck data
+			const oldData = localStorage.getItem(oldKey);
+			if (oldData === null) {
+				return {
+					success: false,
+					error: `Deck "${oldName}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			// Save with new key
+			localStorage.setItem(newKey, oldData);
+
+			// Remove old key
+			localStorage.removeItem(oldKey);
+
+			// Update metadata
+			await this.removeFromMetadata(oldFilename);
+			await this.addToMetadata(newFilename, oldData.length);
+
+			return {
+				success: true
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to rename deck',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
 }
 
 /**

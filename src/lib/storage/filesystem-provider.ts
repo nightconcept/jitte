@@ -261,6 +261,65 @@ export class FileSystemProvider implements IStorageProvider {
 		}
 	}
 
+	async renameDeck(oldName: string, newName: string): Promise<StorageResult<void>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const oldFilename = getDeckFilename(oldName);
+			const newFilename = getDeckFilename(newName);
+
+			// Check if new name already exists
+			try {
+				await this.directoryHandle.getFileHandle(newFilename);
+				return {
+					success: false,
+					error: `A deck with the name "${newName}" already exists`,
+					errorCode: StorageErrorCode.AlreadyExists
+				};
+			} catch {
+				// New name doesn't exist - this is good
+			}
+
+			// Load the old file
+			const oldFileHandle = await this.directoryHandle.getFileHandle(oldFilename);
+			const oldFile = await oldFileHandle.getFile();
+			const blob = await oldFile.arrayBuffer();
+
+			// Create new file
+			const newFileHandle = await this.directoryHandle.getFileHandle(newFilename, { create: true });
+			const writable = await newFileHandle.createWritable();
+			await writable.write(blob);
+			await writable.close();
+
+			// Delete old file
+			await this.directoryHandle.removeEntry(oldFilename);
+
+			return {
+				success: true
+			};
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				return {
+					success: false,
+					error: `Deck "${oldName}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to rename deck',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
 	async listDecks(): Promise<StorageResult<DeckListEntry[]>> {
 		if (!this.directoryHandle) {
 			return {

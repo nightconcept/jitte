@@ -79,6 +79,32 @@ export class ScryfallClient {
 	}
 
 	/**
+	 * Make a rate-limited POST request to the Scryfall API
+	 */
+	private async postRequest<T>(endpoint: string, body: unknown): Promise<T> {
+		return this.rateLimiter.execute(async () => {
+			const url = new URL(endpoint, this.baseUrl);
+
+			const response = await fetch(url.toString(), {
+				method: 'POST',
+				headers: {
+					'User-Agent': this.userAgent,
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify(body)
+			});
+
+			if (!response.ok) {
+				const error = (await response.json()) as ScryfallError;
+				throw new ScryfallApiError(error.details, error.code, error.status, error.details);
+			}
+
+			return response.json() as Promise<T>;
+		});
+	}
+
+	/**
 	 * Autocomplete card names
 	 * @param query - Search query (min 2 characters)
 	 * @param includeExtras - Include tokens, planes, etc.
@@ -160,6 +186,34 @@ export class ScryfallClient {
 			: { fuzzy: name };
 
 		return this.request<ScryfallCard>('/cards/named', params);
+	}
+
+	/**
+	 * Get multiple cards by collection lookup (batch request)
+	 * Maximum 75 cards per request
+	 * @param identifiers - Array of card identifiers (name, id, etc.)
+	 * @returns List of cards with data and not_found array
+	 */
+	async getCardCollection(
+		identifiers: Array<
+			| { name: string }
+			| { id: string }
+			| { mtgo_id: number }
+			| { multiverse_id: number }
+			| { oracle_id: string }
+			| { illustration_id: string }
+			| { name: string; set: string }
+			| { collector_number: string; set: string }
+		>
+	): Promise<ScryfallList<ScryfallCard> & { not_found?: unknown[] }> {
+		if (identifiers.length > 75) {
+			throw new Error('Maximum 75 card identifiers allowed per collection request');
+		}
+
+		return this.postRequest<ScryfallList<ScryfallCard> & { not_found?: unknown[] }>(
+			'/cards/collection',
+			{ identifiers }
+		);
 	}
 
 	/**

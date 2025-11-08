@@ -88,6 +88,55 @@ export class CardService {
 	}
 
 	/**
+	 * Get multiple cards by name in batch (up to 75 per call)
+	 * Much more efficient than individual requests
+	 * @param names - Array of card names to fetch
+	 * @returns Object with found cards (keyed by lowercase name) and array of not found names
+	 */
+	async getCardsByNames(names: string[]): Promise<{
+		cards: Map<string, ScryfallCard>;
+		notFound: string[];
+	}> {
+		const cards = new Map<string, ScryfallCard>();
+		const notFound: string[] = [];
+
+		// Split into batches of 75
+		const batches: string[][] = [];
+		for (let i = 0; i < names.length; i += 75) {
+			batches.push(names.slice(i, i + 75));
+		}
+
+		// Process each batch
+		for (const batch of batches) {
+			try {
+				const identifiers = batch.map((name) => ({ name }));
+				const result = await scryfallClient.getCardCollection(identifiers);
+
+				// Add found cards to map (keyed by lowercase name for easy lookup)
+				for (const card of result.data) {
+					await cardCache.cacheCard(card);
+					cards.set(card.name.toLowerCase(), card);
+				}
+
+				// Track not found cards
+				if (result.not_found && Array.isArray(result.not_found)) {
+					for (const identifier of result.not_found) {
+						if (typeof identifier === 'object' && identifier !== null && 'name' in identifier) {
+							notFound.push((identifier as { name: string }).name);
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Get cards by names error:', error);
+				// Add all cards in this batch to not found
+				notFound.push(...batch);
+			}
+		}
+
+		return { cards, notFound };
+	}
+
+	/**
 	 * Get a card by ID, with caching
 	 */
 	async getCard(id: string): Promise<ScryfallCard | null> {

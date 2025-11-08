@@ -625,8 +625,12 @@
   - [ ] Show success/error feedback (toast/notification system needed)
 
 ### 5.5.2 Basic Import/Export (MVP)
-- [ ] Export to plaintext (clipboard)
-- [ ] Import from plaintext (paste + parse modal)
+- [x] Export to plaintext (clipboard)
+- [x] Bulk edit decklist as plaintext (edit in modal with validation)
+  - [x] Modal displays current decklist (excluding commander)
+  - [x] Syntax validation on save only (not live)
+  - [x] Errors displayed in modal without closing
+  - [x] Commander cards preserved on save
 - [ ] Export deck as zip file (download)
 - [ ] Import deck from zip file (upload with validation)
 
@@ -642,14 +646,16 @@
 - [x] Auto-load last opened deck on app start
 - [x] Persist active deck ID to localStorage
 
-**Phase 5.5 Status**: ✅ Mostly complete (13/17 tasks)
+**Phase 5.5 Status**: ✅ Mostly complete (16/18 tasks)
 - Critical workflow loop implemented
 - Deck creation, loading, saving all working
 - FileSystem API integration complete
+- Bulk edit functionality complete with validation
+- Export/import plaintext functionality complete
 - Still needed:
-  - Import/export plaintext functionality
   - Switch between decks with unsaved changes prompt
   - Toast/notification system for feedback
+  - Zip file import/export (deferred to later phase)
 
 ---
 
@@ -717,12 +723,12 @@
 - [ ] Write tests for import functionality
 
 ### 7.5 Import Plaintext
-- [ ] Paste plaintext decklist
-- [ ] Parse Arena/MTGO format
-- [ ] Validate and fetch card data
-- [ ] Create new deck
-- [ ] Handle parsing errors
-- [ ] Show validation warnings
+- [x] Paste plaintext decklist
+- [x] Parse Arena/MTGO format
+- [x] Validate and fetch card data
+- [x] Add cards to existing deck
+- [x] Handle parsing errors
+- [x] Show validation warnings in preview
 - [ ] Write tests for plaintext import
 
 ### 7.6 Import/Export Zip Files

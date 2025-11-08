@@ -179,6 +179,21 @@ export class StorageManager {
 	}
 
 	/**
+	 * Rename a deck
+	 */
+	async renameDeck(oldName: string, newName: string): Promise<StorageResult<void>> {
+		if (!this.provider) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		return await this.provider.renameDeck(oldName, newName);
+	}
+
+	/**
 	 * List all decks
 	 */
 	async listDecks(): Promise<StorageResult<DeckListEntry[]>> {

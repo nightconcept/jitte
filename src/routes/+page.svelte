@@ -13,7 +13,11 @@
 	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
+	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
 	import type { Card } from '$lib/types/card';
+	import { CardCategory } from '$lib/types/card';
+	import { CardService } from '$lib/api/card-service';
+	import { parsePlaintext } from '$lib/utils/decklist-parser';
 
 	let hoveredCard: Card | null = null;
 	let showCommitModal = false;
@@ -21,6 +25,10 @@
 	let showDeckPickerModal = false;
 	let showSettingsModal = false;
 	let showNewBranchModal = false;
+	let showEditDecklistModal = false;
+	let currentDecklistPlaintext = '';
+
+	const cardService = new CardService();
 
 	// Initialize storage on mount
 	onMount(async () => {
@@ -148,9 +156,159 @@
 	}
 
 	function handleImport() {
-		// TODO: Show import modal
-		console.log('Import clicked - modal not yet implemented');
-		alert('Import functionality coming soon!');
+		if (!$deckStore) {
+			alert('Please create or load a deck first');
+			return;
+		}
+
+		// Export current deck to plaintext (excluding commander)
+		const plaintext = deckStore.exportToPlaintext(true, true);
+		currentDecklistPlaintext = plaintext || '';
+		showEditDecklistModal = true;
+	}
+
+	async function handleSaveDecklist(event: CustomEvent<{ decklist: string }>) {
+		const { decklist } = event.detail;
+
+		if (!$deckStore) {
+			alert('No deck loaded');
+			return;
+		}
+
+		// Parse the decklist
+		const parseResult = parsePlaintext(decklist);
+
+		if (parseResult.cards.length === 0) {
+			alert('No valid cards found in decklist');
+			return;
+		}
+
+		// Enter edit mode if not already
+		if (!$deckStore.isEditing) {
+			deckStore.setEditMode(true);
+		}
+
+		// Build a map of existing cards by name for fast lookup
+		const existingCardsMap = new Map<string, Card>();
+		const categories: CardCategory[] = [
+			CardCategory.Commander,
+			CardCategory.Companion,
+			CardCategory.Planeswalker,
+			CardCategory.Creature,
+			CardCategory.Instant,
+			CardCategory.Sorcery,
+			CardCategory.Artifact,
+			CardCategory.Enchantment,
+			CardCategory.Land
+		];
+		for (const category of categories) {
+			const categoryCards = $deckStore.deck.cards[category] || [];
+			for (const card of categoryCards) {
+				existingCardsMap.set(card.name.toLowerCase(), card);
+			}
+		}
+
+		let successCount = 0;
+		let failedCards: string[] = [];
+		let newCardsNeeded: typeof parseResult.cards = [];
+		const finalCards: Card[] = [];
+
+		// First pass: reuse existing card data where possible
+		for (const parsedCard of parseResult.cards) {
+			const existingCard = existingCardsMap.get(parsedCard.name.toLowerCase());
+
+			if (existingCard) {
+				// Reuse existing card data, just update quantity
+				finalCards.push({
+					...existingCard,
+					quantity: parsedCard.quantity,
+					// Update set code if explicitly specified in bulk edit
+					...(parsedCard.setCode && { setCode: parsedCard.setCode }),
+					...(parsedCard.collectorNumber && { collectorNumber: parsedCard.collectorNumber })
+				});
+				successCount++;
+			} else {
+				// Card is new, we'll need to fetch it
+				newCardsNeeded.push(parsedCard);
+			}
+		}
+
+		// Second pass: fetch only new cards from Scryfall (using batch API)
+		if (newCardsNeeded.length > 0) {
+			const cardNames = newCardsNeeded.map(c => c.name);
+			const batchResult = await cardService.getCardsByNames(cardNames);
+
+			// Process found cards
+			for (const parsedCard of newCardsNeeded) {
+				const scryfallCard = batchResult.cards.get(parsedCard.name.toLowerCase());
+
+				if (scryfallCard) {
+					// Convert to our Card type (same as CardSearch.svelte)
+					const fullCard: Card = {
+						name: scryfallCard.name,
+						quantity: parsedCard.quantity,
+						setCode: parsedCard.setCode || scryfallCard.set.toUpperCase(),
+						collectorNumber: parsedCard.collectorNumber || scryfallCard.collector_number,
+						scryfallId: scryfallCard.id,
+						oracleId: scryfallCard.oracle_id,
+						types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
+							['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
+						),
+						cmc: scryfallCard.cmc,
+						manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
+						colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
+						oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
+						imageUrls: {
+							small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
+							normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
+							large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
+							png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
+							artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
+							borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
+						},
+						price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
+						prices: scryfallCard.prices.usd ? {
+							cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
+							tcgplayer: parseFloat(scryfallCard.prices.usd),
+							manapool: parseFloat(scryfallCard.prices.usd) * 0.95
+						} : undefined,
+						priceUpdatedAt: Date.now()
+					};
+
+					finalCards.push(fullCard);
+					successCount++;
+				} else {
+					// Card not found
+					failedCards.push(parsedCard.name);
+				}
+			}
+
+			// Add any cards from the not_found array that weren't already tracked
+			for (const notFoundName of batchResult.notFound) {
+				if (!failedCards.includes(notFoundName)) {
+					failedCards.push(notFoundName);
+				}
+			}
+		}
+
+		// Replace the entire deck with the new cards
+		deckStore.replaceDeck(finalCards);
+
+		// Show result summary
+		if (parseResult.errors.length > 0 || failedCards.length > 0) {
+			const errorMessage = [];
+			if (parseResult.errors.length > 0) {
+				errorMessage.push(`${parseResult.errors.length} parsing errors (lines skipped)`);
+			}
+			if (failedCards.length > 0) {
+				errorMessage.push(`${failedCards.length} cards not found:\n${failedCards.join(', ')}`);
+			}
+			alert(`Decklist updated!\n\n${successCount} cards loaded successfully.\n\n${errorMessage.join('\n')}`);
+		} else {
+			alert(`Decklist updated successfully! ${successCount} cards loaded.`);
+		}
+
+		showEditDecklistModal = false;
 	}
 
 	async function handleSwitchVersion(version: string) {
@@ -314,4 +472,11 @@
 	availableVersions={availableVersions}
 	on:create={handleCreateBranch}
 	on:close={() => showNewBranchModal = false}
+/>
+
+<EditDecklistModal
+	isOpen={showEditDecklistModal}
+	currentDecklist={currentDecklistPlaintext}
+	on:save={handleSaveDecklist}
+	on:close={() => showEditDecklistModal = false}
 />

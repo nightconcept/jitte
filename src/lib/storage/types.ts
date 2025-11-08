@@ -119,6 +119,9 @@ export interface IStorageProvider {
 	/** Delete a deck */
 	deleteDeck(deckName: string): Promise<StorageResult<void>>;
 
+	/** Rename a deck */
+	renameDeck(oldName: string, newName: string): Promise<StorageResult<void>>;
+
 	/** List all decks */
 	listDecks(): Promise<StorageResult<DeckListEntry[]>>;
 

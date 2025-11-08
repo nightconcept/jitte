@@ -96,6 +96,27 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Update deck name
+		 */
+		setDeckName(newName: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				const updatedDeck = {
+					...state.deck,
+					name: newName,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: updatedDeck,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
 		 * Add a card to the deck
 		 */
 		addCard(card: Card, category?: CardCategory): void {
@@ -600,7 +621,7 @@ function createDeckStore() {
 		 * Export the current deck to plaintext format
 		 * Returns plaintext decklist compatible with Arena/MTGO/Moxfield/Archidekt
 		 */
-		exportToPlaintext(includeSetCodes = true): string | null {
+		exportToPlaintext(includeSetCodes = true, excludeCommander = false): string | null {
 			const state = get({ subscribe });
 			if (!state) return null;
 
@@ -621,11 +642,48 @@ function createDeckStore() {
 			];
 
 			for (const category of categories) {
+				// Skip commander if excludeCommander is true
+				if (excludeCommander && category === CardCategory.Commander) {
+					continue;
+				}
+
 				const categoryCards = state.deck.cards[category] || [];
 				allCards.push(...categoryCards);
 			}
 
 			return serializePlaintext(allCards, includeSetCodes);
+		},
+
+		/**
+		 * Replace the entire deck with a new set of cards
+		 * Used for bulk edit operations like importing a plaintext decklist
+		 * Preserves the commander(s) from the current deck
+		 */
+		replaceDeck(cards: Card[]): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Categorize the new cards
+				const categorizedCards = categorizeDeck(cards);
+
+				// Preserve the commander(s) from the current deck
+				categorizedCards[CardCategory.Commander] = state.deck.cards[CardCategory.Commander] || [];
+
+				// Create new deck with categorized cards
+				const newDeck: Deck = {
+					...state.deck,
+					cards: categorizedCards,
+					cardCount: calculateTotalCards(categorizedCards),
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
 		},
 
 		/**

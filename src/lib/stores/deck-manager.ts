@@ -522,6 +522,34 @@ function createDeckManager() {
 	}
 
 	/**
+	 * Rename a deck
+	 */
+	async function renameDeck(oldName: string, newName: string): Promise<void> {
+		update((state) => ({ ...state, isLoading: true, error: null }));
+
+		const result = await storage.renameDeck(oldName, newName);
+
+		if (result.success) {
+			await refreshDeckList();
+
+			// If we renamed the active deck, update the active deck name
+			const appState = get({ subscribe });
+			if (appState.activeDeckName === oldName) {
+				update((state) => ({ ...state, activeDeckName: newName }));
+				localStorage.setItem(ACTIVE_DECK_KEY, newName);
+			}
+
+			update((state) => ({ ...state, isLoading: false }));
+		} else {
+			update((state) => ({
+				...state,
+				isLoading: false,
+				error: result.error || 'Failed to rename deck'
+			}));
+		}
+	}
+
+	/**
 	 * Clear error
 	 */
 	function clearError(): void {
@@ -537,6 +565,7 @@ function createDeckManager() {
 		loadVersion,
 		createDeck,
 		deleteDeck,
+		renameDeck,
 		clearError
 	};
 }
