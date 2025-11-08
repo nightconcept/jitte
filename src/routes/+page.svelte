@@ -108,6 +108,28 @@
 		showNewBranchModal = false;
 	}
 
+	async function handleExport() {
+		const plaintext = deckStore.exportToPlaintext(true);
+		if (!plaintext) {
+			alert('No deck loaded to export');
+			return;
+		}
+
+		try {
+			await navigator.clipboard.writeText(plaintext);
+			alert('Deck exported to clipboard!');
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			alert('Failed to copy to clipboard. Check console for details.');
+		}
+	}
+
+	function handleImport() {
+		// TODO: Show import modal
+		console.log('Import clicked - modal not yet implemented');
+		alert('Import functionality coming soon!');
+	}
+
 	// Get available versions for branch modal
 	$: availableVersions = $deckManager.activeManifest?.branches
 		?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
@@ -128,6 +150,8 @@
 		onLoadDeck={handleLoadDeck}
 		onSettings={handleSettings}
 		onNewBranch={handleNewBranch}
+		onExport={handleExport}
+		onImport={handleImport}
 	/>
 
 	{#if $deckManager.isLoading}

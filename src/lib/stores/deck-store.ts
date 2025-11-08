@@ -19,6 +19,7 @@ import { calculateStatistics } from '$lib/utils/deck-statistics';
 import { validateDeck } from '$lib/utils/deck-validation';
 import { categorizeDeck } from '$lib/utils/deck-categorization';
 import { calculateDiff } from '$lib/utils/diff';
+import { serializePlaintext } from '$lib/utils/decklist-parser';
 
 /**
  * The main deck store
@@ -526,6 +527,38 @@ function createDeckStore() {
 					hasUnsavedChanges: true
 				};
 			});
+		},
+
+		/**
+		 * Export the current deck to plaintext format
+		 * Returns plaintext decklist compatible with Arena/MTGO/Moxfield/Archidekt
+		 */
+		exportToPlaintext(includeSetCodes = true): string | null {
+			const state = get({ subscribe });
+			if (!state) return null;
+
+			const allCards: Card[] = [];
+
+			// Add cards from all categories in order
+			const categories = [
+				CardCategory.Commander,
+				CardCategory.Companion,
+				CardCategory.Planeswalker,
+				CardCategory.Creature,
+				CardCategory.Instant,
+				CardCategory.Sorcery,
+				CardCategory.Artifact,
+				CardCategory.Enchantment,
+				CardCategory.Land,
+				CardCategory.Other
+			];
+
+			for (const category of categories) {
+				const categoryCards = state.deck.cards[category] || [];
+				allCards.push(...categoryCards);
+			}
+
+			return serializePlaintext(allCards, includeSetCodes);
 		},
 
 		/**

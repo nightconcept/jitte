@@ -14,6 +14,8 @@
 	export let onLoadDeck: (() => void) | undefined = undefined;
 	export let onSettings: (() => void) | undefined = undefined;
 	export let onNewBranch: (() => void) | undefined = undefined;
+	export let onExport: (() => void) | undefined = undefined;
+	export let onImport: (() => void) | undefined = undefined;
 </script>
 
 <nav class="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3 sticky top-0 z-50">
@@ -67,6 +69,35 @@
 				</svg>
 				Load
 			</button>
+
+			{#if hasDeck}
+				<!-- Divider -->
+				<div class="h-6 w-px bg-[var(--color-border)]"></div>
+
+				<!-- Export Deck -->
+				<button
+					on:click={onExport}
+					class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
+					title="Export to Plaintext"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+					</svg>
+					Export
+				</button>
+
+				<!-- Import Deck -->
+				<button
+					on:click={onImport}
+					class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
+					title="Import from Plaintext"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+					</svg>
+					Import
+				</button>
+			{/if}
 		</div>
 
 		<!-- Center: Branch, Version, and Mode Controls -->
