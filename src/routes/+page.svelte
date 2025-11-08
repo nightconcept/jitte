@@ -52,7 +52,6 @@
 		const success = await deckManager.saveDeck(message, version);
 
 		if (success) {
-			deckStore.setEditMode(false);
 			showCommitModal = false;
 		} else {
 			// Error is stored in deckManager state
@@ -221,12 +220,12 @@
 		<CommanderHeader />
 
 		<!-- Main Content -->
-		<div class="flex">
+		<div class="flex flex-1">
 			<!-- Card Preview Sidebar (Left, Sticky) -->
 			<CardPreview {hoveredCard} />
 
 			<!-- Center Column -->
-			<div class="flex-1 flex flex-col min-h-screen">
+			<div class="flex-1 flex flex-col">
 				<!-- Deck List -->
 				<DeckList onCardHover={handleCardHover} />
 

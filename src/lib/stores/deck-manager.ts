@@ -263,7 +263,8 @@ function createDeckManager() {
 				const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
 
 				if (saveResult.success) {
-					deckStore.markAsSaved();
+					// Update the deck version (preserves edit state)
+					deckStore.updateVersion(newVersionString);
 					await refreshDeckList();
 					update((state) => ({
 						...state,

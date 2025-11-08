@@ -75,6 +75,27 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Update deck version after commit (preserves edit state)
+		 */
+		updateVersion(newVersion: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				const updatedDeck = {
+					...state.deck,
+					currentVersion: newVersion,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: updatedDeck,
+					hasUnsavedChanges: false
+				};
+			});
+		},
+
+		/**
 		 * Add a card to the deck
 		 */
 		addCard(card: Card, category?: CardCategory): void {

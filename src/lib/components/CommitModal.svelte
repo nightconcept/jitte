@@ -17,6 +17,7 @@
 	let customVersion = '';
 	let commitMessage = '';
 	let isCustom = false;
+	let showMessageInput = false;
 	let versionError = '';
 
 	// Update selected version when suggestion changes
@@ -27,6 +28,7 @@
 	function selectSuggested() {
 		isCustom = false;
 		selectedVersion = suggestedVersion;
+		customVersion = '';
 		versionError = '';
 	}
 
@@ -45,10 +47,6 @@
 	}
 
 	function handleSubmit() {
-		if (!commitMessage.trim()) {
-			return;
-		}
-
 		if (isCustom && !isValidVersion(customVersion)) {
 			versionError = 'Invalid version format (must be X.Y.Z)';
 			return;
@@ -67,7 +65,7 @@
 
 	// Get summary text
 	$: summaryText = diff
-		? `${diff.added.length} added, ${diff.removed.length} removed, ${diff.modified.length} modified (${diff.totalChanges} total changes)`
+		? `${diff.added.length} added, ${diff.removed.length} removed, ${diff.modified.length} modified`
 		: 'No changes detected';
 </script>
 
@@ -82,125 +80,96 @@
 >
 	<!-- Modal Content -->
 	<div
-		class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-2xl w-full mx-4 border border-[var(--color-border)]"
+		class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[var(--color-border)]"
 		on:click|stopPropagation
 		role="dialog"
 		aria-modal="true"
 	>
 		<!-- Header -->
 		<div class="px-6 py-4 border-b border-[var(--color-border)]">
-			<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Commit Changes</h2>
+			<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Save Version</h2>
 			<p class="text-sm text-[var(--color-text-secondary)] mt-1">{summaryText}</p>
 		</div>
 
 		<!-- Body -->
 		<div class="px-6 py-4 space-y-4">
 			<!-- Version Selection -->
-			<div>
-				<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-					Version
-				</label>
-
-				<div class="space-y-2">
-					<!-- Suggested Version -->
-					<button
-						on:click={selectSuggested}
-						class="w-full flex items-center justify-between px-4 py-3 rounded border transition-colors {!isCustom
-							? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10'
-							: 'border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50'}"
-					>
-						<div class="text-left">
-							<div class="font-semibold text-[var(--color-text-primary)]">
-								{suggestedVersion}
-								<span class="text-sm font-normal text-[var(--color-text-secondary)]">
-									(Suggested {diff?.suggestedBump || 'patch'} bump)
-								</span>
-							</div>
-							<div class="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-								Based on {diff?.totalChanges || 0} changes
-							</div>
+			<div class="space-y-2">
+				<!-- Suggested Version -->
+				<button
+					on:click={selectSuggested}
+					class="w-full flex items-center justify-between px-4 py-3 rounded border transition-colors {!isCustom
+						? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10'
+						: 'border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50'}"
+				>
+					<div class="text-left">
+						<div class="font-semibold text-[var(--color-text-primary)]">
+							{suggestedVersion}
+							<span class="text-sm font-normal text-[var(--color-text-secondary)]">
+								(suggested)
+							</span>
 						</div>
-						{#if !isCustom}
-							<svg class="w-5 h-5 text-[var(--color-brand-primary)]" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-							</svg>
-						{/if}
-					</button>
+					</div>
+					{#if !isCustom}
+						<svg class="w-5 h-5 text-[var(--color-brand-primary)]" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+						</svg>
+					{/if}
+				</button>
 
-					<!-- Custom Version -->
-					<button
-						on:click={selectCustom}
-						class="w-full flex items-center justify-between px-4 py-3 rounded border transition-colors {isCustom
-							? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10'
-							: 'border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50'}"
-					>
-						<div class="text-left flex-1">
-							<div class="font-semibold text-[var(--color-text-primary)]">
-								Custom Version
-							</div>
-							{#if isCustom}
-								<input
-									bind:value={customVersion}
-									on:input={handleCustomVersionInput}
-									on:click|stopPropagation
-									type="text"
-									placeholder="1.0.0"
-									class="mt-2 w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-								/>
-								{#if versionError}
-									<div class="text-xs text-[var(--color-error)] mt-1">{versionError}</div>
-								{/if}
-							{/if}
+				<!-- Custom Version -->
+				<button
+					on:click={selectCustom}
+					class="w-full flex items-center justify-between px-4 py-3 rounded border transition-colors {isCustom
+						? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10'
+						: 'border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50'}"
+				>
+					<div class="text-left flex-1">
+						<div class="font-semibold text-[var(--color-text-primary)]">
+							Custom Version
 						</div>
 						{#if isCustom}
-							<svg class="w-5 h-5 text-[var(--color-brand-primary)]" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-							</svg>
+							<input
+								bind:value={customVersion}
+								on:input={handleCustomVersionInput}
+								on:click|stopPropagation
+								type="text"
+								placeholder="1.0.0"
+								class="mt-2 w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+							/>
+							{#if versionError}
+								<div class="text-xs text-[var(--color-error)] mt-1">{versionError}</div>
+							{/if}
 						{/if}
-					</button>
-				</div>
+					</div>
+					{#if isCustom}
+						<svg class="w-5 h-5 text-[var(--color-brand-primary)]" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+						</svg>
+					{/if}
+				</button>
 			</div>
 
-			<!-- Commit Message -->
-			<div>
-				<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-					Commit Message <span class="text-[var(--color-error)]">*</span>
-				</label>
-				<textarea
-					bind:value={commitMessage}
-					placeholder="Describe what changed in this version..."
-					rows="4"
-					class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] resize-none"
-					autofocus
-				></textarea>
-				<div class="text-xs text-[var(--color-text-tertiary)] mt-1">
-					Press Ctrl+Enter to commit
-				</div>
-			</div>
+			<!-- Optional Message Toggle -->
+			<button
+				on:click={() => showMessageInput = !showMessageInput}
+				class="w-full text-left px-3 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] flex items-center gap-2"
+			>
+				<svg class="w-4 h-4 transition-transform {showMessageInput ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+				Add commit message (optional)
+			</button>
 
-			<!-- Change Summary -->
-			{#if diff && (diff.added.length > 0 || diff.removed.length > 0 || diff.modified.length > 0)}
-				<div class="border-t border-[var(--color-border)] pt-4">
-					<div class="text-sm font-medium text-[var(--color-text-primary)] mb-2">
-						Changes Preview
-					</div>
-					<div class="space-y-1 max-h-32 overflow-y-auto text-sm">
-						{#each diff.added as card}
-							<div class="text-green-500">
-								+ {card.quantityDelta}x {card.name}
-							</div>
-						{/each}
-						{#each diff.removed as card}
-							<div class="text-red-500">
-								- {Math.abs(card.quantityDelta || 0)}x {card.name}
-							</div>
-						{/each}
-						{#each diff.modified as card}
-							<div class="text-yellow-500">
-								~ {card.name} ({card.oldQuantity} → {card.newQuantity})
-							</div>
-						{/each}
-					</div>
+			<!-- Commit Message (Expandable) -->
+			{#if showMessageInput}
+				<div class="space-y-2">
+					<textarea
+						bind:value={commitMessage}
+						placeholder="Describe what changed..."
+						rows="3"
+						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] resize-none text-sm"
+					></textarea>
 				</div>
 			{/if}
 		</div>
@@ -215,10 +184,10 @@
 			</button>
 			<button
 				on:click={handleSubmit}
-				disabled={!commitMessage.trim() || (isCustom && !isValidVersion(customVersion))}
+				disabled={isCustom && !isValidVersion(customVersion)}
 				class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
 			>
-				Commit as {selectedVersion}
+				Save as {selectedVersion}
 			</button>
 		</div>
 	</div>
