@@ -141,6 +141,7 @@
 		hasDeck={$deckStore !== null}
 		isEditing={$deckStore?.isEditing ?? false}
 		hasUnsavedChanges={$deckStore?.hasUnsavedChanges ?? false}
+		isNewDeck={$deckManager.activeManifest === null}
 		currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 		currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
 		onToggleEdit={handleToggleEdit}

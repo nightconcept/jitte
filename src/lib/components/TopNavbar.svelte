@@ -5,6 +5,7 @@
 
 	export let isEditing = false;
 	export let hasUnsavedChanges = false;
+	export let isNewDeck = false;
 	export let currentBranch = 'main';
 	export let currentVersion = '1.0.0';
 	export let hasDeck = false;
@@ -16,6 +17,11 @@
 	export let onNewBranch: (() => void) | undefined = undefined;
 	export let onExport: (() => void) | undefined = undefined;
 	export let onImport: (() => void) | undefined = undefined;
+
+	// Save button is enabled if:
+	// - Deck is in edit mode AND
+	// - Either has unsaved changes OR is a new deck that hasn't been saved yet
+	$: canSave = isEditing && (hasUnsavedChanges || isNewDeck);
 </script>
 
 <nav class="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3 sticky top-0 z-50">
@@ -160,7 +166,7 @@
 				<!-- Save Button -->
 				<button
 					on:click={onSave}
-					disabled={!isEditing || !hasUnsavedChanges}
+					disabled={!canSave}
 					class="px-4 py-2 text-sm bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[38px]"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
