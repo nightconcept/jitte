@@ -11,9 +11,31 @@ import { CardCategory } from '$lib/types/card';
 import type { DeckArchive } from './zip';
 
 /**
- * Convert a Deck to plaintext decklist
+ * Deck version file format (JSON)
  */
-export function serializeDeck(deck: Deck, includeSetCodes = false): string {
+interface DeckVersionData {
+	schemaVersion: string;
+	lastModified: string;
+	cards: Record<CardCategory, Card[]>;
+}
+
+/**
+ * Convert a Deck to JSON format for storage
+ */
+export function serializeDeckToJSON(deck: Deck): string {
+	const versionData: DeckVersionData = {
+		schemaVersion: '1.0',
+		lastModified: new Date().toISOString(),
+		cards: deck.cards
+	};
+
+	return JSON.stringify(versionData, null, 2);
+}
+
+/**
+ * Convert a Deck to plaintext decklist (for export/clipboard)
+ */
+export function serializeDeckToPlaintext(deck: Deck, includeSetCodes = false): string {
 	const allCards: Card[] = [];
 
 	// Add cards in canonical order
@@ -39,9 +61,103 @@ export function serializeDeck(deck: Deck, includeSetCodes = false): string {
 }
 
 /**
- * Parse plaintext decklist and categorize cards
+ * DEPRECATED: Use serializeDeckToJSON for storage or serializeDeckToPlaintext for export
  */
-export function deserializeDeck(text: string): Record<CardCategory, Card[]> {
+export function serializeDeck(deck: Deck, includeSetCodes = false): string {
+	return serializeDeckToPlaintext(deck, includeSetCodes);
+}
+
+/**
+ * Check if a card has complete metadata (doesn't need Scryfall fetch)
+ */
+function hasCompleteMetadata(card: Card): boolean {
+	return !!(
+		card.name &&
+		card.types &&
+		card.types.length > 0 &&
+		card.scryfallId &&
+		card.oracleId
+	);
+}
+
+/**
+ * Enrich a card with Scryfall data if needed
+ */
+async function enrichCard(card: Card): Promise<Card> {
+	// Skip if card already has complete metadata
+	if (hasCompleteMetadata(card)) {
+		return card;
+	}
+
+	const { cardService } = await import('$lib/api/card-service');
+
+	try {
+		const scryfallCard = await cardService.getCardByName(card.name);
+
+		if (scryfallCard) {
+			return {
+				name: scryfallCard.name,
+				quantity: card.quantity,
+				setCode: card.setCode || scryfallCard.set.toUpperCase(),
+				collectorNumber: card.collectorNumber || scryfallCard.collector_number,
+				scryfallId: scryfallCard.id,
+				oracleId: scryfallCard.oracle_id,
+				types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
+					['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land', 'Legendary'].includes(t)
+				),
+				cmc: scryfallCard.cmc,
+				manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
+				colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
+				oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
+				imageUrls: {
+					small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
+					normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
+					large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
+					png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
+					artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
+					borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
+				},
+				price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
+				prices: scryfallCard.prices.usd ? {
+					cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
+					tcgplayer: parseFloat(scryfallCard.prices.usd),
+					manapool: parseFloat(scryfallCard.prices.usd) * 0.95
+				} : undefined,
+				priceUpdatedAt: Date.now()
+			};
+		}
+	} catch (error) {
+		console.error(`Error enriching card ${card.name}:`, error);
+	}
+
+	// Return original card if enrichment failed
+	return card;
+}
+
+/**
+ * Parse JSON deck format
+ */
+export function deserializeDeckFromJSON(jsonContent: string): Record<CardCategory, Card[]> {
+	try {
+		const versionData = JSON.parse(jsonContent) as DeckVersionData;
+
+		// Validate schema version
+		if (versionData.schemaVersion !== '1.0') {
+			console.warn(`Unknown schema version: ${versionData.schemaVersion}, attempting to parse anyway`);
+		}
+
+		return versionData.cards;
+	} catch (error) {
+		console.error('Failed to parse deck JSON:', error);
+		throw new Error('Invalid deck JSON format');
+	}
+}
+
+/**
+ * Parse plaintext decklist and categorize cards
+ * This is an async operation that may fetch card data from Scryfall for incomplete cards
+ */
+export async function deserializeDeckFromPlaintext(text: string): Promise<Record<CardCategory, Card[]>> {
 	const parseResult = parsePlaintext(text);
 
 	// Initialize categorized structure
@@ -58,11 +174,69 @@ export function deserializeDeck(text: string): Record<CardCategory, Card[]> {
 		[CardCategory.Other]: []
 	};
 
-	// For now, put all parsed cards in "Other" category
-	// TODO: Fetch card data from Scryfall to properly categorize
-	categorized[CardCategory.Other] = parseResult.cards;
+	// Enrich cards with Scryfall data and categorize
+	for (const card of parseResult.cards) {
+		try {
+			// Only fetch from Scryfall if card doesn't have complete metadata
+			const enrichedCard = await enrichCard(card);
+
+			// Categorize the enriched card
+			const category = categorizeCard(enrichedCard);
+			categorized[category].push(enrichedCard);
+		} catch (error) {
+			console.error(`Error processing card ${card.name}:`, error);
+			categorized[CardCategory.Other].push(card);
+		}
+	}
 
 	return categorized;
+}
+
+/**
+ * Auto-detect format and deserialize deck
+ * Supports both JSON (new format) and plaintext (legacy format)
+ */
+export async function deserializeDeck(content: string): Promise<Record<CardCategory, Card[]>> {
+	// Try to detect if it's JSON
+	const trimmed = content.trim();
+	if (trimmed.startsWith('{')) {
+		// JSON format - fast, no API calls
+		return deserializeDeckFromJSON(content);
+	} else {
+		// Plaintext format - legacy, requires API calls
+		console.log('Loading legacy plaintext deck format, fetching card data from Scryfall...');
+		return deserializeDeckFromPlaintext(content);
+	}
+}
+
+/**
+ * Categorize a card based on its properties
+ */
+function categorizeCard(card: Card): CardCategory {
+	const types = card.types || [];
+	const typesLower = types.map(t => t.toLowerCase());
+
+	// Check for commander (legendary creature or "can be your commander")
+	if (card.oracleText?.includes('can be your commander') ||
+	    (typesLower.includes('legendary') && typesLower.includes('creature'))) {
+		return CardCategory.Commander;
+	}
+
+	// Check for companion
+	if (card.oracleText?.toLowerCase().includes('companion')) {
+		return CardCategory.Companion;
+	}
+
+	// Categorize by primary type
+	if (typesLower.includes('planeswalker')) return CardCategory.Planeswalker;
+	if (typesLower.includes('creature')) return CardCategory.Creature;
+	if (typesLower.includes('instant')) return CardCategory.Instant;
+	if (typesLower.includes('sorcery')) return CardCategory.Sorcery;
+	if (typesLower.includes('artifact')) return CardCategory.Artifact;
+	if (typesLower.includes('enchantment')) return CardCategory.Enchantment;
+	if (typesLower.includes('land')) return CardCategory.Land;
+
+	return CardCategory.Other;
 }
 
 /**
@@ -75,9 +249,12 @@ export function createDeckArchive(
 	versionContent: string
 ): DeckArchive {
 	// Create versions structure with the current version
+	// Use .json extension for new format
+	// Use manifest.currentVersion instead of deck.currentVersion because the manifest
+	// has been updated by createVersion() while the deck object still has the old version
 	const versions: Record<string, Record<string, string>> = {
 		[deck.currentBranch]: {
-			[`v${deck.currentVersion}.txt`]: versionContent
+			[`v${manifest.currentVersion}.json`]: versionContent
 		}
 	};
 
@@ -91,12 +268,12 @@ export function createDeckArchive(
 /**
  * Extract deck data from a DeckArchive
  */
-export function extractDeckFromArchive(archive: DeckArchive): {
+export async function extractDeckFromArchive(archive: DeckArchive): Promise<{
 	deck: Deck;
 	manifest: DeckManifest;
 	maybeboard: Maybeboard;
 	versionContent: string;
-} {
+}> {
 	const { manifest, maybeboard, versions } = archive;
 
 	// Get current branch and version
@@ -108,13 +285,18 @@ export function extractDeckFromArchive(archive: DeckArchive): {
 		throw new Error(`Branch ${currentBranch} not found in manifest`);
 	}
 
-	// Get version content
+	// Get version content - try JSON first, fallback to .txt for legacy
 	const branchVersions = versions[currentBranch] || {};
-	const versionFile = `v${currentVersion}.txt`;
-	const versionContent = branchVersions[versionFile] || '';
+	const jsonFile = `v${currentVersion}.json`;
+	const txtFile = `v${currentVersion}.txt`;
+	const versionContent = branchVersions[jsonFile] || branchVersions[txtFile] || '';
 
-	// Parse the decklist
-	const cards = deserializeDeck(versionContent);
+	if (!versionContent) {
+		throw new Error(`Version ${currentVersion} not found in branch ${currentBranch}`);
+	}
+
+	// Parse the decklist (auto-detects JSON vs plaintext)
+	const cards = await deserializeDeck(versionContent);
 
 	// Calculate total card count
 	let cardCount = 0;

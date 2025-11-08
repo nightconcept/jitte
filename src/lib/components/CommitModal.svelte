@@ -9,9 +9,11 @@
 	export let onCancel: () => void;
 
 	// Suggested version based on diff
-	$: suggestedVersion = diff
-		? getNextVersion(currentVersion, diff.totalChanges)
-		: applyBump(currentVersion, 'patch');
+	$: suggestedVersion = currentVersion === 'unsaved'
+		? '0.0.1'
+		: diff
+			? getNextVersion(currentVersion, diff.totalChanges)
+			: applyBump(currentVersion, 'patch');
 
 	let selectedVersion = suggestedVersion;
 	let customVersion = '';

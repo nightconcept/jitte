@@ -116,7 +116,8 @@ export async function decompressDeckArchive(zipBlob: Blob): Promise<DeckArchive>
 
 			if (fileName === 'stash.txt') {
 				stashes[branchName] = file.content;
-			} else if (fileName.startsWith('v') && fileName.endsWith('.txt')) {
+			} else if (fileName.startsWith('v') && (fileName.endsWith('.txt') || fileName.endsWith('.json'))) {
+				// Support both .txt (legacy) and .json (new format) version files
 				if (!versions[branchName]) {
 					versions[branchName] = {};
 				}

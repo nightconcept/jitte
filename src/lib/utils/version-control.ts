@@ -16,13 +16,33 @@ export function createVersion(
 	commitMessage: string,
 	versionOverride?: string
 ): { manifest: DeckManifest; version: string } {
+	console.log('[createVersion] Starting:', {
+		currentVersion: manifest.currentVersion,
+		currentBranch: manifest.currentBranch,
+		commitMessage,
+		versionOverride
+	});
+
 	const branch = manifest.branches.find((b) => b.name === manifest.currentBranch);
 	if (!branch) {
 		throw new Error(`Branch ${manifest.currentBranch} not found`);
 	}
 
+	console.log('[createVersion] Found branch:', {
+		branchName: branch.name,
+		existingVersions: branch.versions
+	});
+
 	// Determine new version
-	const newVersion = versionOverride || applyBump(manifest.currentVersion, 'patch');
+	// If currentVersion is "unsaved", this is the first commit, so use 0.0.1
+	let newVersion: string;
+	if (manifest.currentVersion === 'unsaved') {
+		newVersion = versionOverride || '0.0.1';
+		console.log('[createVersion] First commit, using version:', newVersion);
+	} else {
+		newVersion = versionOverride || applyBump(manifest.currentVersion, 'patch');
+		console.log('[createVersion] Bumping version from', manifest.currentVersion, 'to', newVersion);
+	}
 
 	// Create version metadata
 	const versionMetadata: VersionMetadata = {
@@ -32,6 +52,8 @@ export function createVersion(
 		timestamp: new Date().toISOString()
 	};
 
+	console.log('[createVersion] Created version metadata:', versionMetadata);
+
 	// Update branch
 	const updatedBranch: BranchMetadata = {
 		...branch,
@@ -39,6 +61,8 @@ export function createVersion(
 		currentVersion: newVersion,
 		updatedAt: new Date().toISOString()
 	};
+
+	console.log('[createVersion] Updated branch versions:', updatedBranch.versions);
 
 	// Update manifest
 	const updatedManifest: DeckManifest = {
@@ -49,6 +73,8 @@ export function createVersion(
 		),
 		updatedAt: new Date().toISOString()
 	};
+
+	console.log('[createVersion] Returning updated manifest with', updatedManifest.branches[0]?.versions.length, 'versions');
 
 	return { manifest: updatedManifest, version: newVersion };
 }
@@ -75,15 +101,8 @@ export function createBranch(
 		// Create empty branch
 		newBranch = {
 			name: options.name,
-			versions: [
-				{
-					version: '0.1.0',
-					branch: options.name,
-					commitMessage: 'Initial commit',
-					timestamp: now
-				}
-			],
-			currentVersion: '0.1.0',
+			versions: [],
+			currentVersion: '0.0.1',
 			createdAt: now,
 			updatedAt: now
 		};
@@ -202,7 +221,7 @@ export function versionExists(
  */
 export function getLatestVersion(manifest: DeckManifest, branchName: string): string {
 	const branch = manifest.branches.find((b) => b.name === branchName);
-	return branch?.currentVersion || '0.1.0';
+	return branch?.currentVersion || '0.0.1';
 }
 
 /**

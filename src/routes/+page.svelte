@@ -49,11 +49,19 @@
 	async function handleCommit(version: string, message: string) {
 		if (!$deckStore) return;
 
+		console.log('[handleCommit] Starting commit:', { version, message });
+		console.log('[handleCommit] Current deck state:', $deckStore.deck);
+		console.log('[handleCommit] Current manager state:', $deckManager);
+
 		const success = await deckManager.saveDeck(message, version);
 
+		console.log('[handleCommit] Save result:', success);
+
 		if (success) {
+			console.log('[handleCommit] Commit successful, closing modal');
 			showCommitModal = false;
 		} else {
+			console.error('[handleCommit] Commit failed:', $deckManager.error);
 			// Error is stored in deckManager state
 			alert($deckManager.error || 'Failed to save deck');
 		}
@@ -66,11 +74,27 @@
 	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderName: string }>) {
 		const { name, commanderName } = event.detail;
 
-		await deckManager.createDeck(name, commanderName);
-		showNewDeckModal = false;
+		try {
+			console.log('[handleCreateDeck] Starting deck creation:', { name, commanderName });
 
-		// Start in edit mode for new decks
-		deckStore.setEditMode(true);
+			await deckManager.createDeck(name, commanderName);
+
+			console.log('[handleCreateDeck] Deck created, closing modal');
+
+			// Close modal immediately
+			showNewDeckModal = false;
+
+			console.log('[handleCreateDeck] Modal closed, setting edit mode');
+
+			// Start in edit mode for new decks
+			deckStore.setEditMode(true);
+
+			console.log('[handleCreateDeck] Complete');
+		} catch (error) {
+			console.error('[handleCreateDeck] Error:', error);
+			showNewDeckModal = false; // Close modal even on error
+			alert(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
 	}
 
 	function handleLoadDeck() {

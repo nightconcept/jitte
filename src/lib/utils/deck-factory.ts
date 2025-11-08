@@ -43,7 +43,7 @@ export function createEmptyDeck(name: string, commander?: Card): Deck {
 		format: 'commander',
 		colorIdentity: commander?.colorIdentity || [],
 		currentBranch: 'main',
-		currentVersion: '0.1.0',
+		currentVersion: 'unsaved',
 		createdAt: now,
 		updatedAt: now
 	};
@@ -57,15 +57,8 @@ export function createDeckManifest(deck: Deck): DeckManifest {
 
 	const mainBranch: BranchMetadata = {
 		name: 'main',
-		versions: [
-			{
-				version: '0.1.0',
-				branch: 'main',
-				commitMessage: 'Initial deck creation',
-				timestamp: now
-			}
-		],
-		currentVersion: '0.1.0',
+		versions: [],
+		currentVersion: 'unsaved',
 		createdAt: now,
 		updatedAt: now
 	};
@@ -76,7 +69,7 @@ export function createDeckManifest(deck: Deck): DeckManifest {
 		createdAt: deck.createdAt,
 		updatedAt: deck.updatedAt,
 		currentBranch: 'main',
-		currentVersion: '0.1.0',
+		currentVersion: 'unsaved',
 		branches: [mainBranch],
 		stashes: {},
 		appVersion: '0.1.0' // TODO: Get from package.json
@@ -93,7 +86,7 @@ export function cloneDeck(deck: Deck, newName: string): Deck {
 		name: newName,
 		createdAt: now,
 		updatedAt: now,
-		currentVersion: '0.1.0',
+		currentVersion: 'unsaved',
 		currentBranch: 'main'
 	};
 }
