@@ -13,7 +13,7 @@ import type { DeckArchive } from './zip';
 /**
  * Convert a Deck to plaintext decklist
  */
-export function serializeDeck(deck: Deck, includeSetCodes = true): string {
+export function serializeDeck(deck: Deck, includeSetCodes = false): string {
 	const allCards: Card[] = [];
 
 	// Add cards in canonical order

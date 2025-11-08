@@ -129,6 +129,18 @@
 		alert('Import functionality coming soon!');
 	}
 
+	async function handleSwitchVersion(version: string) {
+		if (!$deckStore || !$deckManager.activeDeckName) return;
+
+		// Warn if there are unsaved changes
+		if ($deckStore.hasUnsavedChanges) {
+			const confirmed = confirm('You have unsaved changes. Switching versions will discard them. Continue?');
+			if (!confirmed) return;
+		}
+
+		await deckManager.loadVersion(version);
+	}
+
 	// Get available versions for branch modal
 	$: availableVersions = $deckManager.activeManifest?.branches
 		?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
@@ -144,6 +156,7 @@
 		isNewDeck={$deckManager.activeManifest === null}
 		currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 		currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
+		availableVersions={availableVersions}
 		onToggleEdit={handleToggleEdit}
 		onSave={handleSave}
 		onNewDeck={handleNewDeck}
@@ -152,6 +165,7 @@
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
 		onImport={handleImport}
+		onSwitchVersion={handleSwitchVersion}
 	/>
 
 	{#if $deckManager.isLoading}

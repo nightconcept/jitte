@@ -184,7 +184,7 @@ function createDeckManager() {
 					newVersion
 				);
 
-				const decklistContent = serializeDeck(deck, true);
+				const decklistContent = serializeDeck(deck);
 				const archive = createDeckArchive(deck, updatedManifest, currentState.maybeboard, decklistContent);
 				const zipBlob = await compressDeckArchive(archive, deck.name);
 
@@ -244,7 +244,7 @@ function createDeckManager() {
 				);
 
 				// Serialize current deck state
-				const decklistContent = serializeDeck(deck, true);
+				const decklistContent = serializeDeck(deck);
 
 				// Update archive versions
 				const currentBranch = deck.currentBranch;
@@ -289,6 +289,74 @@ function createDeckManager() {
 				}));
 				return false;
 			}
+		}
+	}
+
+	/**
+	 * Load a specific version of the current deck
+	 */
+	async function loadVersion(version: string): Promise<void> {
+		const appState = get({ subscribe });
+		if (!appState.activeDeckName || !appState.activeManifest) {
+			update((state) => ({ ...state, error: 'No active deck' }));
+			return;
+		}
+
+		update((state) => ({ ...state, isLoading: true, error: null }));
+
+		try {
+			// Load the deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				throw new Error('Failed to load deck');
+			}
+
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+			const { deserializeDeck } = await import('$lib/utils/deck-serializer');
+
+			const archive = await decompressDeckArchive(loadResult.data);
+			const currentBranch = archive.manifest.currentBranch;
+
+			// Load the specific version file
+			const versionFileName = `v${version}.txt`;
+			const versionContent = archive.versions[currentBranch]?.[versionFileName];
+
+			if (!versionContent) {
+				throw new Error(`Version ${version} not found`);
+			}
+
+			// Parse the decklist into categorized cards
+			const cards = deserializeDeck(versionContent);
+
+			// Calculate total card count
+			const cardCount = Object.values(cards).reduce(
+				(sum, category) => sum + category.reduce((s, c) => s + c.quantity, 0),
+				0
+			);
+
+			// Reconstruct the deck object
+			const deck: Deck = {
+				name: archive.manifest.name,
+				cards,
+				cardCount,
+				format: archive.manifest.format,
+				colorIdentity: [], // TODO: Calculate from commander
+				currentBranch,
+				currentVersion: version,
+				createdAt: archive.manifest.createdAt,
+				updatedAt: new Date().toISOString()
+			};
+
+			// Load into store
+			deckStore.load(deck, archive.maybeboard);
+
+			update((state) => ({ ...state, isLoading: false }));
+		} catch (error) {
+			update((state) => ({
+				...state,
+				isLoading: false,
+				error: error instanceof Error ? error.message : 'Failed to load version'
+			}));
 		}
 	}
 
@@ -401,6 +469,7 @@ function createDeckManager() {
 		refreshDeckList,
 		loadDeck,
 		saveDeck,
+		loadVersion,
 		createDeck,
 		deleteDeck,
 		clearError

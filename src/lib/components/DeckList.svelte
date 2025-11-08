@@ -56,7 +56,8 @@
 		CardCategory.Sorcery,
 		CardCategory.Artifact,
 		CardCategory.Enchantment,
-		CardCategory.Land
+		CardCategory.Land,
+		CardCategory.Other
 	];
 
 	const categoryLabels: Record<CardCategory, string> = {

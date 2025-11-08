@@ -8,6 +8,7 @@
 	export let isNewDeck = false;
 	export let currentBranch = 'main';
 	export let currentVersion = '1.0.0';
+	export let availableVersions: string[] = [];
 	export let hasDeck = false;
 	export let onToggleEdit: (() => void) | undefined = undefined;
 	export let onSave: (() => void) | undefined = undefined;
@@ -17,11 +18,15 @@
 	export let onNewBranch: (() => void) | undefined = undefined;
 	export let onExport: (() => void) | undefined = undefined;
 	export let onImport: (() => void) | undefined = undefined;
+	export let onSwitchVersion: ((version: string) => void) | undefined = undefined;
 
 	// Save button is enabled if:
 	// - Deck is in edit mode AND
 	// - Either has unsaved changes OR is a new deck that hasn't been saved yet
 	$: canSave = isEditing && (hasUnsavedChanges || isNewDeck);
+
+	// Dropdown state
+	let versionDropdownOpen = false;
 </script>
 
 <nav class="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3 sticky top-0 z-50">
@@ -131,9 +136,12 @@
 				</div>
 
 				<!-- Version Selector -->
-				<div class="flex items-center gap-2">
+				<div class="flex items-center gap-2 relative">
 					<span class="text-sm text-[var(--color-text-secondary)] font-semibold">Version:</span>
-					<button class="px-4 py-2 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] font-medium flex items-center gap-2 min-w-[140px] h-[38px]">
+					<button
+						on:click={() => versionDropdownOpen = !versionDropdownOpen}
+						class="px-4 py-2 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] font-medium flex items-center gap-2 min-w-[140px] h-[38px]"
+					>
 						<span>{currentVersion}</span>
 						{#if hasUnsavedChanges}
 							<span class="text-[var(--color-text-tertiary)] text-xs">(unsaved)</span>
@@ -142,6 +150,28 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 						</svg>
 					</button>
+
+					<!-- Version Dropdown -->
+					{#if versionDropdownOpen && availableVersions.length > 0}
+						<div class="absolute top-full mt-1 right-0 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50 max-h-64 overflow-y-auto">
+							{#each availableVersions.slice().reverse() as version}
+								<button
+									on:click={() => {
+										if (onSwitchVersion) onSwitchVersion(version);
+										versionDropdownOpen = false;
+									}}
+									class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {version === currentVersion ? 'text-[var(--color-brand-primary)] font-semibold' : 'text-[var(--color-text-primary)]'} flex items-center justify-between"
+								>
+									<span>{version}</span>
+									{#if version === currentVersion}
+										<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<!-- Edit/View Mode Toggle -->

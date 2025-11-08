@@ -86,6 +86,7 @@ export function parsePlaintext(text: string): ParseResult {
  * Examples:
  * - "1 Lightning Bolt" -> { name: "Lightning Bolt", quantity: 1 }
  * - "1 Sol Ring (2XM) 97" -> { name: "Sol Ring", quantity: 1, setCode: "2XM", collectorNumber: "97" }
+ * - "1 Kenrith, the Returned King (plst) ELD-303" -> { name: "Kenrith, the Returned King", quantity: 1, setCode: "plst", collectorNumber: "ELD-303" }
  * - "2x Counterspell" -> { name: "Counterspell", quantity: 2 }
  *
  * @param line - Single line from decklist
@@ -97,10 +98,11 @@ function parseLine(line: string): Card | null {
 	//   1 Lightning Bolt
 	//   2x Counterspell
 	//   1 Sol Ring (2XM) 97
+	//   1 Kenrith (plst) ELD-303
 
 	const patterns = [
-		// Pattern 1: "1 CardName (SET) 123"
-		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)\s+(\d+[a-z]?)$/i,
+		// Pattern 1: "1 CardName (SET) 123" or "1 CardName (SET) ELD-123"
+		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)\s+([A-Z0-9\-]+)$/i,
 		// Pattern 2: "1 CardName (SET)"
 		/^(\d+)x?\s+(.+?)\s+\(([A-Z0-9]+)\)$/i,
 		// Pattern 3: "1 CardName" or "1x CardName"
