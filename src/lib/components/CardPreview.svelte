@@ -39,7 +39,7 @@
 	<!-- Vendor Pricing (Non-Foil) -->
 	{#if displayCard?.prices}
 		<div class="pt-4 border-t border-[var(--color-border)]">
-			<div class="text-xs font-semibold text-[var(--color-text-primary)] mb-3">Non-Foil Prices</div>
+			<div class="text-xs font-semibold text-[var(--color-text-primary)] mb-3">Prices</div>
 			<div class="space-y-2">
 				{#if displayCard.prices.cardkingdom !== undefined}
 					<div class="flex items-center justify-between text-sm">

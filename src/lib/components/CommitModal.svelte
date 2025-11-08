@@ -2,6 +2,7 @@
 	import { getNextVersion, applyBump, isValidVersion } from '$lib/utils/semver';
 	import type { VersionDiff } from '$lib/types/version';
 
+	export let isOpen = false;
 	export let currentVersion: string;
 	export let diff: VersionDiff | null;
 	export let onCommit: (version: string, message: string) => void;
@@ -70,6 +71,7 @@
 		: 'No changes detected';
 </script>
 
+{#if isOpen}
 <!-- Modal Backdrop -->
 <div
 	class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -221,3 +223,4 @@
 		</div>
 	</div>
 </div>
+{/if}

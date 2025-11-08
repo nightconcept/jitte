@@ -591,7 +591,45 @@
   - Keyboard shortcuts
   - Visual change indicators
   - Confirmation prompts
-  - Actual version/storage persistence (will be Phase 7+ work)
+  - Actual version/storage persistence (moved to Phase 5.5)
+
+---
+
+## Phase 5.5: Core Workflow & Deck Lifecycle
+
+### 5.5.1 Deck Lifecycle
+- [ ] New deck modal (commander selection, deck name input)
+- [ ] Deck picker UI (list all decks in storage)
+- [ ] Load deck from storage into active state
+- [ ] Switch between decks (with unsaved changes prompt)
+- [ ] Delete deck (with confirmation)
+- [ ] Save deck to storage (integrate commit modal with storage layer):
+  - [ ] Create new version on save
+  - [ ] Store full decklist snapshot
+  - [ ] Update metadata with timestamp and commit message
+  - [ ] Show success/error feedback (toast/notification system)
+
+### 5.5.2 Basic Import/Export (MVP)
+- [ ] Export to plaintext (clipboard)
+- [ ] Import from plaintext (paste + parse modal)
+- [ ] Export deck as zip file (download)
+- [ ] Import deck from zip file (upload with validation)
+
+### 5.5.3 First-Time Experience
+- [ ] Empty state: "Create New Deck" or "Import Deck" buttons
+- [ ] Settings modal: Choose storage mode (FileSystem vs localStorage)
+- [ ] Storage directory picker (FileSystem API)
+- [ ] First deck creation wizard
+
+### 5.5.4 Deck State Management
+- [ ] Active deck store (current working deck)
+- [ ] Deck list store (all available decks)
+- [ ] Auto-load last opened deck on app start
+- [ ] Persist active deck ID to localStorage
+
+**Phase 5.5 Status**: ⏳ Not started
+- Critical for app usability - creates complete workflow loop
+- Pulls forward essential tasks from Phases 7, 8, 10
 
 ---
 

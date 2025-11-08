@@ -82,12 +82,29 @@ function createDeckStore() {
 
 				const newDeck = { ...state.deck };
 				const targetCategory = category || inferCategory(card);
+				const categoryCards = newDeck.cards[targetCategory] || [];
 
-				// Add to the appropriate category
-				newDeck.cards = {
-					...newDeck.cards,
-					[targetCategory]: [...newDeck.cards[targetCategory], card]
-				};
+				// Check if card already exists in this category
+				const existingIndex = categoryCards.findIndex((c) => c.name === card.name);
+
+				if (existingIndex !== -1) {
+					// Card exists - increment quantity
+					const existingCard = categoryCards[existingIndex];
+					newDeck.cards = {
+						...newDeck.cards,
+						[targetCategory]: [
+							...categoryCards.slice(0, existingIndex),
+							{ ...existingCard, quantity: existingCard.quantity + card.quantity },
+							...categoryCards.slice(existingIndex + 1)
+						]
+					};
+				} else {
+					// New card - add to category
+					newDeck.cards = {
+						...newDeck.cards,
+						[targetCategory]: [...categoryCards, card]
+					};
+				}
 
 				newDeck.cardCount = calculateTotalCards(newDeck.cards);
 				newDeck.updatedAt = new Date().toISOString();
@@ -270,6 +287,101 @@ function createDeckStore() {
 				return {
 					...state,
 					lastStashAt: new Date().toISOString()
+				};
+			});
+		},
+
+		/**
+		 * Add a card to the maybeboard
+		 */
+		addCardToMaybeboard(card: Card, categoryId?: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				const targetCategoryId = categoryId || state.maybeboard.defaultCategoryId;
+				const categoryIndex = state.maybeboard.categories.findIndex(c => c.id === targetCategoryId);
+
+				if (categoryIndex === -1) return state; // Category not found
+
+				const newMaybeboard = { ...state.maybeboard };
+				const category = newMaybeboard.categories[categoryIndex];
+				const categoryCards = [...category.cards];
+
+				// Check if card already exists in this category
+				const existingIndex = categoryCards.findIndex(c => c.name === card.name);
+
+				if (existingIndex !== -1) {
+					// Increment quantity
+					categoryCards[existingIndex] = {
+						...categoryCards[existingIndex],
+						quantity: categoryCards[existingIndex].quantity + card.quantity
+					};
+				} else {
+					// Add new card
+					categoryCards.push(card);
+				}
+
+				// Update category
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, categoryIndex),
+					{
+						...category,
+						cards: categoryCards,
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(categoryIndex + 1)
+				];
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Remove a card from the maybeboard
+		 */
+		removeCardFromMaybeboard(cardName: string, categoryId: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				const categoryIndex = state.maybeboard.categories.findIndex(c => c.id === categoryId);
+				if (categoryIndex === -1) return state;
+
+				const newMaybeboard = { ...state.maybeboard };
+				const category = newMaybeboard.categories[categoryIndex];
+				const categoryCards = [...category.cards];
+
+				const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+				if (cardIndex === -1) return state;
+
+				const card = categoryCards[cardIndex];
+
+				if (card.quantity > 1) {
+					// Decrement quantity
+					categoryCards[cardIndex] = { ...card, quantity: card.quantity - 1 };
+				} else {
+					// Remove card entirely
+					categoryCards.splice(cardIndex, 1);
+				}
+
+				// Update category
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, categoryIndex),
+					{
+						...category,
+						cards: categoryCards,
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(categoryIndex + 1)
+				];
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
 				};
 			});
 		},

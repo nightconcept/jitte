@@ -5,6 +5,9 @@
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
 
+	export let addToMaybeboard = false;
+	export let maybeboardCategoryId: string | undefined = undefined;
+
 	let searchQuery = '';
 	let results: CardSearchResult[] = [];
 	let isLoading = false;
@@ -46,7 +49,27 @@
 			showDropdown = true;
 
 			try {
-				results = await cardService.searchCards(searchQuery, 10);
+				const searchResults = await cardService.searchCards(searchQuery, 20);
+
+				// Sort results: prioritize matches at the start of the name
+				const sorted = searchResults.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					const searchLower = searchQuery.toLowerCase();
+
+					const aStartsWith = aName.startsWith(searchLower);
+					const bStartsWith = bName.startsWith(searchLower);
+
+					// If one starts with query and other doesn't, prioritize the one that does
+					if (aStartsWith && !bStartsWith) return -1;
+					if (!aStartsWith && bStartsWith) return 1;
+
+					// Otherwise, maintain alphabetical order
+					return aName.localeCompare(bName);
+				});
+
+				// Take top 10 after sorting
+				results = sorted.slice(0, 10);
 			} catch (error) {
 				console.error('Search error:', error);
 				results = [];
@@ -93,8 +116,12 @@
 				priceUpdatedAt: Date.now()
 			};
 
-			// Add to deck
-			deckStore.addCard(card);
+			// Add to deck or maybeboard
+			if (addToMaybeboard) {
+				deckStore.addCardToMaybeboard(card, maybeboardCategoryId);
+			} else {
+				deckStore.addCard(card);
+			}
 		}
 
 		// Clear search
@@ -158,40 +185,10 @@
 				{#each results as result}
 					<button
 						on:click={() => selectCard(result)}
-						class="w-full px-4 py-3 text-left hover:bg-[var(--color-surface-hover)] border-b border-[var(--color-border)] last:border-b-0 flex items-start gap-3"
+						class="w-full px-4 py-2 text-left hover:bg-[var(--color-surface-hover)] border-b border-[var(--color-border)] last:border-b-0"
 					>
-						<!-- Card Image -->
-						{#if result.image_uri}
-							<img
-								src={result.image_uri}
-								alt={result.name}
-								class="w-12 h-17 object-cover rounded flex-shrink-0"
-							/>
-						{/if}
-
-						<!-- Card Info -->
-						<div class="flex-1 min-w-0">
-							<div class="font-semibold text-[var(--color-text-primary)] truncate">
-								{result.name}
-							</div>
-							<div class="text-sm text-[var(--color-text-secondary)] truncate">
-								{result.type_line}
-							</div>
-							{#if result.mana_cost}
-								<div class="text-xs text-[var(--color-text-tertiary)] mt-1">
-									{result.mana_cost}
-								</div>
-							{/if}
-							<div class="flex items-center gap-2 mt-1">
-								<span class="text-xs text-[var(--color-text-tertiary)]">
-									{result.set.toUpperCase()} #{result.collector_number}
-								</span>
-								{#if result.price_usd}
-									<span class="text-xs text-green-500 font-semibold">
-										${parseFloat(result.price_usd).toFixed(2)}
-									</span>
-								{/if}
-							</div>
+						<div class="font-medium text-[var(--color-text-primary)]">
+							{result.name}
 						</div>
 					</button>
 				{/each}

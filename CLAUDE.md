@@ -7,11 +7,192 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Jitte** is a local-first web application for managing Magic: The Gathering Commander/EDH decklists with git-style version control, branching, diff tracking, and export capabilities to popular deck-building platforms.
 
 ### Tech Stack
-- **Framework**: SvelteKit
+- **Framework**: SvelteKit with Svelte 5 (using Runes)
 - **Styling**: Tailwind CSS
 - **Storage**: Browser localStorage + FileSystem API
 - **APIs**: Scryfall (primary), MTG API (secondary fallback)
 - **Caching**: IndexedDB for card images and bulk data
+
+## Svelte 5 Runes
+
+This project uses **Svelte 5 Runes** for reactivity. Runes are compiler symbols using function syntax that provide universal, fine-grained reactivity.
+
+### Core Runes Reference
+
+#### `$state` - Reactive State
+Declares reactive variables. Replaces implicit `let` reactivity from Svelte 4.
+
+```javascript
+let count = $state(0);
+let user = $state({ name: 'Alice', age: 30 });
+```
+
+**When to use:** For any mutable state that should trigger reactivity when changed.
+
+#### `$derived` - Computed Values
+Creates values that automatically update when dependencies change.
+
+```javascript
+let count = $state(0);
+const doubled = $derived(count * 2);
+const isEven = $derived(count % 2 === 0);
+```
+
+**When to use:** For computed values based on reactive state. Use instead of Svelte 4's `$:` labels.
+
+#### `$effect` - Side Effects
+Runs code when reactive values change. Replaces lifecycle functions.
+
+```javascript
+$effect(() => {
+  console.log('Count changed to:', count);
+  document.title = `Count: ${count}`;
+});
+
+// Cleanup function
+$effect(() => {
+  const interval = setInterval(() => {...}, 1000);
+  return () => clearInterval(interval);
+});
+
+// Before DOM updates
+$effect.pre(() => {
+  // Runs before the DOM updates
+});
+```
+
+**When to use:** For side effects like logging, setting timers, or DOM manipulation. Use `$effect.pre()` for actions before DOM updates.
+
+#### `$props` - Component Props
+Declares component props. Replaces `export let` from Svelte 4.
+
+```javascript
+interface Props {
+  name: string;
+  age?: number;
+  onUpdate?: (value: string) => void;
+}
+
+let { name, age = 25, onUpdate }: Props = $props();
+
+// With renaming
+let { class: className, ...rest } = $props();
+```
+
+**When to use:** Always use `$props()` for receiving component properties in Svelte 5.
+
+#### `$bindable` - Two-Way Binding
+Allows parent components to bind to a prop.
+
+```javascript
+let { value = $bindable() } = $props();
+```
+
+**When to use:** When a component needs to expose a value that can be bound with `bind:` directive.
+
+### Migration from Svelte 4
+
+**Svelte 4 Pattern:**
+```javascript
+// Props
+export let count = 0;
+export let name;
+
+// Reactive declarations
+$: doubled = count * 2;
+
+// Reactive statements
+$: {
+  console.log(count);
+  updateTitle();
+}
+
+// Lifecycle
+import { onMount, afterUpdate } from 'svelte';
+onMount(() => {...});
+afterUpdate(() => {...});
+```
+
+**Svelte 5 with Runes:**
+```javascript
+// Props
+let { count = 0, name } = $props();
+
+// Derived values
+const doubled = $derived(count * 2);
+
+// Effects
+$effect(() => {
+  console.log(count);
+  updateTitle();
+});
+
+// Lifecycle equivalents
+$effect(() => {
+  // onMount equivalent
+  return () => {
+    // onDestroy equivalent
+  };
+});
+
+$effect(() => {
+  // afterUpdate equivalent - runs after each reactive change
+});
+```
+
+### Mixing Runes and Legacy Syntax
+
+**IMPORTANT:** Svelte 5 supports both rune-based and legacy syntax. You can gradually migrate:
+- Components can mix legacy components with rune-based components
+- **However**, within a single component, once you use any rune, the component enters "runes mode"
+- In runes mode, legacy patterns (`export let`, implicit `let` reactivity, `$:`) are not allowed
+
+**Best Practice for This Project:**
+- Use runes for all new components
+- When editing existing legacy components, consider migrating them to runes
+- If you see `export let isOpen = false`, convert to `let { isOpen = false } = $props()`
+- If you see reactive `let` declarations, convert to `$state()`
+- Replace `$:` with `$derived` for computations or `$effect` for side effects
+
+### Common Patterns
+
+**Reactive Object:**
+```javascript
+let user = $state({ name: 'Alice', count: 0 });
+user.count += 1; // Triggers reactivity
+```
+
+**Conditional Derivation:**
+```javascript
+const message = $derived(
+  count > 10 ? 'High' : count > 5 ? 'Medium' : 'Low'
+);
+```
+
+**Async Effects:**
+```javascript
+$effect(() => {
+  async function fetchData() {
+    const response = await fetch(`/api/data/${id}`);
+    data = await response.json();
+  }
+  fetchData();
+});
+```
+
+**Form State:**
+```javascript
+let formData = $state({
+  name: '',
+  email: '',
+  message: ''
+});
+
+const isValid = $derived(
+  formData.name.length > 0 &&
+  formData.email.includes('@')
+);
+```
 
 ## Key Architecture Concepts
 

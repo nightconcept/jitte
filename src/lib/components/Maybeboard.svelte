@@ -2,6 +2,7 @@
 	import { deckStore } from '$lib/stores/deck-store';
 	import type { Card } from '$lib/types/card';
 	import ManaSymbol from './ManaSymbol.svelte';
+	import CardSearch from './CardSearch.svelte';
 
 	export let onCardHover: ((card: Card | null) => void) | undefined = undefined;
 
@@ -130,11 +131,7 @@
 	<!-- Search Box (Edit Mode) -->
 	{#if isEditing}
 		<div class="mt-4">
-			<input
-				type="text"
-				placeholder="Search for cards to add..."
-				class="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] text-sm placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-border-focus)]"
-			/>
+			<CardSearch addToMaybeboard={true} maybeboardCategoryId={activeCategory} />
 		</div>
 	{/if}
 		</div>

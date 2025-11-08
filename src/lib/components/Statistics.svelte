@@ -4,7 +4,7 @@
 	$: statistics = $deckStore?.statistics;
 
 	// Collapsible sections
-	let collapsed = false;
+	let collapsed = true;
 	let showManaCurve = true;
 	let showColorDistribution = true;
 	let showTypeBreakdown = true;
