@@ -46,8 +46,8 @@
 	<div class="relative h-full overflow-hidden">
 		<!-- Gradient Background with Commander Image -->
 		<div class="absolute inset-0 transition-opacity duration-300 {isScrolled ? 'opacity-0' : 'opacity-100'}">
-			<!-- Purple gradient on the left -->
-			<div class="absolute inset-0 bg-gradient-to-r from-purple-600/90 via-purple-500/50 to-transparent"></div>
+			<!-- Theme-aware gradient on the left -->
+			<div class="absolute inset-0" style="background: linear-gradient(to right, var(--color-brand-primary), var(--color-accent-purple) 50%, transparent);"></div>
 
 			<!-- Commander card art -->
 			{#if commanderImageUrl}
@@ -79,12 +79,12 @@
 					</div>
 					<div class="{isScrolled ? 'text-[var(--color-text-tertiary)]' : 'text-white/50'}">•</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[var(--color-text-tertiary)]">Branch:</span>
+						<span class="font-semibold {isScrolled ? 'text-[var(--color-text-primary)]' : 'text-white'}">Branch:</span>
 						<span class="font-medium {isScrolled ? 'text-[var(--color-brand-primary)]' : 'text-purple-300'}">{deck?.currentBranch || 'main'}</span>
 					</div>
 					<div class="{isScrolled ? 'text-[var(--color-text-tertiary)]' : 'text-white/50'}">•</div>
 					<div class="flex items-center gap-1.5">
-						<span class="text-[var(--color-text-tertiary)]">Version:</span>
+						<span class="font-semibold {isScrolled ? 'text-[var(--color-text-primary)]' : 'text-white'}">Version:</span>
 						<span class="font-medium">{deck?.currentVersion || '1.0.0'}</span>
 					</div>
 				</div>
@@ -151,7 +151,7 @@
 					<button
 						on:click={onSave}
 						disabled={!isEditing || !hasUnsavedChanges}
-						class="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+						class="px-4 py-2 rounded text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium theme-button"
 					>
 						Save
 					</button>
@@ -161,3 +161,13 @@
 
 	</div>
 </div>
+
+<style>
+	.theme-button {
+		background-color: var(--color-brand-primary);
+	}
+
+	.theme-button:hover:not(:disabled) {
+		background-color: var(--color-brand-secondary);
+	}
+</style>

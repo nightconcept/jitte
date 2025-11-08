@@ -99,15 +99,6 @@
 		if (!isEditing) return;
 		// TODO: Show card menu
 	}
-
-	// Split cards into columns for multi-column layout
-	function splitIntoColumns(cards: Card[], columns: number): Card[][] {
-		const result: Card[][] = Array.from({ length: columns }, () => []);
-		cards.forEach((card, index) => {
-			result[index % columns].push(card);
-		});
-		return result;
-	}
 </script>
 
 <div class="flex-1 p-6" on:click={closeCardMenu} on:keydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
@@ -234,14 +225,11 @@
 						</div>
 					</button>
 
-					<!-- Card List in Columns -->
+					<!-- Card List in Responsive Columns -->
 					{#if !collapsed[category]}
-						{@const columns = splitIntoColumns(cards, 4)}
 						<div class="px-4 pb-2 rounded-b-lg overflow-visible">
-							<div class="grid grid-cols-4 gap-x-4 overflow-visible">
-								{#each columns as column}
-									<div class="space-y-0">
-										{#each column as card}
+							<div class="responsive-card-grid overflow-visible">
+								{#each cards as card}
 											<div
 												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'}"
 												on:mouseenter={() => onCardHover?.(card)}
@@ -250,7 +238,7 @@
 											>
 												<div class="flex items-center gap-2 flex-1 min-w-0">
 													<!-- Quantity -->
-													<span class="text-[var(--color-text-tertiary)] text-xs flex-shrink-0">
+													<span class="text-[var(--color-text-primary)] text-sm font-semibold flex-shrink-0 min-w-[1.5rem]">
 														{card.quantity}
 													</span>
 
@@ -317,8 +305,6 @@
 														</div>
 													{/if}
 												</div>
-											</div>
-										{/each}
 									</div>
 								{/each}
 							</div>
@@ -329,3 +315,31 @@
 		{/each}
 	</div>
 </div>
+
+<style>
+	.responsive-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		column-gap: 1rem;
+	}
+
+	/* At larger screens (1920px), aim for approximately 4 columns */
+	@media (min-width: 1536px) {
+		.responsive-card-grid {
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		}
+	}
+
+	/* At smaller screens, allow fewer columns */
+	@media (max-width: 1024px) {
+		.responsive-card-grid {
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		}
+	}
+
+	@media (max-width: 768px) {
+		.responsive-card-grid {
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		}
+	}
+</style>

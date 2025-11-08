@@ -26,7 +26,7 @@
 	$: totalCards = categories.reduce((sum, cat) => sum + cat.cards.reduce((s, c) => s + c.quantity, 0), 0);
 </script>
 
-<aside class="w-80 bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[121px] self-start max-h-[calc(100vh-121px)] overflow-y-auto">
+<aside class="w-80 bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)]">
 	<!-- Collapsible Header -->
 	<button
 		on:click={toggleCollapsed}
