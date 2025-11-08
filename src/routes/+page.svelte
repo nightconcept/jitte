@@ -15,6 +15,7 @@
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
 	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
+	import VersionComparisonModal from '$lib/components/VersionComparisonModal.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
@@ -542,4 +543,11 @@
 	currentDecklist={currentDecklistPlaintext}
 	on:save={handleSaveDecklist}
 	on:close={() => showEditDecklistModal = false}
+/>
+
+<VersionComparisonModal
+	isOpen={showCompareModal}
+	currentVersion={$deckStore?.deck.currentVersion ?? '1.0.0'}
+	currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
+	onClose={() => showCompareModal = false}
 />
