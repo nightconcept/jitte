@@ -523,6 +523,8 @@
 - [x] Card list within each category
 - [x] Search box for adding cards to maybeboard
 - [x] Cards added to active category
+- [x] "Move to Deck" option in maybeboard card menu
+- [x] "Remove" option in maybeboard card menu
 - [ ] Category management (create/rename/delete) (UI exists, logic TODO)
 - [ ] Drag and drop between categories
 - [ ] Drag and drop to main deck
@@ -537,13 +539,13 @@
 - [x] Real-time updates
 - [x] Make sections collapsible
 
-**Phase 4 Status**: ✅ Mostly complete (30/37 tasks)
+**Phase 4 Status**: ✅ Mostly complete (32/39 tasks)
 - All major UI components implemented and styled
 - Comprehensive theming system with Tokyo Night, Kanagawa, Rose Pine
 - Responsive layouts with dynamic column sizing
-- Card menu UIs exist (action logic deferred to Phase 5)
+- Card menu UIs exist with bidirectional card movement
 - Navbar with uniform heights and conditional display
-- Maybeboard search integrated
+- Maybeboard search integrated with card menu actions
 - Statistics panel collapsible by default
 - Missing: Keyboard shortcuts, loading states, validation icons, drag-and-drop, category management
 
@@ -577,6 +579,7 @@
   - [x] Display all printings with images
   - [x] Show price per printing
   - [x] Select printing updates deck file with set code
+- [x] "Move to Maybeboard" option in deck card menu
 - [x] Close menu on outside click
 - [ ] Add keyboard shortcuts for actions
 
@@ -591,12 +594,13 @@
 - [ ] Show success/error feedback (currently using alert, needs toast/notification)
 - [x] Clear diff state after save
 
-**Phase 5 Status**: ⚠️ Mostly complete (23/31 tasks)
+**Phase 5 Status**: ⚠️ Mostly complete (24/32 tasks)
 - All UI components implemented and functional
 - Diff tracking working correctly
 - Save & commit modal with semver suggestions complete
 - Card search, add, remove, and printing switch all working
-- Maybeboard card search integrated
+- Bidirectional card movement between deck and maybeboard
+- Maybeboard card search integrated with full menu actions
 - Commander pricing data displaying correctly
 - Still needed:
   - Keyboard shortcuts
