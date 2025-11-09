@@ -127,25 +127,48 @@
 	});
 </script>
 
-<aside class="w-80 bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)] relative">
+<aside class="{isCollapsed ? 'w-12' : 'w-80'} bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)] relative transition-all duration-200">
 	<!-- Collapsible Header -->
 	<button
 		onclick={toggleCollapsed}
-		class="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors"
+		class="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors {isCollapsed ? 'writing-mode-vertical px-2' : ''}"
+		title={isCollapsed ? 'Expand Maybeboard' : 'Collapse Maybeboard'}
 	>
-		<div class="flex items-center gap-2">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform {isCollapsed ? '-rotate-90' : ''}"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-			</svg>
-			<h2 class="text-lg font-bold text-[var(--color-text-primary)]">Maybeboard</h2>
-			<span class="text-sm text-[var(--color-text-tertiary)]">({totalCards})</span>
-		</div>
+		{#if isCollapsed}
+			<!-- Collapsed state: vertical text -->
+			<div class="flex flex-col items-center gap-2 w-full">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform rotate-90"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+				<span class="text-sm font-bold text-[var(--color-text-primary)] vertical-text">
+					Maybeboard
+				</span>
+				<span class="text-xs text-[var(--color-text-tertiary)]">
+					{totalCards}
+				</span>
+			</div>
+		{:else}
+			<!-- Expanded state: horizontal layout -->
+			<div class="flex items-center gap-2">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+				<h2 class="text-lg font-bold text-[var(--color-text-primary)]">Maybeboard</h2>
+				<span class="text-sm text-[var(--color-text-tertiary)]">({totalCards})</span>
+			</div>
+		{/if}
 	</button>
 
 	{#if !isCollapsed}
@@ -409,3 +432,10 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.vertical-text {
+		writing-mode: vertical-rl;
+		text-orientation: mixed;
+	}
+</style>

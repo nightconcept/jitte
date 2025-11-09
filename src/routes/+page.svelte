@@ -501,7 +501,7 @@
 			<!-- Center Column -->
 			<div class="flex-1 flex flex-col">
 				<!-- Deck List -->
-				<DeckList onCardHover={handleCardHover} />
+				<DeckList onCardHover={handleCardHover} onImport={handleImport} />
 
 				<!-- Statistics Panel (Bottom, Collapsible) -->
 				<div class="border-t border-[var(--color-border)]">

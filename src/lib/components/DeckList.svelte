@@ -8,7 +8,13 @@
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
 
-	let { onCardHover = undefined }: { onCardHover?: ((card: Card | null) => void) | undefined } = $props();
+	let { 
+		onCardHover = undefined,
+		onImport = undefined
+	}: { 
+		onCardHover?: ((card: Card | null) => void) | undefined;
+		onImport?: (() => void) | undefined;
+	} = $props();
 
 	let deckStoreState = $state($deckStore);
 
@@ -215,6 +221,20 @@
 		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Decklist</h2>
 
 		<div class="flex items-center gap-3">
+			<!-- Bulk Edit Button -->
+			{#if isEditing && onImport}
+				<button
+					onclick={onImport}
+					class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2"
+					title="Bulk Edit Decklist as Plaintext"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+					</svg>
+					Bulk Edit
+				</button>
+			{/if}
+
 			<!-- View Dropdown -->
 			<div class="relative">
 				<button
@@ -374,18 +394,20 @@
 												</div>
 
 												<!-- Card Menu Icon -->
+												{#if isEditing}
 												<div class="flex-shrink-0">
-													<button
-														class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-border)] rounded"
-														onmousedown={(e) => e.stopPropagation()}
-														onclick={(e) => { e.stopPropagation(); toggleCardMenu(card.name); }}
-														title="Card options"
-													>
-														<svg class="w-4 h-4 text-[var(--color-text-secondary)]" fill="currentColor" viewBox="0 0 16 16">
-															<path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-														</svg>
-													</button>
-												</div>
+												<button
+												 class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-border)] rounded"
+												 onmousedown={(e) => e.stopPropagation()}
+												 onclick={(e) => { e.stopPropagation(); toggleCardMenu(card.name); }}
+												  title="Card options"
+												>
+												<svg class="w-4 h-4 text-[var(--color-text-secondary)]" fill="currentColor" viewBox="0 0 16 16">
+												  <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+												  </svg>
+												  </button>
+											</div>
+										{/if}
 
 												<!-- Card Menu Dropdown (positioned relative to card row) -->
 												{#if openCardMenu === card.name}
