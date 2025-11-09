@@ -124,6 +124,20 @@
 		[CardCategory.Other]: 'Other'
 	};
 
+	// Map categories to Mana Font icon classes
+	const categoryIcons: Record<CardCategory, string> = {
+		[CardCategory.Commander]: 'ms-planeswalker',  // Commander uses planeswalker icon
+		[CardCategory.Companion]: 'ms-planeswalker',  // Companion also uses planeswalker icon
+		[CardCategory.Planeswalker]: 'ms-planeswalker',
+		[CardCategory.Creature]: 'ms-creature',
+		[CardCategory.Instant]: 'ms-instant',
+		[CardCategory.Sorcery]: 'ms-sorcery',
+		[CardCategory.Artifact]: 'ms-artifact',
+		[CardCategory.Enchantment]: 'ms-enchantment',
+		[CardCategory.Land]: 'ms-land',
+		[CardCategory.Other]: 'ms-artifact'  // Use artifact icon as fallback
+	};
+
 	// Collapsible sections state
 	let collapsed = $state<Record<string, boolean>>({
 		[CardCategory.Commander]: false,
@@ -347,6 +361,7 @@
 							>
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 							</svg>
+							<i class="ms {categoryIcons[category]} text-base text-[var(--color-text-primary)]"></i>
 							<span class="font-semibold text-[var(--color-text-primary)]">
 								{categoryLabels[category]}
 							</span>
