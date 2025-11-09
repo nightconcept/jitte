@@ -3,7 +3,7 @@
  * Uses browser-native Compression Streams API
  */
 
-import type { DeckManifest, Maybeboard } from '$lib/types';
+import type { DeckManifest, Maybeboard, MaybeboardCategory } from '$lib/types';
 
 /**
  * Structure of files within a deck zip archive
@@ -12,7 +12,7 @@ export interface DeckArchive {
 	/** manifest.json - Deck metadata and branch info */
 	manifest: DeckManifest;
 
-	/** maybeboard.json - Shared maybeboard across all versions */
+	/** maybeboard - Shared maybeboard across all versions */
 	maybeboard: Maybeboard;
 
 	/** Version files organized by branch */
@@ -47,10 +47,20 @@ export async function compressDeckArchive(archive: DeckArchive, _deckName: strin
 		content: JSON.stringify(archive.manifest, null, 2)
 	});
 
-	// Add maybeboard.json
+	// Add maybeboard files - each category as a separate JSON file in maybeboards/ folder
+	for (const category of archive.maybeboard.categories) {
+		files.push({
+			path: `maybeboards/${category.id}.json`,
+			content: JSON.stringify(category, null, 2)
+		});
+	}
+
+	// Add maybeboard metadata (defaultCategoryId and other settings)
 	files.push({
-		path: 'maybeboard.json',
-		content: JSON.stringify(archive.maybeboard, null, 2)
+		path: 'maybeboards/metadata.json',
+		content: JSON.stringify({
+			defaultCategoryId: archive.maybeboard.defaultCategoryId
+		}, null, 2)
 	});
 
 	// Add version files for each branch
@@ -92,20 +102,36 @@ export async function decompressDeckArchive(zipBlob: Blob): Promise<DeckArchive>
 	}
 	const manifest: DeckManifest = JSON.parse(manifestFile.content);
 
-	// Parse maybeboard
-	const maybeboardFile = files.find((f) => f.path === 'maybeboard.json');
-	if (!maybeboardFile) {
-		throw new Error('Invalid deck archive: maybeboard.json not found');
+	// Parse maybeboard - maybeboards/ folder with individual category files
+	const maybeboardMetadataFile = files.find((f) => f.path === 'maybeboards/metadata.json');
+	const maybeboardCategoryFiles = files.filter((f) =>
+		f.path.startsWith('maybeboards/') &&
+		f.path.endsWith('.json') &&
+		f.path !== 'maybeboards/metadata.json'
+	);
+
+	if (!maybeboardMetadataFile && maybeboardCategoryFiles.length === 0) {
+		throw new Error('Invalid deck archive: no maybeboard data found');
 	}
-	const maybeboard: Maybeboard = JSON.parse(maybeboardFile.content);
+
+	const metadata = maybeboardMetadataFile
+		? JSON.parse(maybeboardMetadataFile.content)
+		: { defaultCategoryId: 'main' };
+
+	const categories = maybeboardCategoryFiles.map(file => JSON.parse(file.content));
+
+	const maybeboard: Maybeboard = {
+		categories,
+		defaultCategoryId: metadata.defaultCategoryId
+	};
 
 	// Parse version files by branch
 	const versions: Record<string, Record<string, string>> = {};
 	const stashes: Record<string, string> = {};
 
 	for (const file of files) {
-		// Skip manifest and maybeboard
-		if (file.path === 'manifest.json' || file.path === 'maybeboard.json') {
+		// Skip manifest and maybeboard files
+		if (file.path === 'manifest.json' || file.path.startsWith('maybeboards/')) {
 			continue;
 		}
 

@@ -113,32 +113,34 @@
 				<span class="text-lg font-bold text-[var(--color-text-primary)]">Jitte</span>
 			</div>
 
-			<!-- Divider -->
-			<div class="h-6 w-px bg-[var(--color-border)]"></div>
+			{#if hasDeck}
+				<!-- Divider -->
+				<div class="h-6 w-px bg-[var(--color-border)]"></div>
 
-			<!-- New Deck -->
-			<button
-				onclick={onNewDeck}
-				class="px-3 py-2 text-sm rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white font-medium flex items-center gap-2 h-[38px]"
-				title="Create New Deck"
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-				</svg>
-				New
-			</button>
+				<!-- New Deck -->
+				<button
+					onclick={onNewDeck}
+					class="px-3 py-2 text-sm rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white font-medium flex items-center gap-2 h-[38px]"
+					title="Create New Deck"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					</svg>
+					New
+				</button>
 
-			<!-- Load Deck -->
-			<button
-				onclick={onLoadDeck}
-				class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
-				title="Load Existing Deck"
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
-				</svg>
-				Load
-			</button>
+				<!-- Load Deck -->
+				<button
+					onclick={onLoadDeck}
+					class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
+					title="Load Existing Deck"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+					</svg>
+					Load
+				</button>
+			{/if}
 
 			{#if hasDeck}
 				<!-- Divider -->
@@ -231,9 +233,11 @@
 		</div>
 
 		<!-- Center: Edit/View Mode Toggle -->
+		<!-- TODO: Temporarily hidden - deck is always in unlocked (editing) state by default -->
+		<!-- Future: Can restore lock/unlock toggle for read-only mode -->
+		<!--
 		{#if hasDeck}
 		<div class="flex items-center">
-		<!-- Edit/View Mode Toggle -->
 			<button
 				onclick={onToggleEdit}
 				class="px-4 py-2 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded font-medium flex items-center gap-2 h-[38px] {isEditing ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary))'}"
@@ -252,7 +256,8 @@
 				{/if}
 			</button>
 		</div>
-	{/if}
+		{/if}
+		-->
 
 	<!-- Right: Branch, Version, Save, and Actions -->
 	{#if hasDeck}

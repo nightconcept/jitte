@@ -16,8 +16,10 @@
 	function updatePosition() {
 		if (triggerElement) {
 			const rect = triggerElement.getBoundingClientRect();
+			// getBoundingClientRect() returns viewport-relative coordinates
+			// For fixed positioning, we use these directly without scroll offsets
 			tooltipPosition = {
-				top: rect.bottom + 8, // 8px below the trigger
+				top: rect.bottom + 4, // 4px below the trigger
 				left: rect.left + rect.width / 2 // centered horizontally
 			};
 		}
@@ -54,16 +56,12 @@
 
 	<!-- Tooltip content -->
 	{#if isVisible}
-		<!-- Invisible padding area for easier hover -->
 		<div
-			class="fixed z-[9999]"
-			style="top: {tooltipPosition.top - 16}px; left: {tooltipPosition.left}px; transform: translateX(-50%); padding: 16px;"
+			class="z-[9999] px-4 py-3 text-sm bg-gray-900 text-white border border-gray-700 rounded-lg shadow-xl min-w-[280px] max-w-[400px]"
+			style="position: fixed; top: {tooltipPosition.top}px; left: {tooltipPosition.left}px; transform: translateX(-50%);"
 			onmouseenter={handleMouseEnter}
 			onmouseleave={handleMouseLeave}
 		>
-			<div
-				class="px-4 py-3 text-sm bg-gray-900 text-white border border-gray-700 rounded-lg shadow-xl min-w-[280px] max-w-[400px]"
-			>
 			<!-- Bracket Description -->
 			<div class="mb-2 pb-2 border-b border-gray-700">
 				<div class="font-semibold text-white mb-1">
@@ -125,7 +123,6 @@
 					<div class="text-gray-400">• Turn 3-4 wins expected</div>
 					<div class="text-gray-400">• Maximum optimization</div>
 				{/if}
-			</div>
 			</div>
 		</div>
 	{/if}

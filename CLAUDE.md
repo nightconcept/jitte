@@ -13,6 +13,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **APIs**: Scryfall (primary), MTG API (secondary fallback)
 - **Caching**: IndexedDB for card images and bulk data
 
+### Icon Libraries
+This project uses two specialized icon libraries for Magic: The Gathering:
+
+#### Mana Font (https://mana.andrewgioia.com/)
+Used for rendering mana symbols and color identity.
+
+**Usage with ManaSymbol component:**
+```svelte
+import ManaSymbol from '$lib/components/ManaSymbol.svelte';
+
+<!-- Display mana cost -->
+{#if card.mana_cost}
+  <ManaSymbol cost={card.mana_cost} size="lg" />
+{/if}
+```
+
+**Direct usage for color identity:**
+```svelte
+<!-- Display color identity -->
+{#each card.colorIdentity as color}
+  <i class="ms ms-{color.toLowerCase()} ms-cost ms-shadow text-lg" title={color}></i>
+{/each}
+```
+
+**Available classes:**
+- Base: `ms` (required)
+- Cost style: `ms-cost` (for mana symbols)
+- Shadow: `ms-shadow` (adds depth)
+- Sizes: `text-sm`, `text-base`, `text-lg`, `text-xl`, `text-2xl`
+- Symbols: `ms-w`, `ms-u`, `ms-b`, `ms-r`, `ms-g`, `ms-c`, `ms-0` through `ms-20`, `ms-x`, etc.
+- Hybrid: `ms-wu`, `ms-ub`, `ms-br`, `ms-rg`, `ms-gw`, etc.
+- Phyrexian: `ms-wp`, `ms-up`, `ms-bp`, `ms-rp`, `ms-gp`
+
+#### Keyrune (https://keyrune.andrewgioia.com/)
+Used for rendering Magic set symbols.
+
+**Usage:**
+```svelte
+<!-- Display set symbol with rarity -->
+<i class="ss ss-{set.toLowerCase()} ss-{rarity} ss-grad ss-2x"
+   title="{setName} - {rarity}">
+</i>
+
+<!-- Full set information display -->
+<div class="flex items-center gap-2">
+  <i class="ss ss-cmm ss-rare ss-grad ss-2x" title="Commander Masters - rare"></i>
+  <span>Commander Masters (CMM) #123</span>
+</div>
+```
+
+**Available classes:**
+- Base: `ss` (required)
+- Set code: `ss-{set}` (e.g., `ss-cmm`, `ss-ltr`, `ss-woe`)
+- Rarity: `ss-common`, `ss-uncommon`, `ss-rare`, `ss-mythic`
+- Gradient: `ss-grad` (adds color gradient based on rarity)
+- Sizes: `ss-2x`, `ss-3x`, `ss-4x`, `ss-5x`, `ss-6x`
+
+**Best practices:**
+- Always include set name and rarity in the title attribute for accessibility
+- Use `ss-grad` with rarity classes for colored symbols
+- Always display full set information: set name, set code (uppercase), and collector number
+- Example: "Commander Masters (CMM) #123" not just "CMM #123"
+
 ## Svelte 5 Runes
 
 This project uses **Svelte 5 Runes** for reactivity. Runes are compiler symbols using function syntax that provide universal, fine-grained reactivity.

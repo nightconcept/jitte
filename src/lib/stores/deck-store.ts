@@ -55,7 +55,7 @@ function createDeckStore() {
 				deck,
 				maybeboard,
 				statistics,
-				isEditing: false,
+				isEditing: true, // Default to unlocked (editing enabled)
 				hasUnsavedChanges: false
 			});
 		},
@@ -69,7 +69,7 @@ function createDeckStore() {
 				deck,
 				maybeboard,
 				statistics,
-				isEditing: false,
+				isEditing: true, // Default to unlocked (editing enabled)
 				hasUnsavedChanges: false
 			});
 		},
@@ -200,6 +200,36 @@ function createDeckStore() {
 				const updatedCards = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Change the commander to a different card
+		 */
+		changeCommander(newCommander: Card): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Replace the commander card
+				const updatedCards = {
+					...state.deck.cards,
+					[CardCategory.Commander]: [{ ...newCommander, quantity: 1 }]
 				};
 
 				// Create new deck object with all updates

@@ -86,6 +86,11 @@ export function createBranch(
 	manifest: DeckManifest,
 	options: CreateBranchOptions
 ): DeckManifest {
+	// Validate branch name - cannot be "maybeboards" (reserved for maybeboard storage)
+	if (options.name.toLowerCase() === 'maybeboards') {
+		throw new Error('Branch name "maybeboards" is reserved');
+	}
+
 	// Check if branch already exists
 	if (manifest.branches.some((b) => b.name === options.name)) {
 		throw new Error(`Branch ${options.name} already exists`);
@@ -252,6 +257,11 @@ export function renameBranch(
 	// Can't rename main
 	if (oldName === 'main') {
 		throw new Error('Cannot rename main branch');
+	}
+
+	// Validate new branch name - cannot be "maybeboards" (reserved for maybeboard storage)
+	if (newName.toLowerCase() === 'maybeboards') {
+		throw new Error('Branch name "maybeboards" is reserved');
 	}
 
 	// Check if new name already exists

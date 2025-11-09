@@ -353,7 +353,7 @@ export const themes: Record<ThemeName, Record<ThemeMode, ThemeColors>> = {
 /**
  * Default theme configuration
  */
-export const defaultTheme: ThemeName = 'tokyo-night';
+export const defaultTheme: ThemeName = 'rose-pine';
 export const defaultMode: ThemeMode = 'dark';
 
 /**

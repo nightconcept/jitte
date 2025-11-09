@@ -95,7 +95,7 @@
 	}
 
 	function handleDeleteCategory(categoryId: string) {
-		if (confirm('Delete this category? All cards will be removed.')) {
+		if (confirm('Delete this maybeboard? All cards will be removed.')) {
 			deckStore.deleteMaybeboardCategory(categoryId);
 			// Switch to main if we deleted the active category
 			if (activeCategory === categoryId) {
@@ -182,10 +182,10 @@
 				<button
 					onclick={() => categoryDropdownOpen = !categoryDropdownOpen}
 					class="w-full px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-between"
-					title="Select Category"
+					title="Select Maybeboard"
 				>
 					<span class="truncate">
-						{currentCategory?.name || 'Select Category'}
+						{currentCategory?.name || 'Select Maybeboard'}
 						<span class="text-xs text-[var(--color-text-tertiary)] ml-1">
 							({cards.reduce((sum, c) => sum + c.quantity, 0)})
 						</span>
@@ -218,7 +218,7 @@
 											handleDeleteCategory(category.id);
 										}}
 										class="mr-2 p-1 hover:bg-[var(--color-border)] rounded flex-shrink-0"
-										title="Delete Category"
+										title="Delete Maybeboard"
 									>
 										<svg class="w-3 h-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -236,7 +236,7 @@
 				<button
 					onclick={() => showNewCategoryInput = !showNewCategoryInput}
 					class="px-3 py-2 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] rounded text-white text-sm font-bold flex-shrink-0"
-					title="Add Category"
+					title="Add Maybeboard"
 				>
 					+
 				</button>
@@ -249,7 +249,7 @@
 				<input
 					type="text"
 					bind:value={newCategoryName}
-					placeholder="Category name"
+					placeholder="Maybeboard name"
 					class="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') handleAddCategory();
@@ -365,13 +365,13 @@
 				{/each}
 			{:else}
 				<div class="text-center py-8 text-[var(--color-text-tertiary)] text-sm">
-					No cards in this category
+					No cards in this maybeboard
 				</div>
 			{/if}
 		</div>
 	{:else}
 		<div class="text-center py-8 text-[var(--color-text-tertiary)] text-sm">
-			No maybeboard categories
+			No maybeboards
 		</div>
 	{/if}
 		</div>

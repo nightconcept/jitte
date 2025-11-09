@@ -17,6 +17,9 @@ export interface ParseResult {
 
 	/** Total lines processed */
 	totalLines: number;
+
+	/** Commander card name (if detected from [Commander{top}] tag) */
+	commanderName?: string;
 }
 
 /**
@@ -44,6 +47,7 @@ export function parsePlaintext(text: string): ParseResult {
 	const lines = text.split('\n');
 	const cards: Card[] = [];
 	const errors: ParseError[] = [];
+	let commanderName: string | undefined;
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i].trim();
@@ -59,10 +63,17 @@ export function parsePlaintext(text: string): ParseResult {
 			continue;
 		}
 
+		// Check if this line is tagged as commander
+		const isCommander = hasCommanderTag(line);
+
 		try {
 			const card = parseLine(line);
 			if (card) {
 				cards.push(card);
+				// If this is tagged as commander, save it
+				if (isCommander && !commanderName) {
+					commanderName = card.name;
+				}
 			}
 		} catch (error) {
 			errors.push({
@@ -76,8 +87,35 @@ export function parsePlaintext(text: string): ParseResult {
 	return {
 		cards,
 		errors,
-		totalLines: lines.length
+		totalLines: lines.length,
+		commanderName
 	};
+}
+
+/**
+ * Checks if a line has the [Commander{top}] tag (Archidekt format)
+ */
+export function hasCommanderTag(line: string): boolean {
+	return line.includes('[Commander{top}]') || line.includes('[Commander]');
+}
+
+/**
+ * Cleans a line from Archidekt format by removing tags and finish indicators
+ *
+ * Examples:
+ * - "1x Card (set) 123 *F* [Tag] ^custom^" -> "1x Card (set) 123"
+ * - "1x Card (set) 123 [Tag]" -> "1x Card (set) 123"
+ * - "1x Card (set) 123" -> "1x Card (set) 123" (unchanged)
+ */
+function cleanArchidektLine(line: string): string {
+	// Remove everything from the first '[' onwards (tags and custom tags)
+	let cleaned = line.split('[')[0].trim();
+
+	// Remove finish indicators like *F*, *E*, etc. (asterisk, letter, asterisk)
+	// Pattern: space followed by *{one or more letters}* followed by optional space
+	cleaned = cleaned.replace(/\s+\*[A-Z]+\*\s*/gi, ' ').trim();
+
+	return cleaned;
 }
 
 /**
@@ -88,11 +126,14 @@ export function parsePlaintext(text: string): ParseResult {
  * - "1 Sol Ring (2XM) 97" -> { name: "Sol Ring", quantity: 1, setCode: "2XM", collectorNumber: "97" }
  * - "1 Kenrith, the Returned King (plst) ELD-303" -> { name: "Kenrith, the Returned King", quantity: 1, setCode: "plst", collectorNumber: "ELD-303" }
  * - "2x Counterspell" -> { name: "Counterspell", quantity: 2 }
+ * - "1x Card (set) 123 *F* [Tag]" -> { name: "Card", quantity: 1, setCode: "set", collectorNumber: "123" }
  *
  * @param line - Single line from decklist
  * @returns Card object or null if invalid
  */
 function parseLine(line: string): Card | null {
+	// Clean Archidekt format tags and finish indicators
+	const cleanedLine = cleanArchidektLine(line);
 	// Pattern: [quantity][x?] [card name] [(set) collector]?
 	// Examples:
 	//   1 Lightning Bolt
@@ -113,7 +154,7 @@ function parseLine(line: string): Card | null {
 	];
 
 	for (const pattern of patterns) {
-		const match = line.match(pattern);
+		const match = cleanedLine.match(pattern);
 		if (match) {
 			// Pattern 1: full format with set and collector number
 			if (match.length === 5) {

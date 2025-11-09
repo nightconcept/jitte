@@ -11,11 +11,13 @@
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CommitModal from '$lib/components/CommitModal.svelte';
 	import NewDeckModal from '$lib/components/NewDeckModal.svelte';
+	import ImportDeckModal from '$lib/components/ImportDeckModal.svelte';
 	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
 	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
 	import VersionComparisonModal from '$lib/components/VersionComparisonModal.svelte';
+	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
@@ -29,7 +31,10 @@
 	let showNewBranchModal = false;
 	let showEditDecklistModal = false;
 	let showCompareModal = false;
+	let showImportDeckModal = false;
 	let currentDecklistPlaintext = '';
+	let isLoadingCards = false;
+	let loadingMessage = 'Loading cards...';
 
 	const cardService = new CardService();
 
@@ -106,6 +111,175 @@
 			console.error('[handleCreateDeck] Error:', error);
 			showNewDeckModal = false; // Close modal even on error
 			toastStore.error(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	async function handleImportDeck(event: CustomEvent<{ deckName: string; commanderName: string; decklist: string }>) {
+		const { deckName, commanderName, decklist } = event.detail;
+
+		// Close modal immediately and show loading
+		showImportDeckModal = false;
+		isLoadingCards = true;
+		loadingMessage = 'Importing deck...';
+		toastStore.info('Importing deck from decklist...');
+
+		try {
+			console.log('[handleImportDeck] Starting deck import:', { deckName, commanderName });
+
+			// Create the deck with the detected commander
+			await deckManager.createDeck(deckName, commanderName);
+
+			console.log('[handleImportDeck] Deck created, now importing cards');
+
+			// Enter edit mode
+			deckStore.setEditMode(true);
+
+			// Parse the full decklist first to detect if commander is tagged
+			const fullParseResult = parsePlaintext(decklist);
+
+			// Determine if we need to skip the first line or filter the commander from cards
+			let decklistWithoutCommander: string;
+			if (fullParseResult.commanderName) {
+				// Commander was found via [Commander{top}] tag
+				// Don't skip first line, but filter the commander from the parsed cards
+				decklistWithoutCommander = decklist;
+			} else {
+				// Commander is on the first line (Moxfield format)
+				// Skip the first line
+				const lines = decklist.split('\n');
+				decklistWithoutCommander = lines.slice(1).join('\n');
+			}
+
+			const parseResult = parsePlaintext(decklistWithoutCommander);
+
+			if (parseResult.cards.length === 0) {
+				showImportDeckModal = false;
+				toastStore.warning('No cards found in decklist (excluding commander)');
+				return;
+			}
+
+			// Build a map of existing cards (commander) for fast lookup
+			const existingCardsMap = new Map<string, Card>();
+			if ($deckStore) {
+				const categories: CardCategory[] = [
+					CardCategory.Commander,
+					CardCategory.Companion,
+					CardCategory.Planeswalker,
+					CardCategory.Creature,
+					CardCategory.Instant,
+					CardCategory.Sorcery,
+					CardCategory.Artifact,
+					CardCategory.Enchantment,
+					CardCategory.Land
+				];
+				for (const category of categories) {
+					const categoryCards = $deckStore.deck.cards[category] || [];
+					for (const card of categoryCards) {
+						existingCardsMap.set(card.name.toLowerCase(), card);
+					}
+				}
+			}
+
+			let successCount = 0;
+			let failedCards: string[] = [];
+			const finalCards: Card[] = [];
+
+			// Filter out the commander if it was tagged (to avoid duplicates)
+			const cardsToImport = fullParseResult.commanderName
+				? parseResult.cards.filter(card => card.name !== commanderName)
+				: parseResult.cards;
+
+			// Fetch all cards from Scryfall using batch API
+			const batchResult = await cardService.getCardsBatch(cardsToImport);
+
+			// Process found cards
+			for (const parsedCard of cardsToImport) {
+				// Try to find by set+collector first, fallback to name
+				const lookupKey = parsedCard.setCode && parsedCard.collectorNumber
+					? `${parsedCard.setCode.toLowerCase()}|${parsedCard.collectorNumber}`
+					: parsedCard.name.toLowerCase();
+
+				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
+
+				if (scryfallCard) {
+					// Convert to our Card type
+					const fullCard: Card = {
+						name: scryfallCard.name,
+						quantity: parsedCard.quantity,
+						setCode: parsedCard.setCode || scryfallCard.set.toUpperCase(),
+						collectorNumber: parsedCard.collectorNumber || scryfallCard.collector_number,
+						scryfallId: scryfallCard.id,
+						oracleId: scryfallCard.oracle_id,
+						types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
+							['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
+						),
+						cmc: scryfallCard.cmc,
+						manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
+						colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
+						oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
+						imageUrls: {
+							small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
+							normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
+							large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
+							png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
+							artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
+							borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
+						},
+						price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
+						prices: scryfallCard.prices.usd ? {
+							cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
+							tcgplayer: parseFloat(scryfallCard.prices.usd),
+							manapool: parseFloat(scryfallCard.prices.usd) * 0.95
+						} : undefined,
+						priceUpdatedAt: Date.now()
+					};
+
+					finalCards.push(fullCard);
+					successCount++;
+				} else {
+					// Card not found
+					failedCards.push(parsedCard.name);
+				}
+			}
+
+			// Add any cards from the not_found array
+			for (const notFoundCard of batchResult.notFound) {
+				const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
+					? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
+					: notFoundCard.name;
+
+				if (!failedCards.includes(displayName)) {
+					failedCards.push(displayName);
+				}
+			}
+
+			// Add all imported cards to the deck
+			for (const card of finalCards) {
+				deckStore.addCard(card);
+			}
+
+			// Hide loading
+			isLoadingCards = false;
+
+			// Show result summary
+			if (parseResult.errors.length > 0 || failedCards.length > 0) {
+				const errorMessage = [];
+				if (parseResult.errors.length > 0) {
+					errorMessage.push(`${parseResult.errors.length} parsing errors (lines skipped)`);
+				}
+				if (failedCards.length > 0) {
+					errorMessage.push(`${failedCards.length} cards not found: ${failedCards.join(', ')}`);
+				}
+				toastStore.warning(`Deck imported! ${successCount} cards loaded successfully. ${errorMessage.join('. ')}`, 5000);
+			} else {
+				toastStore.success(`Deck imported successfully! ${successCount} cards loaded.`);
+			}
+
+			console.log('[handleImportDeck] Complete');
+		} catch (error) {
+			console.error('[handleImportDeck] Error:', error);
+			isLoadingCards = false;
+			toastStore.error(`Failed to import deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
 		}
 	}
 
@@ -203,10 +377,17 @@
 			return;
 		}
 
+		// Close modal and show loading
+		showEditDecklistModal = false;
+		isLoadingCards = true;
+		loadingMessage = 'Processing decklist...';
+		toastStore.info('Loading cards from Scryfall...');
+
 		// Parse the decklist
 		const parseResult = parsePlaintext(decklist);
 
 		if (parseResult.cards.length === 0) {
+			isLoadingCards = false;
 			toastStore.warning('No valid cards found in decklist');
 			return;
 		}
@@ -330,6 +511,9 @@
 		// Replace the entire deck with the new cards
 		deckStore.replaceDeck(finalCards);
 
+		// Hide loading
+		isLoadingCards = false;
+
 		// Show result summary
 		if (parseResult.errors.length > 0 || failedCards.length > 0) {
 			const errorMessage = [];
@@ -343,8 +527,6 @@
 		} else {
 			toastStore.success(`Decklist updated successfully! ${successCount} cards loaded.`);
 		}
-
-		showEditDecklistModal = false;
 	}
 
 	async function handleSwitchVersion(version: string) {
@@ -472,6 +654,16 @@
 					</button>
 
 					<button
+						on:click={() => showImportDeckModal = true}
+						class="w-full px-6 py-3 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2 transition-colors"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+						</svg>
+						Import Deck
+					</button>
+
+					<button
 						on:click={handleLoadDeck}
 						class="w-full px-6 py-3 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2 transition-colors"
 					>
@@ -530,6 +722,12 @@
 	on:close={() => showNewDeckModal = false}
 />
 
+<ImportDeckModal
+	isOpen={showImportDeckModal}
+	on:import={handleImportDeck}
+	on:close={() => showImportDeckModal = false}
+/>
+
 <DeckPickerModal
 	isOpen={showDeckPickerModal}
 	decks={$deckManager.decks}
@@ -564,3 +762,6 @@
 	currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 	onClose={() => showCompareModal = false}
 />
+
+<!-- Loading Overlay -->
+<LoadingOverlay isLoading={isLoadingCards} message={loadingMessage} />
