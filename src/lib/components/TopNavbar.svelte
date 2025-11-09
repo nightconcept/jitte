@@ -165,15 +165,23 @@
 						<div class="absolute top-full mt-1 left-0 min-w-[180px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
 							<button
 								onclick={() => {
-									if (onExport) onExport('plaintext');
+									if (onExport) onExport('archidekt');
 									exportDropdownOpen = false;
 								}}
 								class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+								<!-- Archidekt Logo -->
+								<svg class="w-4 h-4" viewBox="0 0 950 950" xmlns="http://www.w3.org/2000/svg">
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1846.5793449325784, 3187.4970451598238)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#333333" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1677.7490226669538, 2814.728490472323)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1635.6136466903913, 2824.5324455504488)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#FF9C00" transform="matrix(-4.182153701782227, 0.007560910191386938, -0.007560910191386938, -4.182153701782227, 1466.783203125, 2451.7641601562505)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1427.6663810653913, 3188.1803947691988)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#CBCBCB" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1258.8360587997663, 2815.412572503573)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1634.0981437607038, 3067.1901603941988)"/>
+									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#333333" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1465.2679435653918, 2694.4216057066988)"/>
 								</svg>
-								Plaintext
+								Archidekt
 							</button>
 							<button
 								onclick={() => {
@@ -192,23 +200,15 @@
 							</button>
 							<button
 								onclick={() => {
-									if (onExport) onExport('archidekt');
+									if (onExport) onExport('plaintext');
 									exportDropdownOpen = false;
 								}}
-								class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2 border-t border-[var(--color-border)]"
+								class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 							>
-								<!-- Archidekt Logo -->
-								<svg class="w-4 h-4" viewBox="0 0 950 950" xmlns="http://www.w3.org/2000/svg">
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1846.5793449325784, 3187.4970451598238)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#333333" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1677.7490226669538, 2814.728490472323)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1635.6136466903913, 2824.5324455504488)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#FF9C00" transform="matrix(-4.182153701782227, 0.007560910191386938, -0.007560910191386938, -4.182153701782227, 1466.783203125, 2451.7641601562505)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1427.6663810653913, 3188.1803947691988)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#CBCBCB" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1258.8360587997663, 2815.412572503573)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="currentColor" transform="matrix(-4.8999924659729, 0.008858803659677505, -0.008858803659677505, -4.8999924659729, 1634.0981437607038, 3067.1901603941988)"/>
-									<path d="M277,546l-43,25l-43-25v-50l43-25l43,25V546z" fill="#333333" transform="matrix(-4.182153701782227, 0.007560909725725653, -0.007560909725725653, -4.182153701782227, 1465.2679435653918, 2694.4216057066988)"/>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 								</svg>
-								Archidekt
+								Plaintext
 							</button>
 						</div>
 					{/if}
