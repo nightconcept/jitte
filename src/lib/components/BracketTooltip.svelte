@@ -2,23 +2,51 @@
 	import type { Deck } from '$lib/types/deck';
 	import { isGameChanger, getBracketDescription, type BracketLevel } from '$lib/utils/game-changers';
 
-	export let deck: Deck;
-	export let bracketLevel: BracketLevel;
-	export let gameChangers: string[];
+	let { deck, bracketLevel, gameChangers }: {
+		deck: Deck;
+		bracketLevel: BracketLevel;
+		gameChangers: string[];
+	} = $props();
 
-	let isVisible = false;
+	let isVisible = $state(false);
+	let triggerElement = $state<HTMLDivElement | null>(null);
+	let tooltipPosition = $state({ top: 0, left: 0 });
+	let hideTimeout: number | null = null;
+
+	function updatePosition() {
+		if (triggerElement) {
+			const rect = triggerElement.getBoundingClientRect();
+			tooltipPosition = {
+				top: rect.bottom + 8, // 8px below the trigger
+				left: rect.left + rect.width / 2 // centered horizontally
+			};
+		}
+	}
+
+	function handleMouseEnter() {
+		// Clear any pending hide timeout
+		if (hideTimeout !== null) {
+			clearTimeout(hideTimeout);
+			hideTimeout = null;
+		}
+		isVisible = true;
+		updatePosition();
+	}
+
+	function handleMouseLeave() {
+		// Delay hiding by 300ms
+		hideTimeout = window.setTimeout(() => {
+			isVisible = false;
+			hideTimeout = null;
+		}, 300);
+	}
 </script>
 
 <div
+	bind:this={triggerElement}
 	class="relative inline-flex"
-	on:mouseenter={() => {
-		console.log('Bracket tooltip mouseenter');
-		isVisible = true;
-	}}
-	on:mouseleave={() => {
-		console.log('Bracket tooltip mouseleave');
-		isVisible = false;
-	}}
+	onmouseenter={handleMouseEnter}
+	onmouseleave={handleMouseLeave}
 	role="tooltip"
 >
 	<!-- Trigger content (slot) -->
@@ -26,13 +54,16 @@
 
 	<!-- Tooltip content -->
 	{#if isVisible}
-		<!-- Debug: tooltip is visible -->
-		<div class="fixed top-2 right-2 bg-red-500 text-white p-2 text-xs z-[9999]">
-			Tooltip Active! isVisible={isVisible}
-		</div>
+		<!-- Invisible padding area for easier hover -->
 		<div
-			class="absolute z-[100] px-4 py-3 text-sm bg-gray-900 text-white border border-gray-700 rounded-lg shadow-xl pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 min-w-[280px] max-w-[400px]"
+			class="fixed z-[9999]"
+			style="top: {tooltipPosition.top - 16}px; left: {tooltipPosition.left}px; transform: translateX(-50%); padding: 16px;"
+			onmouseenter={handleMouseEnter}
+			onmouseleave={handleMouseLeave}
 		>
+			<div
+				class="px-4 py-3 text-sm bg-gray-900 text-white border border-gray-700 rounded-lg shadow-xl min-w-[280px] max-w-[400px]"
+			>
 			<!-- Bracket Description -->
 			<div class="mb-2 pb-2 border-b border-gray-700">
 				<div class="font-semibold text-white mb-1">
@@ -65,7 +96,8 @@
 			{/if}
 
 			<!-- Criteria Info -->
-			<div class="mt-2 pt-2 border-t border-gray-700 text-xs text-gray-400">
+			<div class="mt-2 pt-2 border-t border-gray-700 text-xs">
+				<div class="font-semibold text-gray-300 mb-1">Bracket Criteria:</div>
 				{#if bracketLevel === 1}
 					<div class="text-green-400">✓ No Game Changers</div>
 					<div class="text-green-400">✓ No 2-card infinite combos</div>
@@ -73,23 +105,28 @@
 					<div class="text-green-400">✓ No mass land destruction</div>
 				{:else if bracketLevel === 2}
 					<div class="text-green-400">✓ No Game Changers</div>
-					<div class="text-gray-300">Precon-level power</div>
+					<div class="text-gray-400">• Precon-level power</div>
+					<div class="text-gray-400">• Minimal optimization</div>
 				{:else if bracketLevel === 3}
 					<div class="text-amber-400">! 1-3 Game Changers</div>
-					<div class="text-gray-300">Upgraded deck</div>
+					<div class="text-gray-400">• Upgraded precon or focused casual</div>
+					<div class="text-gray-400">• Some tutors and fast mana</div>
 				{:else if bracketLevel === 4}
-					<div class="text-orange-400">! 4+ Game Changers</div>
-					<div class="text-gray-300">Highly tuned</div>
+					<div class="text-orange-400 font-semibold mb-1">! 4+ Game Changers detected</div>
+					<div class="text-gray-400">• Multiple fast mana sources</div>
+					<div class="text-gray-400">• Powerful tutors (Demonic, Vampiric, etc.)</div>
+					<div class="text-gray-400">• Strong card advantage engines</div>
+					<div class="text-gray-400">• Efficient 2-card combos</div>
+					<div class="text-gray-400">• Free interaction (Force of Will, etc.)</div>
+					<div class="text-gray-400">• Optimized mana base</div>
 				{:else if bracketLevel === 5}
-					<div class="text-red-400">! Competitive EDH</div>
-					<div class="text-gray-300">No restrictions</div>
+					<div class="text-red-400 font-semibold">! Competitive EDH (cEDH)</div>
+					<div class="text-gray-400">• No restrictions on power level</div>
+					<div class="text-gray-400">• Turn 3-4 wins expected</div>
+					<div class="text-gray-400">• Maximum optimization</div>
 				{/if}
 			</div>
-
-			<!-- Arrow -->
-			<div
-				class="absolute w-0 h-0 border-4 border-transparent border-b-gray-900 bottom-full left-1/2 -translate-x-1/2"
-			></div>
+			</div>
 		</div>
 	{/if}
 </div>
