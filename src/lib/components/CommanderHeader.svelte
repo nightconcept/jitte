@@ -98,7 +98,7 @@
 </script>
 
 <!-- Compact Fixed Header -->
-<div class="sticky top-[57px] z-40 h-16 border-b border-[var(--color-border)]">
+<div class="sticky top-[57px] z-40 h-20 flex-shrink-0 border-b border-[var(--color-border)]" style="transform: translateZ(0);">
 	<div class="relative h-full overflow-hidden">
 		<!-- Solid background -->
 		<div class="absolute inset-0 bg-[var(--color-bg-secondary)]"></div>
@@ -166,7 +166,7 @@
 			</div>
 
 			<!-- Center: Stats -->
-			<div class="flex items-center gap-6 text-[var(--color-text-primary)]">
+			<div class="flex items-center justify-center gap-6 text-[var(--color-text-primary)] flex-1">
 				<!-- Type Distribution -->
 				<div class="flex items-center gap-3">
 					<div class="flex items-center gap-1" title="Planeswalkers">
@@ -202,6 +202,7 @@
 
 			<!-- Right: Price -->
 			<div class="text-right">
+				<div class="text-sm text-[var(--color-text-secondary)] mb-1">Estimated Cost:</div>
 				<div class="font-bold text-lg text-green-500">
 					${statistics?.totalPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
 				</div>

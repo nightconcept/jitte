@@ -115,4 +115,21 @@
 		font-size: 1.2em;
 		line-height: 1;
 	}
+
+	/* Tap symbol - grey background with black arrow like physical cards */
+	.oracle-text :global(.ms-tap) {
+		background-color: #bbb;
+		color: #000;
+		border-radius: 50%;
+		padding: 0.15em;
+		font-size: 1em;
+	}
+
+	.oracle-text :global(.ms-untap) {
+		background-color: #bbb;
+		color: #000;
+		border-radius: 50%;
+		padding: 0.15em;
+		font-size: 1em;
+	}
 </style>

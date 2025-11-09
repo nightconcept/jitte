@@ -63,15 +63,15 @@
 	function getLegalityIcon(legality: string): { icon: string; color: string; title: string } {
 		switch (legality) {
 			case 'legal':
-				return { icon: '✓', color: 'text-green-600', title: 'Legal' };
+				return { icon: '✓', color: 'legal-icon', title: 'Legal' };
 			case 'banned':
-				return { icon: '✕', color: 'text-red-600', title: 'Banned' };
+				return { icon: '✕', color: 'banned-icon', title: 'Banned' };
 			case 'restricted':
-				return { icon: 'R', color: 'text-yellow-600', title: 'Restricted' };
+				return { icon: '1', color: 'restricted-icon', title: 'Restricted: 1 copy only' };
 			case 'not_legal':
-				return { icon: '○', color: 'text-gray-400', title: 'Not Legal' };
+				return { icon: '−', color: 'not-legal-icon', title: 'Not Legal' };
 			default:
-				return { icon: '○', color: 'text-gray-400', title: 'Not Legal' };
+				return { icon: '−', color: 'not-legal-icon', title: 'Not Legal' };
 		}
 	}
 
@@ -158,7 +158,7 @@
 				{:else if scryfallCard}
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<!-- Left Column: Image -->
-						<div class="flex flex-col items-center">
+						<div class="flex flex-col items-center sticky top-0 self-start">
 							{#if scryfallCard.image_uris?.normal}
 								<img
 									src={scryfallCard.image_uris.normal}
@@ -191,6 +191,13 @@
 							{#if scryfallCard.oracle_text}
 								<div class="text-sm text-[var(--color-text-secondary)] leading-relaxed">
 									<OracleText text={scryfallCard.oracle_text} />
+								</div>
+							{/if}
+
+							<!-- Flavor Text -->
+							{#if scryfallCard.flavor_text}
+								<div class="text-sm text-[var(--color-text-tertiary)] leading-relaxed italic border-t border-[var(--color-border)] pt-2 mt-2">
+									{scryfallCard.flavor_text}
 								</div>
 							{/if}
 
@@ -241,19 +248,19 @@
 										<div class="legend-tooltip absolute left-0 top-6 z-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg p-3 min-w-max opacity-0 pointer-events-none transition-opacity">
 											<div class="flex flex-col gap-2 text-xs">
 												<div class="flex items-center gap-2">
-													<span class="font-bold text-green-600 w-4">✓</span>
+													<span class="w-5 legal-icon">✓</span>
 													<span class="text-[var(--color-text-secondary)]">Legal</span>
 												</div>
 												<div class="flex items-center gap-2">
-													<span class="font-bold text-red-600 w-4">✕</span>
+													<span class="w-5 banned-icon">✕</span>
 													<span class="text-[var(--color-text-secondary)]">Banned</span>
 												</div>
 												<div class="flex items-center gap-2">
-													<span class="font-bold text-yellow-600 w-4">R</span>
-													<span class="text-[var(--color-text-secondary)]">Restricted</span>
+													<span class="w-5 restricted-icon">1</span>
+													<span class="text-[var(--color-text-secondary)]">Restricted: 1 copy only</span>
 												</div>
 												<div class="flex items-center gap-2">
-													<span class="font-bold text-gray-400 w-4">○</span>
+													<span class="w-5 not-legal-icon">−</span>
 													<span class="text-[var(--color-text-secondary)]">Not Legal</span>
 												</div>
 											</div>
@@ -261,12 +268,12 @@
 									</div>
 								</div>
 
-								<div class="grid grid-cols-3 gap-1 text-xs">
+								<div class="grid grid-cols-3 gap-1 text-sm">
 									{#each formatOrder.filter(format => scryfallCard.legalities[format]) as format}
 										{@const legality = scryfallCard.legalities[format]}
 										{@const legalityInfo = getLegalityIcon(legality)}
-										<div class="flex items-center gap-1 px-2 py-0.5 bg-[var(--color-bg-secondary)] rounded" title={legalityInfo.title}>
-											<span class="font-bold {legalityInfo.color} flex-shrink-0">
+										<div class="flex items-center gap-1.5 px-2 py-1 bg-[var(--color-bg-secondary)] rounded" title={legalityInfo.title}>
+											<span class="flex-shrink-0 {legalityInfo.color}">
 												{legalityInfo.icon}
 											</span>
 											<span class="text-[var(--color-text-secondary)] truncate">{formatDisplayNames[format] || format}</span>
@@ -279,7 +286,7 @@
 							{#if rulings.length > 0}
 								<div>
 									<h3 class="text-lg font-bold text-[var(--color-text-primary)] mb-2">Rulings</h3>
-									<div class="space-y-2 max-h-64 overflow-y-auto">
+									<div class="space-y-2">
 										{#each rulings as ruling}
 											<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
 												<p class="text-sm text-[var(--color-text-secondary)]">{ruling.comment}</p>
@@ -357,5 +364,61 @@
 	.legend-container:hover .legend-tooltip {
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	/* Green circle with white checkmark for legal */
+	:global(.legal-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5em;
+		height: 1.5em;
+		background-color: #22c55e;
+		color: white;
+		border-radius: 50%;
+		font-weight: bold;
+		font-size: 0.75em;
+	}
+
+	/* Red circle with white X for banned */
+	:global(.banned-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5em;
+		height: 1.5em;
+		background-color: #ef4444;
+		color: white;
+		border-radius: 50%;
+		font-weight: bold;
+		font-size: 0.75em;
+	}
+
+	/* Blue circle with white 1 for restricted */
+	:global(.restricted-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5em;
+		height: 1.5em;
+		background-color: #3b82f6;
+		color: white;
+		border-radius: 50%;
+		font-weight: bold;
+		font-size: 0.75em;
+	}
+
+	/* Grey circle with white minus for not legal */
+	:global(.not-legal-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5em;
+		height: 1.5em;
+		background-color: #9ca3af;
+		color: white;
+		border-radius: 50%;
+		font-weight: bold;
+		font-size: 0.75em;
 	}
 </style>
