@@ -64,6 +64,9 @@ export interface Card {
 
 	/** Timestamp of last price update */
 	priceUpdatedAt?: number;
+
+	/** Whether this card is a Game Changer (affects bracket level) */
+	isGameChanger?: boolean;
 }
 
 /**

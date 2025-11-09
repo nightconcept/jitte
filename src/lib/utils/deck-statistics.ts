@@ -5,12 +5,20 @@
 import type { Deck, DeckStatistics } from '$lib/types/deck';
 import type { Card, CardCategory, ManaColor } from '$lib/types/card';
 import { validateDeck } from './deck-validation';
+import { countGameChangers, calculateBracketLevel } from './game-changers';
 
 /**
  * Calculate comprehensive deck statistics
  */
 export function calculateStatistics(deck: Deck): DeckStatistics {
 	const allCards = getAllCards(deck);
+	const uniqueCardNames = getUniqueCardNames(deck);
+
+	// Calculate Game Changer count
+	const gameChangerCount = countGameChangers(uniqueCardNames);
+
+	// Calculate bracket level
+	const bracketLevel = calculateBracketLevel(gameChangerCount);
 
 	return {
 		totalCards: deck.cardCount,
@@ -21,7 +29,9 @@ export function calculateStatistics(deck: Deck): DeckStatistics {
 		landCount: countLands(deck),
 		nonLandCount: deck.cardCount - countLands(deck),
 		totalPrice: calculateTotalPrice(allCards),
-		warnings: validateDeck(deck).warnings
+		warnings: validateDeck(deck).warnings,
+		gameChangerCount,
+		bracketLevel
 	};
 }
 
@@ -39,6 +49,19 @@ function getAllCards(deck: Deck): Card[] {
 		}
 	}
 	return cards;
+}
+
+/**
+ * Get unique card names from a deck (for Game Changer counting)
+ */
+function getUniqueCardNames(deck: Deck): string[] {
+	const names: string[] = [];
+	for (const category of Object.keys(deck.cards) as CardCategory[]) {
+		for (const card of deck.cards[category]) {
+			names.push(card.name);
+		}
+	}
+	return names;
 }
 
 /**

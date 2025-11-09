@@ -13,6 +13,31 @@
 	let printings: ScryfallCard[] = [];
 	let loading = true;
 	let error: string | null = null;
+	let searchQuery = '';
+	let sortBy: 'year' | 'price' | 'set' = 'year';
+
+	// Filtered and sorted printings
+	$: filteredPrintings = printings
+		.filter(p => {
+			if (!searchQuery) return true;
+			const query = searchQuery.toLowerCase();
+			return (
+				p.set.toLowerCase().includes(query) ||
+				p.set_name.toLowerCase().includes(query) ||
+				p.collector_number.includes(query)
+			);
+		})
+		.sort((a, b) => {
+			if (sortBy === 'year') {
+				return new Date(b.released_at).getTime() - new Date(a.released_at).getTime();
+			} else if (sortBy === 'price') {
+				const priceA = a.prices.usd ? parseFloat(a.prices.usd) : 999999;
+				const priceB = b.prices.usd ? parseFloat(b.prices.usd) : 999999;
+				return priceA - priceB;
+			} else {
+				return a.set_name.localeCompare(b.set_name);
+			}
+		});
 
 	onMount(async () => {
 		if (!card.oracleId) {
@@ -98,6 +123,33 @@
 		<div class="px-6 py-4 border-b border-[var(--color-border)]">
 			<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Change Printing</h2>
 			<p class="text-sm text-[var(--color-text-secondary)] mt-1">{card.name}</p>
+
+			<!-- Search and Sort Controls -->
+			{#if !loading && !error && printings.length > 0}
+				<div class="flex gap-3 mt-4">
+					<!-- Search -->
+					<input
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search by set name or code..."
+						class="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+					/>
+
+					<!-- Sort -->
+					<select
+						bind:value={sortBy}
+						class="px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+					>
+						<option value="year">Sort by Year (Newest)</option>
+						<option value="price">Sort by Price (Low to High)</option>
+						<option value="set">Sort by Set Name</option>
+					</select>
+				</div>
+
+				<div class="text-xs text-[var(--color-text-tertiary)] mt-2">
+					Showing {filteredPrintings.length} of {printings.length} printings
+				</div>
+			{/if}
 		</div>
 
 		<!-- Body -->
@@ -119,28 +171,39 @@
 					<div class="text-[var(--color-text-secondary)]">No printings found</div>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-					{#each printings as printing}
+				<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+					{#each filteredPrintings as printing}
 						<button
 							on:click={() => selectPrinting(printing)}
-							class="flex flex-col bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] hover:border-[var(--color-brand-primary)] transition-colors p-3 text-left {printing.id === card.scryfallId ? 'ring-2 ring-[var(--color-brand-primary)]' : ''}"
+							class="group flex flex-col bg-[var(--color-bg-primary)] rounded-lg border-2 hover:border-[var(--color-brand-primary)] transition-all p-2 text-left {printing.id === card.scryfallId ? 'border-[var(--color-brand-primary)] ring-2 ring-[var(--color-brand-primary)]/50' : 'border-[var(--color-border)]'}"
 						>
 							<!-- Card Image -->
-							{#if printing.image_uris?.normal || printing.card_faces?.[0]?.image_uris?.normal}
-								<img
-									src={printing.image_uris?.normal || printing.card_faces?.[0]?.image_uris?.normal}
-									alt={printing.name}
-									class="w-full rounded mb-2"
-								/>
-							{:else}
-								<div class="w-full aspect-[2/3] bg-[var(--color-surface)] rounded mb-2 flex items-center justify-center">
-									<span class="text-xs text-[var(--color-text-tertiary)]">No image</span>
-								</div>
-							{/if}
+							<div class="relative overflow-hidden rounded mb-2">
+								{#if printing.image_uris?.normal || printing.card_faces?.[0]?.image_uris?.normal}
+									<img
+										src={printing.image_uris?.normal || printing.card_faces?.[0]?.image_uris?.normal}
+										alt={printing.name}
+										class="w-full rounded transition-transform group-hover:scale-105"
+										loading="lazy"
+									/>
+									{#if printing.id === card.scryfallId}
+										<div class="absolute top-2 right-2 bg-[var(--color-brand-primary)] text-white text-xs font-bold px-2 py-1 rounded">
+											CURRENT
+										</div>
+									{/if}
+								{:else}
+									<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded flex items-center justify-center">
+										<span class="text-xs text-[var(--color-text-tertiary)]">No image</span>
+									</div>
+								{/if}
+							</div>
 
 							<!-- Set Info -->
-							<div class="text-sm font-semibold text-[var(--color-text-primary)]">
+							<div class="text-xs font-bold text-[var(--color-text-primary)] mb-1">
 								{printing.set.toUpperCase()} #{printing.collector_number}
+							</div>
+							<div class="text-xs text-[var(--color-text-secondary)] mb-1 line-clamp-1" title={printing.set_name}>
+								{printing.set_name}
 							</div>
 							<div class="text-xs text-[var(--color-text-tertiary)] mb-2">
 								{new Date(printing.released_at).getFullYear()}
@@ -148,22 +211,21 @@
 
 							<!-- Price -->
 							{#if printing.prices.usd}
-								<div class="text-sm font-semibold text-green-500">
+								<div class="text-sm font-bold text-green-500">
 									${parseFloat(printing.prices.usd).toFixed(2)}
 								</div>
 							{:else}
-								<div class="text-xs text-[var(--color-text-tertiary)]">Price unavailable</div>
-							{/if}
-
-							<!-- Current indicator -->
-							{#if printing.id === card.scryfallId}
-								<div class="text-xs text-[var(--color-brand-primary)] font-semibold mt-2">
-									Current printing
-								</div>
+								<div class="text-xs text-[var(--color-text-tertiary)]">N/A</div>
 							{/if}
 						</button>
 					{/each}
 				</div>
+
+				{#if filteredPrintings.length === 0}
+					<div class="text-center py-12">
+						<div class="text-[var(--color-text-secondary)]">No printings match your search</div>
+					</div>
+				{/if}
 			{/if}
 		</div>
 

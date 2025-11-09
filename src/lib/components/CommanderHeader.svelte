@@ -3,13 +3,34 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
 	import { CardCategory } from '$lib/types/card';
+	import type { Deck } from '$lib/types/deck';
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
+
+	import { getBracketLabel, isGameChanger } from '$lib/utils/game-changers';
+	import BracketTooltip from './BracketTooltip.svelte';
 
 	$: deck = $deckStore?.deck;
 	$: statistics = $deckStore?.statistics;
 	$: commander = deck?.cards.commander?.[0];
 	$: commanderImageUrl = commander?.imageUrls?.artCrop || commander?.imageUrls?.large;
+	$: bracketLabel = statistics?.bracketLevel ? getBracketLabel(statistics.bracketLevel) : 'Unknown';
+
+	// Get list of Game Changers in the deck
+	$: gameChangersInDeck = deck ? getAllGameChangers(deck) : [];
+
+	function getAllGameChangers(deck: Deck | undefined): string[] {
+		if (!deck) return [];
+		const gameChangers: string[] = [];
+		for (const category of Object.keys(deck.cards) as (keyof typeof deck.cards)[]) {
+			for (const card of deck.cards[category]) {
+				if (isGameChanger(card.name)) {
+					gameChangers.push(card.name);
+				}
+			}
+		}
+		return gameChangers.sort();
+	}
 
 	// Get deck-wide warnings (not specific to a card)
 	$: deckWideWarnings = $validationWarnings.filter(w => !w.cardName);
@@ -124,6 +145,23 @@
 							<ValidationWarningIcon {warning} position="right" />
 						{/each}
 					</div>
+					<!-- Bracket Level -->
+					{#if deck && statistics?.bracketLevel}
+						<div class="flex items-center gap-2">
+							<span class="text-[var(--color-text-tertiary)]">Bracket:</span>
+							<BracketTooltip
+								deck={deck}
+								bracketLevel={statistics.bracketLevel}
+								gameChangers={gameChangersInDeck}
+							>
+								<span
+									class="font-semibold px-2 py-0.5 rounded text-xs cursor-help {statistics.bracketLevel === 1 ? 'bg-green-500/20 text-green-400' : statistics.bracketLevel === 2 ? 'bg-blue-500/20 text-blue-400' : statistics.bracketLevel === 3 ? 'bg-yellow-500/20 text-yellow-400' : statistics.bracketLevel === 4 ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'}"
+								>
+									{statistics.bracketLevel} - {bracketLabel}
+								</span>
+							</BracketTooltip>
+						</div>
+					{/if}
 				</div>
 			</div>
 

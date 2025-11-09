@@ -29,6 +29,38 @@ let user = $state({ name: 'Alice', age: 30 });
 
 **When to use:** For any mutable state that should trigger reactivity when changed.
 
+**🚨 CRITICAL WARNING - VERY IMPORTANT:**
+In Svelte 5 runes mode, regular `let` variables are **NOT REACTIVE**. Once you use any rune in a component (`$props()`, `$state()`, `$derived()`, `$effect()`), the component enters "runes mode" and regular `let` declarations will not trigger reactivity.
+
+**❌ WRONG - This will NOT update the UI:**
+```javascript
+let modalOpen = false; // Regular let - NOT REACTIVE in runes mode!
+let selectedCard: Card | null = null; // NOT REACTIVE!
+
+function openModal(card: Card) {
+  selectedCard = card; // State changes but UI won't update!
+  modalOpen = true; // State changes but UI won't update!
+}
+```
+
+**✅ CORRECT - This WILL update the UI:**
+```javascript
+let modalOpen = $state(false); // Reactive in runes mode
+let selectedCard = $state<Card | null>(null); // Reactive in runes mode
+
+function openModal(card: Card) {
+  selectedCard = card; // UI updates!
+  modalOpen = true; // UI updates!
+}
+```
+
+**Why this matters:**
+- Regular `let` variables in runes mode are just plain JavaScript variables
+- Changing them will NOT trigger Svelte's reactivity system
+- `{#if modalOpen}` blocks will NOT react to changes in regular `let` variables
+- This causes silent failures where state changes but the UI doesn't update
+- **ALWAYS use `$state()` for any variable that controls rendering or needs to trigger reactivity**
+
 #### `$derived` - Computed Values
 Creates values that automatically update when dependencies change.
 
@@ -154,8 +186,30 @@ $effect(() => {
 - If you see reactive `let` declarations, convert to `$state()`
 - Replace `$:` with `$derived` for computations or `$effect` for side effects
 - **CRITICAL:** When consuming Svelte stores in runes mode, use `$state` + `$effect` subscription pattern (see "Working with Svelte Stores in Runes Mode" section below)
+- **🚨 CRITICAL:** In runes mode, ALL state variables that control rendering MUST use `$state()`. Regular `let` variables are NOT reactive and will cause silent UI update failures!
 
 ### Common Patterns
+
+**Modal State (CRITICAL - Common Mistake):**
+```javascript
+// ❌ WRONG - Will not work in runes mode
+let modalOpen = false;
+let selectedItem: Item | null = null;
+
+// ✅ CORRECT - Use $state()
+let modalOpen = $state(false);
+let selectedItem = $state<Item | null>(null);
+
+function openModal(item: Item) {
+  selectedItem = item;
+  modalOpen = true;
+}
+
+// In template:
+{#if modalOpen && selectedItem}
+  <Modal item={selectedItem} onClose={() => modalOpen = false} />
+{/if}
+```
 
 **Reactive Object:**
 ```javascript

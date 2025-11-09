@@ -6,6 +6,7 @@
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import CardSearch from './CardSearch.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
+	import { isGameChanger } from '$lib/utils/game-changers';
 
 	let { onCardHover = undefined }: { onCardHover?: ((card: Card | null) => void) | undefined } = $props();
 
@@ -168,8 +169,8 @@
 	}
 
 	// Modal states
-	let addMoreCard: { card: Card; category: CardCategory } | null = null;
-	let changePrintingCard: { card: Card; category: CardCategory } | null = null;
+	let addMoreCard = $state<{ card: Card; category: CardCategory } | null>(null);
+	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
 
 	function showAddMoreModal(card: Card, category: CardCategory) {
 		addMoreCard = { card, category };
@@ -353,6 +354,18 @@
 													<span class="text-[var(--color-text-primary)] text-sm truncate">
 														{card.name}
 													</span>
+
+													<!-- Game Changer Icon -->
+													{#if isGameChanger(card.name)}
+														<span
+															class="flex-shrink-0 text-amber-500 font-bold text-xs"
+															title="Game Changer - This card affects your deck's bracket level"
+														>
+															<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+																<path d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+															</svg>
+														</span>
+													{/if}
 
 													<!-- Validation Warnings -->
 													{#each getCardWarnings(card.name) as warning}

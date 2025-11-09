@@ -92,6 +92,12 @@ export interface DeckStatistics {
 
 	/** Validation warnings */
 	warnings: ValidationWarning[];
+
+	/** Number of Game Changer cards in the deck */
+	gameChangerCount: number;
+
+	/** Commander bracket level (1-5) */
+	bracketLevel: number;
 }
 
 /**
