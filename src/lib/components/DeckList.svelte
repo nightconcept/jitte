@@ -42,17 +42,18 @@
 	type GroupMode = 'type';
 	type SortMode = 'name' | 'mana_value';
 
-	let viewMode: ViewMode = 'text';
-	let groupMode: GroupMode = 'type';
-	let sortMode: SortMode = 'name';
+	let viewMode = $state<ViewMode>('text');
+	let groupMode = $state<GroupMode>('type');
+	let sortMode = $state<SortMode>('name');
 
 	// Dropdown states
-	let viewDropdownOpen = false;
-	let groupDropdownOpen = false;
-	let sortDropdownOpen = false;
+	let viewDropdownOpen = $state(false);
+	let groupDropdownOpen = $state(false);
+	let sortDropdownOpen = $state(false);
 
 	// Card menu state (track which card's menu is open)
-	let openCardMenu: string | null = null;
+	let openCardMenu = $state<string | null>(null);
+	let openCardMenuRef = $state<HTMLDivElement>();
 
 	function toggleCardMenu(cardName: string) {
 		openCardMenu = openCardMenu === cardName ? null : cardName;
@@ -61,6 +62,31 @@
 	function closeCardMenu() {
 		openCardMenu = null;
 	}
+
+	// Close card menu when switching out of edit mode
+	$effect(() => {
+		if (!isEditing) {
+			closeCardMenu();
+		}
+	});
+
+	// Click outside handler for card menu
+	$effect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			const target = event.target as Node;
+
+			if (openCardMenu && openCardMenuRef && !openCardMenuRef.contains(target)) {
+				closeCardMenu();
+			}
+		}
+
+		if (openCardMenu) {
+			document.addEventListener('mousedown', handleClickOutside);
+			return () => {
+				document.removeEventListener('mousedown', handleClickOutside);
+			};
+		}
+	});
 
 	// Category display order (canonical order from requirements)
 	const categoryOrder: CardCategory[] = [
@@ -90,7 +116,7 @@
 	};
 
 	// Collapsible sections state
-	let collapsed: Record<string, boolean> = {
+	let collapsed = $state<Record<string, boolean>>({
 		[CardCategory.Commander]: false,
 		[CardCategory.Companion]: false,
 		[CardCategory.Planeswalker]: false,
@@ -101,7 +127,7 @@
 		[CardCategory.Enchantment]: false,
 		[CardCategory.Land]: false,
 		[CardCategory.Other]: false
-	};
+	});
 
 	function toggleCategory(category: CardCategory) {
 		collapsed[category] = !collapsed[category];
@@ -175,7 +201,7 @@
 	}
 </script>
 
-<div class="flex-1 p-6" on:click={closeCardMenu} on:keydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
+<div class="flex-1 p-6" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
 	<!-- Card Search (Edit Mode Only) -->
 	{#if isEditing}
 		<div class="mb-4">
@@ -191,7 +217,7 @@
 			<!-- View Dropdown -->
 			<div class="relative">
 				<button
-					on:click={() => { viewDropdownOpen = !viewDropdownOpen; groupDropdownOpen = false; sortDropdownOpen = false; }}
+					onclick={() => { viewDropdownOpen = !viewDropdownOpen; groupDropdownOpen = false; sortDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
 				>
 					<span class="text-[var(--color-text-tertiary)]">View:</span>
@@ -203,13 +229,13 @@
 				{#if viewDropdownOpen}
 					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
 						<button
-							on:click={() => { viewMode = 'text'; viewDropdownOpen = false; }}
+							onclick={() => { viewMode = 'text'; viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'text' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Text
 						</button>
 						<button
-							on:click={() => { viewMode = 'condensed'; viewDropdownOpen = false; }}
+							onclick={() => { viewMode = 'condensed'; viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'condensed' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Condensed Text
@@ -221,7 +247,7 @@
 			<!-- Group Dropdown -->
 			<div class="relative">
 				<button
-					on:click={() => { groupDropdownOpen = !groupDropdownOpen; viewDropdownOpen = false; sortDropdownOpen = false; }}
+					onclick={() => { groupDropdownOpen = !groupDropdownOpen; viewDropdownOpen = false; sortDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
 				>
 					<span class="text-[var(--color-text-tertiary)]">Group:</span>
@@ -233,7 +259,7 @@
 				{#if groupDropdownOpen}
 					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
 						<button
-							on:click={() => { groupMode = 'type'; groupDropdownOpen = false; }}
+							onclick={() => { groupMode = 'type'; groupDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-brand-primary)]"
 						>
 							Type
@@ -245,7 +271,7 @@
 			<!-- Sort Dropdown -->
 			<div class="relative">
 				<button
-					on:click={() => { sortDropdownOpen = !sortDropdownOpen; viewDropdownOpen = false; groupDropdownOpen = false; }}
+					onclick={() => { sortDropdownOpen = !sortDropdownOpen; viewDropdownOpen = false; groupDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
 				>
 					<span class="text-[var(--color-text-tertiary)]">Sort:</span>
@@ -257,13 +283,13 @@
 				{#if sortDropdownOpen}
 					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
 						<button
-							on:click={() => { sortMode = 'name'; sortDropdownOpen = false; }}
+							onclick={() => { sortMode = 'name'; sortDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode === 'name' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Name
 						</button>
 						<button
-							on:click={() => { sortMode = 'mana_value'; sortDropdownOpen = false; }}
+							onclick={() => { sortMode = 'mana_value'; sortDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode === 'mana_value' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Mana Value
@@ -284,7 +310,7 @@
 				<div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
 					<!-- Category Header -->
 					<button
-						on:click={() => toggleCategory(category)}
+						onclick={() => toggleCategory(category)}
 						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-surface-hover)] transition-colors rounded-t-lg"
 					>
 						<div class="flex items-center gap-3">
@@ -313,7 +339,7 @@
 								{#each cards as card}
 											<div
 												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'}"
-												on:mouseenter={() => onCardHover?.(card)}
+												onmouseenter={() => onCardHover?.(card)}
 												role="button"
 												tabindex="0"
 											>
@@ -335,24 +361,27 @@
 												</div>
 
 												<!-- Card Menu Icon -->
-												<div class="relative flex-shrink-0">
+												<div class="flex-shrink-0">
 													<button
 														class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-border)] rounded"
-														on:click|stopPropagation={() => toggleCardMenu(card.name)}
+														onmousedown={(e) => e.stopPropagation()}
+														onclick={(e) => { e.stopPropagation(); toggleCardMenu(card.name); }}
 														title="Card options"
 													>
 														<svg class="w-4 h-4 text-[var(--color-text-secondary)]" fill="currentColor" viewBox="0 0 16 16">
-															<circle cx="8" cy="3" r="1.5" />
-															<circle cx="8" cy="8" r="1.5" />
-															<circle cx="8" cy="13" r="1.5" />
+															<path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
 														</svg>
 													</button>
+												</div>
 
-													<!-- Card Menu Dropdown -->
-													{#if openCardMenu === card.name}
-														<div class="absolute right-0 mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+												<!-- Card Menu Dropdown (positioned relative to card row) -->
+												{#if openCardMenu === card.name}
+														<div
+															bind:this={openCardMenuRef}
+															class="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]"
+														>
 															<button
-																on:click|stopPropagation={() => handleAddOne(card, category)}
+																onclick={(e) => { e.stopPropagation(); handleAddOne(card, category); }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,7 +390,7 @@
 																Add one
 															</button>
 															<button
-																on:click|stopPropagation={() => showAddMoreModal(card, category)}
+																onclick={(e) => { e.stopPropagation(); showAddMoreModal(card, category); }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +399,7 @@
 																Add more...
 															</button>
 															<button
-																on:click|stopPropagation={() => handleRemove(card, category)}
+																onclick={(e) => { e.stopPropagation(); handleRemove(card, category); }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -380,7 +409,7 @@
 															</button>
 															<div class="border-t border-[var(--color-border)] my-1"></div>
 															<button
-																on:click|stopPropagation={() => showChangePrintingModal(card, category)}
+																onclick={(e) => { e.stopPropagation(); showChangePrintingModal(card, category); }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,7 +418,7 @@
 																Change printing
 															</button>
 															<button
-																on:click|stopPropagation={() => handleMoveToMaybeboard(card, category)}
+																onclick={(e) => { e.stopPropagation(); handleMoveToMaybeboard(card, category); }}
 																class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
 															>
 																<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,8 +428,7 @@
 															</button>
 														</div>
 													{/if}
-												</div>
-									</div>
+											</div>
 								{/each}
 							</div>
 						</div>

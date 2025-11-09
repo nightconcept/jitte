@@ -618,6 +618,175 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Create a new maybeboard category
+		 */
+		createMaybeboardCategory(options: { name: string; description?: string }): void {
+			update((state) => {
+				if (!state) return state;
+
+				const now = new Date().toISOString();
+				const maxOrder = Math.max(...state.maybeboard.categories.map((c) => c.order), 0);
+
+				// Generate category ID from name
+				const categoryId = options.name
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, '-')
+					.replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+
+				const newCategory = {
+					id: categoryId,
+					name: options.name,
+					cards: [],
+					description: options.description,
+					order: maxOrder + 1,
+					createdAt: now,
+					updatedAt: now
+				};
+
+				const newMaybeboard = {
+					...state.maybeboard,
+					categories: [...state.maybeboard.categories, newCategory]
+				};
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Delete a maybeboard category
+		 */
+		deleteMaybeboardCategory(categoryId: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Can't delete the default category
+				if (categoryId === state.maybeboard.defaultCategoryId) {
+					console.error('Cannot delete the default category');
+					return state;
+				}
+
+				const newMaybeboard = {
+					...state.maybeboard,
+					categories: state.maybeboard.categories.filter((c) => c.id !== categoryId)
+				};
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Update card quantity in maybeboard
+		 */
+		updateMaybeboardCardQuantity(cardName: string, categoryId: string, newQuantity: number): void {
+			update((state) => {
+				if (!state) return state;
+
+				const categoryIndex = state.maybeboard.categories.findIndex(c => c.id === categoryId);
+				if (categoryIndex === -1) return state;
+
+				const newMaybeboard = { ...state.maybeboard };
+				const category = { ...newMaybeboard.categories[categoryIndex] };
+				let categoryCards = [...category.cards];
+
+				const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+				if (cardIndex === -1) return state;
+
+				if (newQuantity <= 0) {
+					// Remove card if quantity is 0 or less
+					categoryCards.splice(cardIndex, 1);
+				} else {
+					// Update quantity
+					categoryCards[cardIndex] = {
+						...categoryCards[cardIndex],
+						quantity: newQuantity
+					};
+				}
+
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, categoryIndex),
+					{
+						...category,
+						cards: categoryCards,
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(categoryIndex + 1)
+				];
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Import cards to maybeboard from plaintext
+		 */
+		importToMaybeboard(decklist: string, categoryId: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Parse the decklist
+				const { parsePlaintext } = require('$lib/utils/decklist-parser');
+				const parseResult = parsePlaintext(decklist);
+
+				if (parseResult.errors.length > 0) {
+					console.error('Failed to parse decklist:', parseResult.errors);
+					return state;
+				}
+
+				// Find the category
+				const categoryIndex = state.maybeboard.categories.findIndex(c => c.id === categoryId);
+				if (categoryIndex === -1) return state;
+
+				const newMaybeboard = { ...state.maybeboard };
+				const category = { ...newMaybeboard.categories[categoryIndex] };
+				let categoryCards = [...category.cards];
+
+				// Add each card to the category
+				for (const card of parseResult.cards) {
+					const existingIndex = categoryCards.findIndex(c => c.name === card.name);
+
+					if (existingIndex !== -1) {
+						// Update quantity
+						categoryCards[existingIndex] = {
+							...categoryCards[existingIndex],
+							quantity: categoryCards[existingIndex].quantity + card.quantity
+						};
+					} else {
+						// Add new card
+						categoryCards.push(card);
+					}
+				}
+
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, categoryIndex),
+					{
+						...category,
+						cards: categoryCards,
+						updatedAt: new Date().toISOString()
+					},
+					...newMaybeboard.categories.slice(categoryIndex + 1)
+				];
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
 		 * Export the current deck to plaintext format
 		 * Returns plaintext decklist compatible with Arena/MTGO/Moxfield/Archidekt
 		 */
