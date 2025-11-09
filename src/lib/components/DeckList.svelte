@@ -6,6 +6,7 @@
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import CardSearch from './CardSearch.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
+	import CardDetailModal from './CardDetailModal.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
 
@@ -178,6 +179,7 @@
 	// Modal states
 	let addMoreCard = $state<{ card: Card; category: CardCategory } | null>(null);
 	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
+	let detailModalCard = $state<Card | null>(null);
 
 	function showAddMoreModal(card: Card, category: CardCategory) {
 		addMoreCard = { card, category };
@@ -360,8 +362,9 @@
 							<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
 											<div
-												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'}"
+												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} cursor-pointer"
 												onmouseenter={() => onCardHover?.(card)}
+												onclick={() => { detailModalCard = card; }}
 												role="button"
 												tabindex="0"
 											>
@@ -504,6 +507,14 @@
 		category={changePrintingCard.category}
 		onConfirm={handleChangePrinting}
 		onClose={() => changePrintingCard = null}
+	/>
+{/if}
+
+{#if detailModalCard}
+	<CardDetailModal
+		card={detailModalCard}
+		isOpen={detailModalCard !== null}
+		onClose={() => detailModalCard = null}
 	/>
 {/if}
 
