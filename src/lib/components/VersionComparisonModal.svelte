@@ -40,21 +40,108 @@
 	);
 
 	// Selected versions
-	let fromVersion = $state(fromVersions[0] || '1.0.0');
+	let fromVersion = $state('1.0.0');
 	let toVersion = $state(currentVersion);
 
-	// Update selected versions when branches change
+	// Track whether user has manually modified the selections
+	let userHasModified = $state(false);
+
+	// Track previous isOpen state to detect when modal is opened
+	let wasOpen = $state(false);
+
+	/**
+	 * Find the best default "from" version to compare against current version
+	 * 1. Try same branch, previous version
+	 * 2. Fallback to latest version from any branch with timestamp before current
+	 */
+	function getDefaultFromVersion(): { branch: string; version: string } {
+		const manifest = $deckManager.activeManifest;
+		if (!manifest) return { branch: currentBranch, version: '1.0.0' };
+
+		// Find current branch and version metadata
+		const currentBranchMeta = manifest.branches.find(b => b.name === currentBranch);
+		if (!currentBranchMeta) return { branch: currentBranch, version: '1.0.0' };
+
+		const currentVersionMeta = currentBranchMeta.versions.find(v => v.version === currentVersion);
+		const currentTimestamp = currentVersionMeta?.timestamp;
+
+		// Try same branch, previous version
+		const currentVersionIndex = currentBranchMeta.versions.findIndex(v => v.version === currentVersion);
+		if (currentVersionIndex > 0) {
+			// There's a previous version on the same branch
+			return {
+				branch: currentBranch,
+				version: currentBranchMeta.versions[currentVersionIndex - 1].version
+			};
+		}
+
+		// Fallback: find latest version from any branch before current timestamp
+		if (currentTimestamp) {
+			let latestBeforeCurrent: { branch: string; version: string; timestamp: string } | null = null;
+
+			for (const branch of manifest.branches) {
+				for (const versionMeta of branch.versions) {
+					if (versionMeta.timestamp < currentTimestamp) {
+						if (!latestBeforeCurrent || versionMeta.timestamp > latestBeforeCurrent.timestamp) {
+							latestBeforeCurrent = {
+								branch: branch.name,
+								version: versionMeta.version,
+								timestamp: versionMeta.timestamp
+							};
+						}
+					}
+				}
+			}
+
+			if (latestBeforeCurrent) {
+				return {
+					branch: latestBeforeCurrent.branch,
+					version: latestBeforeCurrent.version
+				};
+			}
+		}
+
+		// Final fallback: first version on current branch
+		return {
+			branch: currentBranch,
+			version: currentBranchMeta.versions[0]?.version || '1.0.0'
+		};
+	}
+
+	// Initialize default selections when modal opens
 	$effect(() => {
-		if (fromVersions.length > 0) {
-			fromVersion = fromVersions[0];
+		// Detect when modal is opened (transition from closed to open)
+		if (isOpen && !wasOpen && !userHasModified) {
+			// Reset to intelligent defaults
+			const defaultFrom = getDefaultFromVersion();
+			fromBranch = defaultFrom.branch;
+			fromVersion = defaultFrom.version;
+			toBranch = currentBranch;
+			toVersion = currentVersion;
+		}
+		wasOpen = isOpen;
+	});
+
+	// Update selected versions when branches change (but respect user modifications)
+	$effect(() => {
+		if (fromVersions.length > 0 && userHasModified) {
+			// When user changes branch, select first version
+			if (!fromVersions.includes(fromVersion)) {
+				fromVersion = fromVersions[0];
+			}
 		}
 	});
 
 	$effect(() => {
-		if (toVersions.length > 0 && toBranch === currentBranch) {
-			toVersion = currentVersion;
-		} else if (toVersions.length > 0) {
-			toVersion = toVersions[toVersions.length - 1];
+		if (toVersions.length > 0 && userHasModified) {
+			// When user changes branch, select appropriate version
+			if (!toVersions.includes(toVersion)) {
+				if (toBranch === currentBranch) {
+					toVersion = currentVersion;
+				} else {
+					toVersion = toVersions[toVersions.length - 1];
+				}
+			}
 		}
 	});
 
@@ -126,32 +213,32 @@
 		const buylistText = generateBuylistText();
 
 		if (!buylistText) {
-			toastStore.show({
-				message: 'No cards to copy',
-				type: 'warning'
-			});
+			toastStore.warning('No cards to copy');
 			return;
 		}
 
 		try {
 			await navigator.clipboard.writeText(buylistText);
-			toastStore.show({
-				message: `Copied ${buylistText.split('\n').length} cards to clipboard`,
-				type: 'success'
-			});
+			toastStore.success(`Copied ${buylistText.split('\n').length} cards to clipboard`);
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
-			toastStore.show({
-				message: 'Failed to copy to clipboard',
-				type: 'error'
-			});
+			toastStore.error('Failed to copy to clipboard');
 		}
 	}
 
 	function handleClose() {
 		diff = null;
 		priceDiff = 0;
+		// Reset user modification flag so next time modal opens, it uses smart defaults
+		userHasModified = false;
 		onClose();
+	}
+
+	/**
+	 * Mark that user has manually changed selections
+	 */
+	function handleUserChange() {
+		userHasModified = true;
 	}
 </script>
 
@@ -184,6 +271,7 @@
 						</label>
 						<select
 							bind:value={fromBranch}
+							onchange={handleUserChange}
 							class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 						>
 							{#each availableBranches as branch}
@@ -197,6 +285,7 @@
 						</label>
 						<select
 							bind:value={fromVersion}
+							onchange={handleUserChange}
 							class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 						>
 							{#each fromVersions as version}
@@ -217,6 +306,7 @@
 						</label>
 						<select
 							bind:value={toBranch}
+							onchange={handleUserChange}
 							class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 						>
 							{#each availableBranches as branch}
@@ -230,6 +320,7 @@
 						</label>
 						<select
 							bind:value={toVersion}
+							onchange={handleUserChange}
 							class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 						>
 							{#each toVersions as version}
