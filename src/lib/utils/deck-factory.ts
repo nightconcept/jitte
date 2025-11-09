@@ -3,8 +3,27 @@
  */
 
 import type { Deck, DeckManifest } from '$lib/types/deck';
-import type { Card, CardCategory, CategorizedCards } from '$lib/types/card';
+import type { Card, CardCategory, CategorizedCards, ManaColor } from '$lib/types/card';
 import type { BranchMetadata } from '$lib/types/version';
+
+/**
+ * Calculate the combined color identity from multiple commanders
+ */
+export function calculateColorIdentity(commanders: Card[]): ManaColor[] {
+	const identitySet = new Set<ManaColor>();
+
+	for (const commander of commanders) {
+		if (commander.colorIdentity) {
+			for (const color of commander.colorIdentity) {
+				identitySet.add(color);
+			}
+		}
+	}
+
+	// Return in WUBRG order
+	const wubrgOrder: ManaColor[] = ['W', 'U', 'B', 'R', 'G', 'C'];
+	return wubrgOrder.filter(color => identitySet.has(color));
+}
 
 /**
  * Create an empty categorized cards structure
@@ -27,21 +46,24 @@ export function createEmptyCategorizedCards(): CategorizedCards {
 /**
  * Create a new empty deck
  */
-export function createEmptyDeck(name: string, commander?: Card): Deck {
+export function createEmptyDeck(name: string, commanders?: Card | Card[]): Deck {
 	const now = new Date().toISOString();
 	const cards = createEmptyCategorizedCards();
 
-	// Add commander if provided
-	if (commander) {
-		cards.commander = [{ ...commander, quantity: 1 }];
+	// Add commanders if provided
+	if (commanders) {
+		const commanderArray = Array.isArray(commanders) ? commanders : [commanders];
+		cards.commander = commanderArray.map(c => ({ ...c, quantity: 1 }));
 	}
+
+	const commanderCount = cards.commander.length;
 
 	return {
 		name,
 		cards,
-		cardCount: commander ? 1 : 0,
+		cardCount: commanderCount,
 		format: 'commander',
-		colorIdentity: commander?.colorIdentity || [],
+		colorIdentity: calculateColorIdentity(cards.commander),
 		currentBranch: 'main',
 		currentVersion: 'unsaved',
 		createdAt: now,

@@ -14,7 +14,7 @@ import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CategorizedCards } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
-import { createEmptyDeck } from '$lib/utils/deck-factory';
+import { createEmptyDeck, calculateColorIdentity } from '$lib/utils/deck-factory';
 import { calculateStatistics } from '$lib/utils/deck-statistics';
 import { validateDeck } from '$lib/utils/deck-validation';
 import { categorizeDeck } from '$lib/utils/deck-categorization';
@@ -33,8 +33,8 @@ function createDeckStore() {
 		/**
 		 * Initialize a new deck
 		 */
-		createNew(name: string, commander?: Card): void {
-			const deck = createEmptyDeck(name, commander);
+		createNew(name: string, commanders?: Card | Card[]): void {
+			const deck = createEmptyDeck(name, commanders);
 			const maybeboard: Maybeboard = {
 				categories: [
 					{
@@ -220,23 +220,163 @@ function createDeckStore() {
 		},
 
 		/**
-		 * Change the commander to a different card
+		 * Set commanders (replaces all commanders)
+		 * Use this for setting 1 or 2 commanders at once
 		 */
-		changeCommander(newCommander: Card): void {
+		setCommanders(commanders: Card[]): void {
 			update((state) => {
 				if (!state) return state;
 
-				// Replace the commander card
+				// Ensure quantity is 1 for all commanders
+				const commandersWithQuantity = commanders.map(c => ({ ...c, quantity: 1 }));
+
+				// Replace the commander cards
 				const updatedCards = {
 					...state.deck.cards,
-					[CardCategory.Commander]: [{ ...newCommander, quantity: 1 }]
+					[CardCategory.Commander]: commandersWithQuantity
 				};
+
+				// Calculate new color identity
+				const colorIdentity = calculateColorIdentity(commandersWithQuantity);
 
 				// Create new deck object with all updates
 				const newDeck: Deck = {
 					...state.deck,
 					cards: updatedCards,
 					cardCount: calculateTotalCards(updatedCards),
+					colorIdentity,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Change a single commander (maintains partner if present)
+		 * @param index - Which commander to replace (0 or 1)
+		 * @param newCommander - New commander card
+		 */
+		replaceCommander(index: number, newCommander: Card): void {
+			update((state) => {
+				if (!state) return state;
+
+				const currentCommanders = [...state.deck.cards.commander];
+
+				if (index < 0 || index >= currentCommanders.length) {
+					console.warn(`Invalid commander index: ${index}`);
+					return state;
+				}
+
+				// Replace the commander at the specified index
+				currentCommanders[index] = { ...newCommander, quantity: 1 };
+
+				// Replace the commander cards
+				const updatedCards = {
+					...state.deck.cards,
+					[CardCategory.Commander]: currentCommanders
+				};
+
+				// Calculate new color identity
+				const colorIdentity = calculateColorIdentity(currentCommanders);
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					colorIdentity,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Add a partner commander (only if current commander has partner ability)
+		 */
+		addPartner(partner: Card): void {
+			update((state) => {
+				if (!state) return state;
+
+				const currentCommanders = state.deck.cards.commander;
+
+				if (currentCommanders.length >= 2) {
+					console.warn('Deck already has 2 commanders');
+					return state;
+				}
+
+				// Add the partner
+				const updatedCommanders = [...currentCommanders, { ...partner, quantity: 1 }];
+
+				const updatedCards = {
+					...state.deck.cards,
+					[CardCategory.Commander]: updatedCommanders
+				};
+
+				// Calculate new color identity
+				const colorIdentity = calculateColorIdentity(updatedCommanders);
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					colorIdentity,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Remove a partner commander (keeping the other one)
+		 */
+		removePartner(commanderName: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				const currentCommanders = state.deck.cards.commander;
+
+				if (currentCommanders.length <= 1) {
+					console.warn('Cannot remove the only commander');
+					return state;
+				}
+
+				// Remove the specified commander
+				const updatedCommanders = currentCommanders.filter(c => c.name !== commanderName);
+
+				const updatedCards = {
+					...state.deck.cards,
+					[CardCategory.Commander]: updatedCommanders
+				};
+
+				// Calculate new color identity
+				const colorIdentity = calculateColorIdentity(updatedCommanders);
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					colorIdentity,
 					updatedAt: new Date().toISOString()
 				};
 

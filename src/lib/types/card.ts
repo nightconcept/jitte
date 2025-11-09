@@ -42,6 +42,9 @@ export interface Card {
 	/** Oracle text */
 	oracleText?: string;
 
+	/** Keywords from Scryfall (includes partner abilities) */
+	keywords?: string[];
+
 	/** Image URLs for different sizes */
 	imageUrls?: {
 		small?: string;

@@ -421,65 +421,70 @@ function createDeckManager() {
 	/**
 	 * Create a new deck
 	 */
-	async function createDeck(name: string, commanderName?: string): Promise<void> {
-		console.log('[deckManager.createDeck] Starting:', { name, commanderName });
+	async function createDeck(name: string, commanderNames?: string | string[]): Promise<void> {
+		const namesArray = commanderNames ? (Array.isArray(commanderNames) ? commanderNames : [commanderNames]) : [];
+		console.log('[deckManager.createDeck] Starting:', { name, commanderNames: namesArray });
 		update((state) => ({ ...state, isLoading: true, error: null }));
 
-		let commander = undefined;
+		const commanders: Card[] = [];
 
 		// Fetch commander card data if provided
-		if (commanderName) {
+		if (namesArray.length > 0) {
 			try {
 				console.log('[deckManager.createDeck] Fetching commander data...');
 				const { CardService } = await import('$lib/api/card-service');
 				const cardService = new CardService();
 
-				// Get full card data by exact name
-				const commanderCard = await cardService.getCardByName(commanderName);
-				console.log('[deckManager.createDeck] Commander card fetched:', commanderCard?.name);
-				if (commanderCard) {
-					// Convert ScryfallCard to Card type
-					commander = {
-						name: commanderCard.name,
-						quantity: 1,
-						setCode: commanderCard.set,
-						collectorNumber: commanderCard.collector_number,
-						scryfallId: commanderCard.id,
-						oracleId: commanderCard.oracle_id,
-						types: commanderCard.type_line?.split('—')[0]?.trim().split(' '),
-						cmc: commanderCard.cmc,
-						manaCost: commanderCard.mana_cost,
-						colorIdentity: commanderCard.color_identity,
-						oracleText: commanderCard.oracle_text,
-						imageUrls: commanderCard.image_uris
-							? {
-									small: commanderCard.image_uris.small,
-									normal: commanderCard.image_uris.normal,
-									large: commanderCard.image_uris.large,
-									png: commanderCard.image_uris.png,
-									artCrop: commanderCard.image_uris.art_crop,
-									borderCrop: commanderCard.image_uris.border_crop
-							  }
-							: undefined,
-						price: commanderCard.prices.usd ? parseFloat(commanderCard.prices.usd) : undefined,
-						prices: commanderCard.prices.usd
-							? {
-									cardkingdom: parseFloat(commanderCard.prices.usd) * 1.05,
-									tcgplayer: parseFloat(commanderCard.prices.usd),
-									manapool: parseFloat(commanderCard.prices.usd) * 0.95
-							  }
-							: undefined,
-						priceUpdatedAt: Date.now()
-					};
+				// Fetch all commanders
+				for (const commanderName of namesArray) {
+					const commanderCard = await cardService.getCardByName(commanderName);
+					console.log('[deckManager.createDeck] Commander card fetched:', commanderCard?.name);
+
+					if (commanderCard) {
+						// Convert ScryfallCard to Card type
+						commanders.push({
+							name: commanderCard.name,
+							quantity: 1,
+							setCode: commanderCard.set,
+							collectorNumber: commanderCard.collector_number,
+							scryfallId: commanderCard.id,
+							oracleId: commanderCard.oracle_id,
+							types: commanderCard.type_line?.split('—')[0]?.trim().split(' '),
+							cmc: commanderCard.cmc,
+							manaCost: commanderCard.mana_cost,
+							colorIdentity: commanderCard.color_identity,
+							oracleText: commanderCard.oracle_text,
+							keywords: commanderCard.keywords,
+							imageUrls: commanderCard.image_uris
+								? {
+										small: commanderCard.image_uris.small,
+										normal: commanderCard.image_uris.normal,
+										large: commanderCard.image_uris.large,
+										png: commanderCard.image_uris.png,
+										artCrop: commanderCard.image_uris.art_crop,
+										borderCrop: commanderCard.image_uris.border_crop
+								  }
+								: undefined,
+							price: commanderCard.prices.usd ? parseFloat(commanderCard.prices.usd) : undefined,
+							prices: commanderCard.prices.usd
+								? {
+										cardkingdom: parseFloat(commanderCard.prices.usd) * 1.05,
+										tcgplayer: parseFloat(commanderCard.prices.usd),
+										manapool: parseFloat(commanderCard.prices.usd) * 0.95
+								  }
+								: undefined,
+							priceUpdatedAt: Date.now()
+						});
+					}
 				}
 			} catch (error) {
 				console.error('[deckManager.createDeck] Failed to fetch commander:', error);
-				// Continue with undefined commander
+				// Continue with whatever commanders we managed to fetch
 			}
 		}
 
-		console.log('[deckManager.createDeck] Creating deck in store...');
-		deckStore.createNew(name, commander);
+		console.log('[deckManager.createDeck] Creating deck in store with', commanders.length, 'commanders');
+		deckStore.createNew(name, commanders.length > 0 ? commanders : undefined);
 
 		console.log('[deckManager.createDeck] Updating manager state...');
 		// The deck will be saved when the user first commits

@@ -20,6 +20,9 @@ export interface ParseResult {
 
 	/** Commander card name (if detected from [Commander{top}] tag) */
 	commanderName?: string;
+
+	/** All commander card names (for partner support) */
+	commanderNames?: string[];
 }
 
 /**
@@ -48,6 +51,7 @@ export function parsePlaintext(text: string): ParseResult {
 	const cards: Card[] = [];
 	const errors: ParseError[] = [];
 	let commanderName: string | undefined;
+	const commanderNames: string[] = [];
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i].trim();
@@ -71,8 +75,13 @@ export function parsePlaintext(text: string): ParseResult {
 			if (card) {
 				cards.push(card);
 				// If this is tagged as commander, save it
-				if (isCommander && !commanderName) {
-					commanderName = card.name;
+				if (isCommander) {
+					// For backward compatibility, save the first commander
+					if (!commanderName) {
+						commanderName = card.name;
+					}
+					// Track all commanders for partner support
+					commanderNames.push(card.name);
 				}
 			}
 		} catch (error) {
@@ -88,7 +97,8 @@ export function parsePlaintext(text: string): ParseResult {
 		cards,
 		errors,
 		totalLines: lines.length,
-		commanderName
+		commanderName,
+		commanderNames: commanderNames.length > 0 ? commanderNames : undefined
 	};
 }
 

@@ -3,21 +3,37 @@
 	import { CardService } from '$lib/api/card-service';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import { debounce } from '$lib/utils/debounce';
+	import PartnerBadge from './PartnerBadge.svelte';
+	import type { Card } from '$lib/types/card';
 
 	export let isOpen = false;
 
 	const dispatch = createEventDispatcher<{
 		close: void;
-		create: { name: string; commanderName: string };
+		create: { name: string; commanderNames: string[] };
 	}>();
 
 	let deckName = '';
 	let commanderSearchQuery = '';
 	let commanderSearchResults: CardSearchResult[] = [];
 	let selectedCommander: CardSearchResult | null = null;
+	let partnerSearchQuery = '';
+	let partnerSearchResults: CardSearchResult[] = [];
+	let selectedPartner: CardSearchResult | null = null;
 	let isSearching = false;
+	let isSearchingPartner = false;
 
 	const cardService = new CardService();
+
+	// Check if selected commander has partner ability
+	$: hasPartnerAbility = selectedCommander ? checkPartnerAbility(selectedCommander) : false;
+
+	function checkPartnerAbility(commander: CardSearchResult): boolean {
+		const oracleText = commander.oracle_text?.toLowerCase() || '';
+		return oracleText.includes('partner') ||
+		       oracleText.includes('friends forever') ||
+		       oracleText.includes('choose a background');
+	}
 
 	// Debounced search function
 	const searchCommanders = debounce(async (query: string) => {
@@ -59,6 +75,43 @@
 		}
 	}, 300);
 
+	// Debounced partner search function
+	const searchPartners = debounce(async (query: string) => {
+		if (query.length < 2) {
+			partnerSearchResults = [];
+			return;
+		}
+
+		isSearchingPartner = true;
+		try {
+			// Search for legendary creatures
+			const fullQuery = `${query} is:commander`;
+			const results = await cardService.searchCards(fullQuery, 20);
+
+			// Sort results: prioritize matches at the start of the name
+			const sorted = results.sort((a, b) => {
+				const aName = a.name.toLowerCase();
+				const bName = b.name.toLowerCase();
+				const searchLower = query.toLowerCase();
+
+				const aStartsWith = aName.startsWith(searchLower);
+				const bStartsWith = bName.startsWith(searchLower);
+
+				if (aStartsWith && !bStartsWith) return -1;
+				if (!aStartsWith && bStartsWith) return 1;
+
+				return aName.localeCompare(bName);
+			});
+
+			partnerSearchResults = sorted.slice(0, 10);
+		} catch (error) {
+			console.error('Partner search failed:', error);
+			partnerSearchResults = [];
+		} finally {
+			isSearchingPartner = false;
+		}
+	}, 300);
+
 	$: {
 		// Only search if we don't already have a selected commander
 		if (commanderSearchQuery && !selectedCommander) {
@@ -68,10 +121,25 @@
 		}
 	}
 
+	$: {
+		// Only search for partner if we don't already have one selected
+		if (partnerSearchQuery && !selectedPartner && hasPartnerAbility) {
+			searchPartners(partnerSearchQuery);
+		} else {
+			partnerSearchResults = [];
+		}
+	}
+
 	function selectCommander(commander: CardSearchResult) {
 		selectedCommander = commander;
 		commanderSearchQuery = commander.name; // Show commander name
 		commanderSearchResults = []; // Clear dropdown
+	}
+
+	function selectPartner(partner: CardSearchResult) {
+		selectedPartner = partner;
+		partnerSearchQuery = partner.name;
+		partnerSearchResults = [];
 	}
 
 	function handleCreate() {
@@ -79,23 +147,31 @@
 			return;
 		}
 
+		const commanderNames = [selectedCommander.name];
+		if (selectedPartner) {
+			commanderNames.push(selectedPartner.name);
+		}
+
 		dispatch('create', {
 			name: deckName.trim(),
-			commanderName: selectedCommander.name
+			commanderNames
 		});
 
 		// Reset form
-		deckName = '';
-		commanderSearchQuery = '';
-		selectedCommander = null;
+		resetForm();
 	}
 
 	function handleClose() {
 		dispatch('close');
-		// Reset form
+		resetForm();
+	}
+
+	function resetForm() {
 		deckName = '';
 		commanderSearchQuery = '';
 		selectedCommander = null;
+		partnerSearchQuery = '';
+		selectedPartner = null;
 	}
 </script>
 
@@ -150,7 +226,7 @@
 						{#if selectedCommander}
 							<button
 								type="button"
-								on:click={() => { selectedCommander = null; commanderSearchQuery = ''; }}
+								on:click={() => { selectedCommander = null; commanderSearchQuery = ''; selectedPartner = null; partnerSearchQuery = ''; }}
 								class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
 								title="Clear selection"
 							>
@@ -182,6 +258,62 @@
 						<div class="text-sm text-[var(--color-text-secondary)] mt-2">Searching...</div>
 					{/if}
 				</div>
+
+				<!-- Partner Commander Search (Only shown if commander has partner ability) -->
+				{#if hasPartnerAbility}
+					<div class="relative">
+						<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+							Partner Commander
+							<span class="text-xs text-[var(--color-text-tertiary)] font-normal ml-1">(Optional)</span>
+						</label>
+						<div class="relative">
+							<input
+								type="text"
+								bind:value={partnerSearchQuery}
+								placeholder="Search for a partner commander..."
+								disabled={selectedPartner !== null}
+								class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] disabled:opacity-75 disabled:cursor-not-allowed"
+							/>
+							{#if selectedPartner}
+								<button
+									type="button"
+									on:click={() => { selectedPartner = null; partnerSearchQuery = ''; }}
+									class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+									title="Clear selection"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+							{/if}
+						</div>
+
+						<!-- Partner Search Results Dropdown -->
+						{#if partnerSearchResults.length > 0}
+							<div
+								class="absolute z-10 w-full mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg max-h-60 overflow-y-auto"
+							>
+								{#each partnerSearchResults as partner}
+									<button
+										type="button"
+										class="w-full px-3 py-2 text-left hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border-b border-[var(--color-border)] last:border-b-0"
+										on:click={() => selectPartner(partner)}
+									>
+										<div class="font-medium">{partner.name}</div>
+									</button>
+								{/each}
+							</div>
+						{/if}
+
+						{#if isSearchingPartner}
+							<div class="text-sm text-[var(--color-text-secondary)] mt-2">Searching...</div>
+						{/if}
+
+						<div class="text-xs text-[var(--color-text-tertiary)] mt-2">
+							Your commander has partner. You can optionally select a partner commander now, or add one later.
+						</div>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Footer -->

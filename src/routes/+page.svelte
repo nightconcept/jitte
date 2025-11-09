@@ -32,6 +32,8 @@
 	let showEditDecklistModal = false;
 	let showCompareModal = false;
 	let showImportDeckModal = false;
+	let showUnsavedChangesModal = false;
+	let pendingLoadAction: (() => void) | null = null;
 	let currentDecklistPlaintext = '';
 	let isLoadingCards = false;
 	let loadingMessage = 'Loading cards...';
@@ -42,6 +44,11 @@
 	onMount(async () => {
 		await deckManager.initializeStorage();
 	});
+
+	// Auto-preview first commander when deck changes
+	$: if ($deckStore?.deck?.cards?.commander?.[0]) {
+		hoveredCard = $deckStore.deck.cards.commander[0];
+	}
 
 	function handleCardHover(card: Card | null) {
 		// Only update if a card is provided, otherwise keep the last hovered card
@@ -77,6 +84,12 @@
 			console.log('[handleCommit] Commit successful, closing modal');
 			showCommitModal = false;
 			toastStore.success('Deck saved successfully!');
+
+			// Execute pending action if any (from unsaved changes flow)
+			if (pendingLoadAction) {
+				pendingLoadAction();
+				pendingLoadAction = null;
+			}
 		} else {
 			console.error('[handleCommit] Commit failed:', $deckManager.error);
 			// Error is stored in deckManager state
@@ -84,17 +97,31 @@
 		}
 	}
 
-	function handleNewDeck() {
-		showNewDeckModal = true;
+	function checkUnsavedChanges(action: () => void): boolean {
+		const hasUnsavedChanges = $deckStore?.hasUnsavedChanges ?? false;
+
+		if (hasUnsavedChanges) {
+			pendingLoadAction = action;
+			showUnsavedChangesModal = true;
+			return true; // Changes detected
+		}
+
+		return false; // No changes
 	}
 
-	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderName: string }>) {
-		const { name, commanderName } = event.detail;
+	function handleNewDeck() {
+		if (!checkUnsavedChanges(() => showNewDeckModal = true)) {
+			showNewDeckModal = true;
+		}
+	}
+
+	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderNames: string[] }>) {
+		const { name, commanderNames } = event.detail;
 
 		try {
-			console.log('[handleCreateDeck] Starting deck creation:', { name, commanderName });
+			console.log('[handleCreateDeck] Starting deck creation:', { name, commanderNames });
 
-			await deckManager.createDeck(name, commanderName);
+			await deckManager.createDeck(name, commanderNames);
 
 			console.log('[handleCreateDeck] Deck created, closing modal');
 
@@ -114,8 +141,8 @@
 		}
 	}
 
-	async function handleImportDeck(event: CustomEvent<{ deckName: string; commanderName: string; decklist: string }>) {
-		const { deckName, commanderName, decklist } = event.detail;
+	async function handleImportDeck(data: { deckName: string; commanderNames: string[]; decklist: string }) {
+		const { deckName, commanderNames, decklist } = data;
 
 		// Close modal immediately and show loading
 		showImportDeckModal = false;
@@ -124,10 +151,10 @@
 		toastStore.info('Importing deck from decklist...');
 
 		try {
-			console.log('[handleImportDeck] Starting deck import:', { deckName, commanderName });
+			console.log('[handleImportDeck] Starting deck import:', { deckName, commanderNames });
 
-			// Create the deck with the detected commander
-			await deckManager.createDeck(deckName, commanderName);
+			// Create the deck with the detected commander(s)
+			await deckManager.createDeck(deckName, commanderNames);
 
 			console.log('[handleImportDeck] Deck created, now importing cards');
 
@@ -137,11 +164,11 @@
 			// Parse the full decklist first to detect if commander is tagged
 			const fullParseResult = parsePlaintext(decklist);
 
-			// Determine if we need to skip the first line or filter the commander from cards
+			// Determine if we need to skip the first line or filter the commanders from cards
 			let decklistWithoutCommander: string;
-			if (fullParseResult.commanderName) {
-				// Commander was found via [Commander{top}] tag
-				// Don't skip first line, but filter the commander from the parsed cards
+			if (fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0) {
+				// Commanders were found via [Commander{top}] tags
+				// Don't skip first line, but filter the commanders from the parsed cards
 				decklistWithoutCommander = decklist;
 			} else {
 				// Commander is on the first line (Moxfield format)
@@ -184,9 +211,9 @@
 			let failedCards: string[] = [];
 			const finalCards: Card[] = [];
 
-			// Filter out the commander if it was tagged (to avoid duplicates)
-			const cardsToImport = fullParseResult.commanderName
-				? parseResult.cards.filter(card => card.name !== commanderName)
+			// Filter out the commanders if they were tagged (to avoid duplicates)
+			const cardsToImport = fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0
+				? parseResult.cards.filter(card => !fullParseResult.commanderNames!.includes(card.name))
 				: parseResult.cards;
 
 			// Fetch all cards from Scryfall using batch API
@@ -284,13 +311,35 @@
 	}
 
 	function handleLoadDeck() {
-		showDeckPickerModal = true;
+		if (!checkUnsavedChanges(() => showDeckPickerModal = true)) {
+			showDeckPickerModal = true;
+		}
 	}
 
 	async function handleLoadDeckFromPicker(event: CustomEvent<string>) {
 		const deckName = event.detail;
 		await deckManager.loadDeck(deckName);
 		showDeckPickerModal = false;
+	}
+
+	function handleDiscardChanges() {
+		showUnsavedChangesModal = false;
+		if (pendingLoadAction) {
+			pendingLoadAction();
+			pendingLoadAction = null;
+		}
+	}
+
+	function handleSaveBeforeLoad() {
+		showUnsavedChangesModal = false;
+		showCommitModal = true;
+		// After commit, execute pending action
+		// We'll handle this in handleCommit
+	}
+
+	function handleCancelLoad() {
+		showUnsavedChangesModal = false;
+		pendingLoadAction = null;
 	}
 
 	async function handleDeleteDeck(event: CustomEvent<string>) {
@@ -602,7 +651,7 @@
 		onSettings={handleSettings}
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
-		onImport={handleImport}
+		onImport={() => showImportDeckModal = true}
 		onCompare={handleCompare}
 		onSwitchVersion={handleSwitchVersion}
 		onSwitchBranch={handleSwitchBranch}
@@ -644,7 +693,7 @@
 
 				<div class="space-y-3">
 					<button
-						on:click={handleNewDeck}
+						onclick={handleNewDeck}
 						class="w-full px-6 py-3 rounded-lg bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white font-medium flex items-center justify-center gap-2 transition-colors"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,7 +703,7 @@
 					</button>
 
 					<button
-						on:click={() => showImportDeckModal = true}
+						onclick={() => showImportDeckModal = true}
 						class="w-full px-6 py-3 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2 transition-colors"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,7 +713,7 @@
 					</button>
 
 					<button
-						on:click={handleLoadDeck}
+						onclick={handleLoadDeck}
 						class="w-full px-6 py-3 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2 transition-colors"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -724,8 +773,8 @@
 
 <ImportDeckModal
 	isOpen={showImportDeckModal}
-	on:import={handleImportDeck}
-	on:close={() => showImportDeckModal = false}
+	onImport={handleImportDeck}
+	onClose={() => showImportDeckModal = false}
 />
 
 <DeckPickerModal
@@ -735,6 +784,47 @@
 	on:delete={handleDeleteDeck}
 	on:close={() => showDeckPickerModal = false}
 />
+
+<!-- Unsaved Changes Warning Modal -->
+{#if showUnsavedChangesModal}
+	<div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+		<div class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-md mx-4 border border-[var(--color-border)]">
+			<!-- Header -->
+			<div class="px-6 py-4 border-b border-[var(--color-border)]">
+				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Unsaved Changes</h2>
+			</div>
+
+			<!-- Body -->
+			<div class="px-6 py-4">
+				<p class="text-[var(--color-text-primary)] mb-4">
+					You have unsaved changes. What would you like to do?
+				</p>
+			</div>
+
+			<!-- Footer -->
+			<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end gap-3">
+				<button
+					onclick={handleCancelLoad}
+					class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={handleDiscardChanges}
+					class="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white"
+				>
+					Discard Changes
+				</button>
+				<button
+					onclick={handleSaveBeforeLoad}
+					class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white"
+				>
+					Save Changes
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <SettingsModal
 	isOpen={showSettingsModal}

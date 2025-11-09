@@ -6,8 +6,18 @@
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import ManaSymbol from './ManaSymbol.svelte';
+	import PartnerBadge from './PartnerBadge.svelte';
+	import { canBePartners, detectPartnerType } from '$lib/utils/partner-detection';
 
-	let { isOpen = false }: { isOpen?: boolean } = $props();
+	let {
+		isOpen = false,
+		mode = 'replace_all',
+		existingCommanders = []
+	}: {
+		isOpen?: boolean;
+		mode?: 'replace_all' | 'replace_partner' | 'add_partner';
+		existingCommanders?: Card[];
+	} = $props();
 
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -158,6 +168,7 @@
 				manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
 				colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
 				oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
+				keywords: scryfallCard.keywords,
 				imageUrls: {
 					small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
 					normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
@@ -222,9 +233,23 @@
 		>
 			<!-- Header -->
 			<div class="px-6 py-4 border-b border-[var(--color-border)]">
-				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Change Commander</h2>
+				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">
+					{#if mode === 'add_partner'}
+						Add Partner Commander
+					{:else if mode === 'replace_partner'}
+						Replace Partner Commander
+					{:else}
+						Change Commander
+					{/if}
+				</h2>
 				<p class="text-sm text-[var(--color-text-secondary)] mt-1">
-					Search for a legendary creature or card that can be your commander
+					{#if mode === 'add_partner'}
+						Search for a partner commander compatible with {existingCommanders[0]?.name || 'your commander'}
+					{:else if mode === 'replace_partner'}
+						Search for a new partner commander
+					{:else}
+						Search for a legendary creature or card that can be your commander
+					{/if}
 				</p>
 			</div>
 

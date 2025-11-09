@@ -8,8 +8,10 @@
 	import CardSearch from './CardSearch.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import CardDetailModal from './CardDetailModal.svelte';
+	import PartnerBadge from './PartnerBadge.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
+	import { canAddPartner } from '$lib/utils/partner-detection';
 
 	let { 
 		onCardHover = undefined,
@@ -202,6 +204,8 @@
 	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
 	let detailModalCard = $state<Card | null>(null);
 	let isChangeCommanderModalOpen = $state(false);
+	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
+	let commanderToReplaceIndex = $state<number>(0);
 
 	function showAddMoreModal(card: Card, category: CardCategory) {
 		addMoreCard = { card, category };
@@ -232,15 +236,35 @@
 		closeCardMenu();
 	}
 
-	function showChangeCommanderModal() {
+	function showChangeCommanderModal(mode: 'replace_all' | 'replace_partner' | 'add_partner' = 'replace_all', index: number = 0) {
+		commanderModalMode = mode;
+		commanderToReplaceIndex = index;
 		isChangeCommanderModalOpen = true;
 		closeCardMenu();
 	}
 
 	function handleCommanderSelect(event: CustomEvent<Card>) {
 		const newCommander = event.detail;
-		deckStore.changeCommander(newCommander);
+
+		if (commanderModalMode === 'replace_all') {
+			deckStore.setCommanders([newCommander]);
+		} else if (commanderModalMode === 'replace_partner') {
+			deckStore.replaceCommander(commanderToReplaceIndex, newCommander);
+		} else if (commanderModalMode === 'add_partner') {
+			deckStore.addPartner(newCommander);
+		}
+
 		isChangeCommanderModalOpen = false;
+	}
+
+	function handleRemovePartner(commanderName: string) {
+		deckStore.removePartner(commanderName);
+		closeCardMenu();
+	}
+
+	function getCommanderIndex(commanderName: string): number {
+		if (!deck) return -1;
+		return deck.cards.commander.findIndex(c => c.name === commanderName);
 	}
 </script>
 
@@ -415,6 +439,11 @@
 														{card.name}
 													</span>
 
+													<!-- Partner Badge (Commander only) -->
+													{#if category === CardCategory.Commander}
+														<PartnerBadge card={card} />
+													{/if}
+
 													<!-- Banned Icon -->
 													{#if isCardBanned(card)}
 														<span
@@ -469,6 +498,10 @@
 															class="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]"
 														>
 															{#if category === CardCategory.Commander}
+																{@const hasPartner = deck && deck.cards.commander.length === 2}
+																{@const canHavePartner = deck && deck.cards.commander.length === 1 && canAddPartner(deck.cards.commander[0])}
+																{@const commanderIndex = getCommanderIndex(card.name)}
+
 																<!-- Commander-specific menu -->
 																<button
 																	onclick={(e) => { e.stopPropagation(); showChangePrintingModal(card, category); }}
@@ -479,15 +512,50 @@
 																	</svg>
 																	Change printing
 																</button>
-																<button
-																	onclick={(e) => { e.stopPropagation(); showChangeCommanderModal(); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-																	</svg>
-																	Change commander
-																</button>
+
+																{#if hasPartner}
+																	<!-- Partner commander options -->
+																	<button
+																		onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('replace_partner', commanderIndex); }}
+																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+																	>
+																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+																		</svg>
+																		Replace this partner
+																	</button>
+																	<button
+																		onclick={(e) => { e.stopPropagation(); handleRemovePartner(card.name); }}
+																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-400 flex items-center gap-2"
+																	>
+																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+																		</svg>
+																		Remove this partner
+																	</button>
+																{:else}
+																	<!-- Single commander options -->
+																	<button
+																		onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('replace_all', 0); }}
+																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+																	>
+																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+																		</svg>
+																		Change commander
+																	</button>
+																	{#if canHavePartner}
+																		<button
+																			onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('add_partner', 0); }}
+																			class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-green-400 flex items-center gap-2"
+																		>
+																			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+																			</svg>
+																			Add partner commander
+																		</button>
+																	{/if}
+																{/if}
 															{:else}
 																<!-- Regular card menu -->
 																<button
@@ -579,6 +647,8 @@
 
 <ChangeCommanderModal
 	isOpen={isChangeCommanderModalOpen}
+	mode={commanderModalMode}
+	existingCommanders={deck?.cards.commander || []}
 	on:select={handleCommanderSelect}
 	on:close={() => isChangeCommanderModalOpen = false}
 />

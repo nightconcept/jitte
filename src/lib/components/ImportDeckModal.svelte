@@ -1,84 +1,81 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { parsePlaintext, type ParseResult } from '$lib/utils/decklist-parser';
 
-	export let isOpen = false;
+	let {
+		isOpen = false,
+		onClose = undefined,
+		onImport = undefined
+	}: {
+		isOpen?: boolean;
+		onClose?: () => void;
+		onImport?: (data: { deckName: string; commanderNames: string[]; decklist: string }) => void;
+	} = $props();
 
-	const dispatch = createEventDispatcher<{
-		close: void;
-		import: { deckName: string; commanderName: string; decklist: string };
-	}>();
-
-	let deckName = '';
-	let decklistInput = '';
-	let parseResult: ParseResult | null = null;
-	let showErrors = false;
-	let commanderName = '';
-	let commanderDetected = false;
+	let deckName = $state('');
+	let decklistInput = $state('');
+	let parseResult = $state<ParseResult | null>(null);
+	let showErrors = $state(false);
+	let commanderNames = $state<string[]>([]);
+	let commanderDetected = $state(false);
 
 	// Reset when modal opens
-	$: if (isOpen) {
-		deckName = '';
-		decklistInput = '';
-		parseResult = null;
-		showErrors = false;
-		commanderName = '';
-		commanderDetected = false;
-	}
-
-	// Parse and detect commander when decklist changes
-	$: if (decklistInput.trim()) {
-		parseResult = parsePlaintext(decklistInput);
-		detectCommander();
-	} else {
-		parseResult = null;
-		commanderName = '';
-		commanderDetected = false;
-	}
-
-	function detectCommander() {
-		if (!decklistInput.trim()) {
-			commanderName = '';
+	$effect(() => {
+		if (isOpen) {
+			deckName = '';
+			decklistInput = '';
+			parseResult = null;
+			showErrors = false;
+			commanderNames = [];
 			commanderDetected = false;
-			return;
 		}
+	});
 
-		// First, check if the parser found a commander tag ([Commander{top}])
-		if (parseResult?.commanderName) {
-			commanderName = parseResult.commanderName;
-			commanderDetected = true;
-			return;
-		}
+	// Parse decklist when input changes
+	$effect(() => {
+		if (decklistInput.trim()) {
+			const newParseResult = parsePlaintext(decklistInput);
+			parseResult = newParseResult;
 
-		// Fallback: Get first non-empty line (Moxfield format)
-		const lines = decklistInput.split('\n');
-		const firstLine = lines.find(line => line.trim().length > 0);
+			// Detect commanders inline to avoid circular dependency
+			if (newParseResult.commanderNames && newParseResult.commanderNames.length > 0) {
+				commanderNames = newParseResult.commanderNames;
+				commanderDetected = true;
+			} else {
+				// Fallback: Get first non-empty line (Moxfield format)
+				const lines = decklistInput.split('\n');
+				const firstLine = lines.find(line => line.trim().length > 0);
 
-		if (!firstLine) {
-			commanderName = '';
-			commanderDetected = false;
-			return;
-		}
+				if (firstLine) {
+					const trimmed = firstLine.trim();
+					const withoutTags = trimmed.split('[')[0].trim();
+					const withoutFinish = withoutTags.replace(/\s+\*[A-Z]+\*\s*/gi, ' ').trim();
+					const match = withoutFinish.match(/^(?:\d+x?\s+)?(.+?)(?:\s+\([A-Z0-9]+\)(?:\s+[A-Z0-9\-★•†‡§¶#*]+)?)?$/i);
 
-		// Parse the first line to extract card name
-		// Format: "1 Card Name" or "1x Card Name" or "Card Name"
-		const trimmed = firstLine.trim();
-		// Updated regex to handle Archidekt format with finish indicators and tags
-		// Strip everything after '[' first
-		const withoutTags = trimmed.split('[')[0].trim();
-		// Strip finish indicators like *F*
-		const withoutFinish = withoutTags.replace(/\s+\*[A-Z]+\*\s*/gi, ' ').trim();
-		// Now parse the card name
-		const match = withoutFinish.match(/^(?:\d+x?\s+)?(.+?)(?:\s+\([A-Z0-9]+\)(?:\s+[A-Z0-9\-★•†‡§¶#*]+)?)?$/i);
-
-		if (match && match[1]) {
-			commanderName = match[1].trim();
-			commanderDetected = true;
+					if (match && match[1]) {
+						const cardName = match[1].trim();
+						// Validate card name
+						if (cardName.length >= 2 && /[a-zA-Z]/.test(cardName)) {
+							commanderNames = [cardName];
+							commanderDetected = true;
+						} else {
+							commanderNames = [];
+							commanderDetected = false;
+						}
+					} else {
+						commanderNames = [];
+						commanderDetected = false;
+					}
+				} else {
+					commanderNames = [];
+					commanderDetected = false;
+				}
+			}
 		} else {
-			commanderName = '';
+			parseResult = null;
+			commanderNames = [];
 			commanderDetected = false;
 		}
-	}
+	});
 
 	function handleImport() {
 		// Validate deck name
@@ -88,7 +85,7 @@
 		}
 
 		// Validate commander
-		if (!commanderDetected || !commanderName.trim()) {
+		if (!commanderDetected || commanderNames.length === 0) {
 			showErrors = true;
 			return;
 		}
@@ -107,31 +104,35 @@
 			return;
 		}
 
-		// Dispatch import event with deck name, commander, and full decklist
-		dispatch('import', {
-			deckName: deckName.trim(),
-			commanderName: commanderName.trim(),
-			decklist: decklistInput
-		});
+		// Call onImport callback with deck name, commanders, and full decklist
+		if (onImport) {
+			onImport({
+				deckName: deckName.trim(),
+				commanderNames: commanderNames,
+				decklist: decklistInput
+			});
+		}
 
 		// Reset form
 		deckName = '';
 		decklistInput = '';
 		parseResult = null;
 		showErrors = false;
-		commanderName = '';
+		commanderNames = [];
 		commanderDetected = false;
 	}
 
 	function handleClose() {
-		dispatch('close');
+		if (onClose) {
+			onClose();
+		}
 	}
 
 	// Calculate summary stats
-	$: totalCards = parseResult?.cards.reduce((sum, card) => sum + card.quantity, 0) || 0;
-	$: uniqueCards = parseResult?.cards.length || 0;
-	$: errorCount = parseResult?.errors.length || 0;
-	$: lineCount = decklistInput.split('\n').length;
+	let totalCards = $derived(parseResult?.cards.reduce((sum, card) => sum + card.quantity, 0) || 0);
+	let uniqueCards = $derived(parseResult?.cards.length || 0);
+	let errorCount = $derived(parseResult?.errors.length || 0);
+	let lineCount = $derived(decklistInput.split('\n').length);
 </script>
 
 {#if isOpen}
@@ -143,7 +144,7 @@
 		<!-- Modal Content -->
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-4xl mx-4 border border-[var(--color-border)] h-[85vh] flex flex-col"
-			on:click|stopPropagation
+			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"
@@ -152,7 +153,7 @@
 			<div class="px-6 py-4 border-b border-[var(--color-border)]">
 				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Import Deck</h2>
 				<p class="text-sm text-[var(--color-text-secondary)] mt-1">
-					Paste a decklist from Moxfield, Archidekt, or any service. Commander should be the first line or tagged with [Commander{top}].
+					Paste a decklist from Moxfield, Archidekt, or any service. Commanders should be the first line(s) or tagged with [Commander{top}]. Partner commanders are supported.
 				</p>
 			</div>
 
@@ -178,9 +179,15 @@
 							<svg class="w-5 h-5 text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 							</svg>
-							<div>
-								<p class="text-sm font-medium text-green-400">Commander Detected</p>
-								<p class="text-sm text-green-300 mt-1">{commanderName}</p>
+							<div class="flex-1">
+								<p class="text-sm font-medium text-green-400">
+									{commanderNames.length === 1 ? 'Commander Detected' : 'Partner Commanders Detected'}
+								</p>
+								<div class="mt-1 space-y-1">
+									{#each commanderNames as commander}
+										<p class="text-sm text-green-300">{commander}</p>
+									{/each}
+								</div>
 							</div>
 						</div>
 					</div>
@@ -205,7 +212,7 @@
 					</label>
 					<textarea
 						bind:value={decklistInput}
-						placeholder={'1x Atraxa, Praetors\' Voice [Commander{top}]\n1x Sol Ring (cma) 231\n1x Command Tower (cma) 245\n1x Arcane Signet *F* [Ramp]\n...'}
+						placeholder={'1x Thrasios, Triton Hero [Commander{top}]\n1x Tymna the Weaver [Commander{top}]\n1x Sol Ring (cma) 231\n1x Command Tower (cma) 245\n1x Arcane Signet *F* [Ramp]\n...'}
 						class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"
 						autofocus
 					/>
@@ -258,13 +265,13 @@
 				</div>
 				<div class="flex gap-3">
 					<button
-						on:click={handleClose}
+						onclick={handleClose}
 						class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
 					>
 						Cancel
 					</button>
 					<button
-						on:click={handleImport}
+						onclick={handleImport}
 						disabled={!deckName.trim() || !commanderDetected}
 						class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
 					>

@@ -4,6 +4,7 @@
 
 import type { Deck, DeckValidationResult } from '$lib/types/deck';
 import type { Card, ValidationWarning, ValidationWarningType } from '$lib/types/card';
+import { validatePartnerCompatibility } from './partner-detection';
 
 /**
  * Validate a Commander deck
@@ -26,6 +27,12 @@ export function validateDeck(deck: Deck): DeckValidationResult {
 			message: 'Deck cannot have more than 2 Commanders (Partner)',
 			severity: 'error'
 		});
+	}
+
+	// Validate partner compatibility if there are 2 commanders
+	if (deck.cards.commander.length === 2) {
+		const partnerWarnings = validatePartnerCompatibility(deck.cards.commander);
+		warnings.push(...partnerWarnings);
 	}
 
 	// Check companion count
