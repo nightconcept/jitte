@@ -154,7 +154,7 @@
 		}
 	}
 
-	async function handleExport() {
+	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt') {
 		const plaintext = deckStore.exportToPlaintext(true);
 		if (!plaintext) {
 			toastStore.warning('No deck loaded to export');
@@ -162,8 +162,21 @@
 		}
 
 		try {
+			// Copy to clipboard for all platforms
 			await navigator.clipboard.writeText(plaintext);
-			toastStore.success('Deck exported to clipboard!');
+
+			// Platform-specific actions
+			if (platform === 'plaintext') {
+				toastStore.success('Deck exported to clipboard!');
+			} else if (platform === 'moxfield') {
+				toastStore.success('Deck copied to clipboard! Opening Moxfield...');
+				// Open Moxfield's deck builder page
+				window.open('https://www.moxfield.com/decks/new', '_blank');
+			} else if (platform === 'archidekt') {
+				toastStore.success('Deck copied to clipboard! Opening Archidekt...');
+				// Open Archidekt's sandbox page
+				window.open('https://archidekt.com/decks/sandbox', '_blank');
+			}
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
 			toastStore.error('Failed to copy to clipboard. Check console for details.');
