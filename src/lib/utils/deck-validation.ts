@@ -161,12 +161,15 @@ function validateColorIdentity(deck: Deck): boolean {
 
 /**
  * Check if a card is banned in Commander format
- * Note: This should ideally fetch from Scryfall's legality data
  */
 export function isCardBanned(card: Card): boolean {
-	// TODO: Integrate with Scryfall API to check legalities
-	// For now, return false (will implement when integrating with API)
-	return false;
+	// Check if card has legality information
+	if (!card.legalities?.commander) {
+		return false;
+	}
+
+	// A card is banned if its Commander legality is 'banned'
+	return card.legalities.commander === 'banned';
 }
 
 /**

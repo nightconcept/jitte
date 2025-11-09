@@ -67,6 +67,12 @@ export interface Card {
 
 	/** Whether this card is a Game Changer (affects bracket level) */
 	isGameChanger?: boolean;
+
+	/** Format legalities from Scryfall */
+	legalities?: {
+		commander?: 'legal' | 'not_legal' | 'restricted' | 'banned';
+		[format: string]: string | undefined;
+	};
 }
 
 /**
