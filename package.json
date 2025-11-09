@@ -38,5 +38,10 @@
 	"dependencies": {
 		"jszip": "^3.10.1",
 		"mana-font": "^1.18.0"
+	},
+	"pnpm": {
+		"overrides": {
+			"rollup": "4.52.0"
+		}
 	}
 }

@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { themeStore } from '$lib/stores/themeStore';
 	import type { ThemeName } from '$lib/themes';
+	import { resetOnboarding } from '$lib/utils/onboarding';
 
 	interface Props {
 		isOpen?: boolean;
@@ -11,6 +12,7 @@
 
 	const dispatch = createEventDispatcher<{
 		close: void;
+		redoOnboarding: void;
 	}>();
 
 	let showWipeConfirmation = $state(false);
@@ -52,6 +54,12 @@
 
 	function selectTheme(themeName: ThemeName) {
 		themeStore.setTheme(themeName);
+	}
+
+	function handleRedoOnboarding() {
+		resetOnboarding();
+		dispatch('redoOnboarding');
+		dispatch('close');
 	}
 </script>
 
@@ -127,6 +135,25 @@
 								{/if}
 							</button>
 						</div>
+					</div>
+				</div>
+
+				<!-- Help & Tutorial Section -->
+				<div class="pt-4 border-t border-[var(--color-border)]">
+					<h3 class="text-sm font-medium text-[var(--color-text-primary)] mb-3">
+						Help & Tutorial
+					</h3>
+					<div class="space-y-2">
+						<button
+							type="button"
+							on:click={handleRedoOnboarding}
+							class="w-full px-4 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors"
+						>
+							<div class="font-medium">Redo Onboarding Tutorial</div>
+							<div class="text-xs text-[var(--color-text-secondary)] mt-1">
+								Learn about branches and versions again
+							</div>
+						</button>
 					</div>
 				</div>
 

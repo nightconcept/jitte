@@ -18,10 +18,12 @@
 	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
 	import VersionComparisonModal from '$lib/components/VersionComparisonModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
+	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
 	import { parsePlaintext } from '$lib/utils/decklist-parser';
+	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 
 	let hoveredCard: Card | null = null;
 	let showCommitModal = false;
@@ -37,12 +39,18 @@
 	let currentDecklistPlaintext = '';
 	let isLoadingCards = false;
 	let loadingMessage = 'Loading cards...';
+	let showOnboarding = false;
 
 	const cardService = new CardService();
 
 	// Initialize storage on mount
 	onMount(async () => {
 		await deckManager.initializeStorage();
+
+		// Check if onboarding should be shown
+		if (!hasCompletedOnboarding()) {
+			showOnboarding = true;
+		}
 	});
 
 	// Auto-preview first commander when deck changes
@@ -623,6 +631,20 @@
 		showCompareModal = true;
 	}
 
+	function handleOnboardingComplete() {
+		markOnboardingComplete();
+		showOnboarding = false;
+		toastStore.success('Welcome to Jitte!');
+	}
+
+	function handleOnboardingClose() {
+		showOnboarding = false;
+	}
+
+	function handleRedoOnboarding() {
+		showOnboarding = true;
+	}
+
 	// Get available versions for branch modal
 	$: availableVersions = $deckManager.activeManifest?.branches
 		?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
@@ -829,6 +851,7 @@
 <SettingsModal
 	isOpen={showSettingsModal}
 	on:close={() => showSettingsModal = false}
+	on:redoOnboarding={handleRedoOnboarding}
 />
 
 <NewBranchModal
@@ -855,3 +878,10 @@
 
 <!-- Loading Overlay -->
 <LoadingOverlay isLoading={isLoadingCards} message={loadingMessage} />
+
+<!-- Onboarding Overlay -->
+<OnboardingOverlay
+	isOpen={showOnboarding}
+	on:complete={handleOnboardingComplete}
+	on:close={handleOnboardingClose}
+/>
