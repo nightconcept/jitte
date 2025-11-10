@@ -3,6 +3,8 @@
 	import { themeStore } from '$lib/stores/themeStore';
 	import type { ThemeName } from '$lib/themes';
 	import { resetOnboarding } from '$lib/utils/onboarding';
+	import { generateDebugInfo } from '$lib/utils/debugInfo';
+	import { toastStore } from '$lib/stores/toast-store';
 
 	interface Props {
 		isOpen?: boolean;
@@ -60,6 +62,17 @@
 		resetOnboarding();
 		dispatch('redoOnboarding');
 		dispatch('close');
+	}
+
+	async function copyDebugInfo() {
+		try {
+			const debugInfo = generateDebugInfo();
+			await navigator.clipboard.writeText(debugInfo);
+			toastStore.success('Debug info copied to clipboard!', 2000);
+		} catch (error) {
+			console.error('Failed to copy debug info:', error);
+			toastStore.error('Failed to copy to clipboard');
+		}
 	}
 </script>
 
@@ -183,7 +196,21 @@
 					</h3>
 					<div class="text-sm text-[var(--color-text-secondary)] space-y-1">
 						<div>Jitte - MTG Commander Deck Manager</div>
-						<div class="text-xs">Version 0.1.0</div>
+						<div class="flex items-center justify-between gap-2">
+							<span class="text-xs font-mono">Version {__APP_VERSION__}</span>
+							<button
+								type="button"
+								on:click={copyDebugInfo}
+								class="p-1 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+								title="Copy debug info to clipboard"
+								aria-label="Copy debug info to clipboard"
+							>
+								<!-- Clipboard icon -->
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+								</svg>
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>

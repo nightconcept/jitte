@@ -282,12 +282,6 @@
 				</div>
 			{/if}
 		</div>
-	{:else if selectedCommanders.length === 1 && !canHavePartner}
-		<div
-			class="px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-secondary)] text-center"
-		>
-			{selectedCommanders[0].name} does not have Partner
-		</div>
 	{:else}
 		<div
 			class="px-4 py-2 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 text-center"
