@@ -393,24 +393,26 @@
 		}
 
 		try {
-			// Copy to clipboard for all platforms
-			await navigator.clipboard.writeText(plaintext);
-
 			// Platform-specific actions
 			if (platform === 'plaintext') {
+				// Copy to clipboard only
+				await navigator.clipboard.writeText(plaintext);
 				toastStore.success('Deck exported to clipboard!');
 			} else if (platform === 'moxfield') {
-				toastStore.success('Deck copied to clipboard! Opening Moxfield...');
-				// Open Moxfield's homepage where users can create a new deck and paste
-				window.open('https://www.moxfield.com/', '_blank');
+				// Moxfield supports URL parameter import: /import?c=<url_encoded_decklist>
+				const encodedDecklist = encodeURIComponent(plaintext);
+				const moxfieldUrl = `https://www.moxfield.com/import?c=${encodedDecklist}`;
+				window.open(moxfieldUrl, '_blank');
+				toastStore.success('Opening Moxfield with your deck...');
 			} else if (platform === 'archidekt') {
-				toastStore.success('Deck copied to clipboard! Opening Archidekt...');
-				// Open Archidekt's sandbox page where users can paste and import
+				// Archidekt requires manual paste - copy to clipboard and open sandbox
+				await navigator.clipboard.writeText(plaintext);
 				window.open('https://archidekt.com/sandbox', '_blank');
+				toastStore.success('Deck copied to clipboard! Opening Archidekt...');
 			}
 		} catch (error) {
-			console.error('Failed to copy to clipboard:', error);
-			toastStore.error('Failed to copy to clipboard. Check console for details.');
+			console.error('Failed to export deck:', error);
+			toastStore.error('Failed to export deck. Check console for details.');
 		}
 	}
 
