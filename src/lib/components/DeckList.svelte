@@ -12,6 +12,9 @@
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
 	import { canAddPartner } from '$lib/utils/partner-detection';
+	import TokensSection from './TokensSection.svelte';
+	import { detectTokensInDeck } from '$lib/utils/token-detector';
+	import type { TokenInfo } from '$lib/utils/token-detector';
 
 	let { 
 		onCardHover = undefined,
@@ -33,6 +36,43 @@
 
 	let deck = $derived(deckStoreState?.deck);
 	let isEditing = $derived(deckStoreState?.isEditing ?? false);
+
+	// Token detection - dynamically calculate tokens from deck cards
+	let tokens = $state<TokenInfo[]>([]);
+	let isLoadingTokens = $state(false);
+
+	// Detect tokens when deck changes
+	$effect(() => {
+		if (!deck) {
+			tokens = [];
+			return;
+		}
+
+		// Get all cards from the deck (excluding maybeboard)
+		const allCards: Card[] = [];
+		for (const category of Object.values(CardCategory)) {
+			const categoryCards = deck.cards[category] || [];
+			allCards.push(...categoryCards);
+		}
+
+		if (allCards.length === 0) {
+			tokens = [];
+			return;
+		}
+
+		// Detect tokens asynchronously
+		isLoadingTokens = true;
+		detectTokensInDeck(allCards)
+			.then(detectedTokens => {
+				tokens = detectedTokens;
+				isLoadingTokens = false;
+			})
+			.catch(error => {
+				console.error('Failed to detect tokens:', error);
+				tokens = [];
+				isLoadingTokens = false;
+			});
+	});
 
 	// Validation warnings subscription
 	let warnings = $state($validationWarnings);
@@ -722,6 +762,9 @@
 				</div>
 			{/if}
 		{/each}
+
+		<!-- Tokens & Extras Section -->
+		<TokensSection {tokens} onCardHover={onCardHover} />
 	</div>
 </div>
 

@@ -10,13 +10,19 @@
 		isOpen = false,
 		currentVersion = '1.0.0',
 		currentBranch = 'main',
+		currentDeck = undefined,
 		onClose = () => {}
 	}: {
 		isOpen?: boolean;
 		currentVersion?: string;
 		currentBranch?: string;
+		currentDeck?: Deck | undefined;
 		onClose?: () => void;
 	} = $props();
+
+	// Mode: 'compare' for version comparison, 'current' for current deck
+	type BuylistMode = 'compare' | 'current';
+	let mode = $state<BuylistMode>('compare');
 
 	// Get available branches
 	let availableBranches = $derived(
@@ -174,37 +180,58 @@
 
 	// Auto-load comparison when versions or branches change
 	$effect(() => {
-		if (isOpen && fromVersion && toVersion && fromBranch && toBranch) {
+		if (isOpen && mode === 'compare' && fromVersion && toVersion && fromBranch && toBranch) {
 			loadComparison();
 		}
 	});
 
 	/**
-	 * Generate a plaintext buylist from the diff
+	 * Generate a plaintext buylist from the diff or current deck
 	 * Format: quantity + card name only (no set codes)
 	 */
 	function generateBuylistText(): string {
-		if (!diff) return '';
+		if (mode === 'current') {
+			// Generate buylist from current deck
+			if (!currentDeck) return '';
 
-		const buylistCards: DiffCard[] = [];
+			const allCards: { name: string; quantity: number }[] = [];
 
-		// Include all added cards
-		buylistCards.push(...diff.added);
-
-		// Include cards with positive quantity changes
-		for (const card of diff.modified) {
-			if (card.quantityDelta && card.quantityDelta > 0) {
-				buylistCards.push(card);
+			// Collect all cards from all categories
+			for (const category of Object.values(currentDeck.cards)) {
+				for (const card of category) {
+					allCards.push({ name: card.name, quantity: card.quantity });
+				}
 			}
+
+			// Sort alphabetically
+			allCards.sort((a, b) => a.name.localeCompare(b.name));
+
+			// Format as "quantity cardname"
+			return allCards.map(card => `${card.quantity} ${card.name}`).join('\n');
+		} else {
+			// Generate buylist from diff (compare mode)
+			if (!diff) return '';
+
+			const buylistCards: DiffCard[] = [];
+
+			// Include all added cards
+			buylistCards.push(...diff.added);
+
+			// Include cards with positive quantity changes
+			for (const card of diff.modified) {
+				if (card.quantityDelta && card.quantityDelta > 0) {
+					buylistCards.push(card);
+				}
+			}
+
+			// Sort by name alphabetically
+			buylistCards.sort((a, b) => a.name.localeCompare(b.name));
+
+			// Format as "quantity cardname"
+			return buylistCards
+				.map(card => `${card.quantityDelta || card.newQuantity || 1} ${card.name}`)
+				.join('\n');
 		}
-
-		// Sort by name alphabetically
-		buylistCards.sort((a, b) => a.name.localeCompare(b.name));
-
-		// Format as "quantity cardname"
-		return buylistCards
-			.map(card => `${card.quantityDelta || card.newQuantity || 1} ${card.name}`)
-			.join('\n');
 	}
 
 	/**
@@ -246,13 +273,39 @@
 <BaseModal
 	{isOpen}
 	onClose={handleClose}
-	title="Compare Versions"
+	title="Buylist"
 	size="3xl"
 	height="max-h-[80vh]"
 	contentClass="flex flex-col"
 >
 	{#snippet children()}
-		<!-- Version Selectors -->
+		<!-- Mode Selector -->
+		<div class="px-6 py-4 border-b border-[var(--color-border)]">
+			<div class="flex items-center gap-4">
+				<span class="text-sm font-medium text-[var(--color-text-primary)]">Mode:</span>
+				<div class="flex gap-2">
+					<button
+						onclick={() => mode = 'current'}
+						class="px-4 py-2 text-sm rounded border {mode === 'current'
+							? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+							: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+					>
+						Current Deck
+					</button>
+					<button
+						onclick={() => mode = 'compare'}
+						class="px-4 py-2 text-sm rounded border {mode === 'compare'
+							? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+							: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+					>
+						Compare Versions
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Version Selectors (Compare Mode Only) -->
+		{#if mode === 'compare'}
 		<div class="px-6 py-4 border-b border-[var(--color-border)] grid grid-cols-[1fr_auto_1fr] gap-4">
 			<!-- From Side -->
 			<div class="space-y-3">
@@ -321,16 +374,57 @@
 				</div>
 			</div>
 		</div>
+		{/if}
 
 		<!-- Body -->
 		<div class="px-6 py-4 overflow-y-auto flex-1">
-			{#if loading}
+			{#if mode === 'current' && currentDeck}
+				<!-- Current Deck Display -->
+				<div class="mb-6 p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)]">
+					<div class="flex items-center justify-between">
+						<div class="text-lg font-semibold text-[var(--color-text-primary)]">
+							{currentDeck.name} - {currentDeck.currentVersion}
+						</div>
+						<div class="text-lg font-semibold text-[var(--color-text-primary)]">
+							{Object.values(currentDeck.cards).reduce((sum, cat) => sum + cat.reduce((s, c) => s + c.quantity, 0), 0)} cards
+						</div>
+					</div>
+				</div>
+
+				<!-- All Cards List -->
+				{#each Object.entries(currentDeck.cards) as [categoryName, categoryCards]}
+					{#if categoryCards.length > 0}
+						<div class="mb-6">
+							<h3 class="text-lg font-semibold text-[var(--color-brand-primary)] mb-3 capitalize">
+								{categoryName} ({categoryCards.reduce((sum, c) => sum + c.quantity, 0)})
+							</h3>
+							<div class="space-y-2">
+								{#each categoryCards as card}
+									<div class="flex items-center justify-between py-2 px-3 bg-[var(--color-bg-primary)] rounded">
+										<div class="flex items-center gap-3">
+											<span class="text-sm font-semibold text-[var(--color-text-primary)] w-8">
+												{card.quantity}
+											</span>
+											<span class="text-sm text-[var(--color-text-primary)]">{card.name}</span>
+										</div>
+										{#if card.price}
+											<span class="text-sm text-[var(--color-text-secondary)]">
+												${(card.price * card.quantity).toFixed(2)}
+											</span>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				{/each}
+			{:else if mode === 'compare' && loading}
 				<div class="flex items-center justify-center py-12">
 					<div class="text-center">
 						<div class="text-[var(--color-text-primary)] mb-2">Loading comparison...</div>
 					</div>
 				</div>
-			{:else if diff}
+			{:else if mode === 'compare' && diff}
 				<!-- Summary -->
 				<div class="mb-6 p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)]">
 					<div class="flex items-center justify-between">
@@ -434,7 +528,7 @@
 		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-between">
 			<button
 				onclick={copyBuylist}
-				disabled={!diff || (diff.added.length === 0 && !diff.modified.some(c => c.quantityDelta && c.quantityDelta > 0))}
+				disabled={mode === 'compare' ? (!diff || (diff.added.length === 0 && !diff.modified.some(c => c.quantityDelta && c.quantityDelta > 0))) : !currentDeck}
 				class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				Copy Buylist

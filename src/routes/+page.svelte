@@ -16,7 +16,7 @@
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
 	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
-	import VersionComparisonModal from '$lib/components/VersionComparisonModal.svelte';
+	import BuylistModal from '$lib/components/BuylistModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
 	import type { Card } from '$lib/types/card';
@@ -33,7 +33,7 @@
 	let showSettingsModal = false;
 	let showNewBranchModal = false;
 	let showEditDecklistModal = false;
-	let showCompareModal = false;
+	let showBuylistModal = false;
 	let showImportDeckModal = false;
 	let showUnsavedChangesModal = false;
 	let pendingLoadAction: (() => void) | null = null;
@@ -687,8 +687,8 @@
 		}
 	}
 
-	function handleCompare() {
-		showCompareModal = true;
+	function handleBuylist() {
+		showBuylistModal = true;
 	}
 
 	function handleOnboardingComplete() {
@@ -739,7 +739,7 @@
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
 		onImport={() => showImportDeckModal = true}
-		onCompare={handleCompare}
+		onCompare={handleBuylist}
 		onSwitchVersion={handleSwitchVersion}
 		onSwitchBranch={handleSwitchBranch}
 		onDeleteBranch={handleDeleteBranch}
@@ -934,11 +934,12 @@
 	on:close={() => showEditDecklistModal = false}
 />
 
-<VersionComparisonModal
-	isOpen={showCompareModal}
+<BuylistModal
+	isOpen={showBuylistModal}
 	currentVersion={$deckStore?.deck.currentVersion ?? '1.0.0'}
 	currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
-	onClose={() => showCompareModal = false}
+	currentDeck={$deckStore?.deck}
+	onClose={() => showBuylistModal = false}
 />
 
 <!-- Loading Overlay -->
