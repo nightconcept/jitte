@@ -401,12 +401,12 @@
 				toastStore.success('Deck exported to clipboard!');
 			} else if (platform === 'moxfield') {
 				toastStore.success('Deck copied to clipboard! Opening Moxfield...');
-				// Open Moxfield's deck builder page
-				window.open('https://www.moxfield.com/decks/new', '_blank');
+				// Open Moxfield's homepage where users can create a new deck and paste
+				window.open('https://www.moxfield.com/', '_blank');
 			} else if (platform === 'archidekt') {
 				toastStore.success('Deck copied to clipboard! Opening Archidekt...');
-				// Open Archidekt's sandbox page
-				window.open('https://archidekt.com/decks/sandbox', '_blank');
+				// Open Archidekt's sandbox page where users can paste and import
+				window.open('https://archidekt.com/sandbox', '_blank');
 			}
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
