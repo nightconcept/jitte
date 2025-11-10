@@ -289,7 +289,9 @@
 									<div class="space-y-2">
 										{#each rulings as ruling}
 											<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
-												<p class="text-sm text-[var(--color-text-secondary)]">{ruling.comment}</p>
+												<p class="text-sm text-[var(--color-text-secondary)]">
+													<OracleText text={ruling.comment} />
+												</p>
 												<p class="text-xs text-[var(--color-text-tertiary)] mt-1">{ruling.published_at}</p>
 											</div>
 										{/each}
