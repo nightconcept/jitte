@@ -60,7 +60,7 @@
 
 	// Dynamic page title
 	$: pageTitle = (() => {
-		if (!$deckStore?.deck || !$deckManager) {
+		if (!$deckStore?.deck) {
 			return 'Jitte';
 		}
 
@@ -80,13 +80,13 @@
 		}
 
 		// Add branch
-		if ($deckManager.currentBranch) {
-			parts.push($deckManager.currentBranch);
+		if (deck.currentBranch) {
+			parts.push(deck.currentBranch);
 		}
 
 		// Add version
-		if ($deckManager.currentVersion) {
-			parts.push($deckManager.currentVersion);
+		if (deck.currentVersion) {
+			parts.push(deck.currentVersion);
 		}
 
 		return parts.join(' | ');
