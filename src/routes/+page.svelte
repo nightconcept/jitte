@@ -405,15 +405,69 @@
 				window.open(moxfieldUrl, '_blank');
 				toastStore.success('Opening Moxfield with your deck...');
 			} else if (platform === 'archidekt') {
-				// Archidekt requires manual paste - copy to clipboard and open sandbox
-				await navigator.clipboard.writeText(plaintext);
-				window.open('https://archidekt.com/sandbox', '_blank');
-				toastStore.success('Deck copied to clipboard! Opening Archidekt...');
+				// Archidekt supports JSON parameter import: /sandbox?deck=<json_array>
+				const archidektJson = buildArchidektJson();
+				if (!archidektJson) {
+					toastStore.warning('Unable to export: some cards are missing Scryfall IDs');
+					return;
+				}
+				const encodedJson = encodeURIComponent(archidektJson);
+				const archidektUrl = `https://archidekt.com/sandbox?deck=${encodedJson}`;
+				window.open(archidektUrl, '_blank');
+				toastStore.success('Opening Archidekt with your deck...');
 			}
 		} catch (error) {
 			console.error('Failed to export deck:', error);
 			toastStore.error('Failed to export deck. Check console for details.');
 		}
+	}
+
+	/**
+	 * Build Archidekt JSON format for deck export
+	 * Format: [{"c":"c","f":0,"q":1,"u":"scryfall-uuid"},...]
+	 * - c: category ("c"=commander, "m"=mainboard)
+	 * - f: foil (0=normal, 1=foil - we don't track foil, always 0)
+	 * - q: quantity
+	 * - u: Scryfall UUID
+	 */
+	function buildArchidektJson(): string | null {
+		if (!$deckStore?.deck) return null;
+
+		const deck = $deckStore.deck;
+		const cards: Array<{ c: string; f: number; q: number; u: string }> = [];
+
+		// Add commanders
+		for (const card of deck.cards[CardCategory.Commander] || []) {
+			if (!card.scryfallId) {
+				console.warn(`Card "${card.name}" missing Scryfall ID`);
+				return null; // Can't export without Scryfall IDs
+			}
+			cards.push({ c: 'c', f: 0, q: card.quantity, u: card.scryfallId });
+		}
+
+		// Add all other mainboard cards
+		const mainboardCategories = [
+			CardCategory.Companion,
+			CardCategory.Planeswalker,
+			CardCategory.Creature,
+			CardCategory.Instant,
+			CardCategory.Sorcery,
+			CardCategory.Artifact,
+			CardCategory.Enchantment,
+			CardCategory.Land
+		];
+
+		for (const category of mainboardCategories) {
+			for (const card of deck.cards[category] || []) {
+				if (!card.scryfallId) {
+					console.warn(`Card "${card.name}" missing Scryfall ID`);
+					return null;
+				}
+				cards.push({ c: 'm', f: 0, q: card.quantity, u: card.scryfallId });
+			}
+		}
+
+		return JSON.stringify(cards);
 	}
 
 	function handleImport() {
