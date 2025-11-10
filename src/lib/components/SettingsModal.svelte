@@ -24,6 +24,7 @@
 	const name = $derived(themeState.name);
 
 	const themes: { value: ThemeName; label: string }[] = [
+		{ value: 'equilibrium-gray', label: 'Equilibrium Gray' },
 		{ value: 'tokyo-night', label: 'Tokyo Night' },
 		{ value: 'kanagawa', label: 'Kanagawa' },
 		{ value: 'rose-pine', label: 'Rose Pine' }
@@ -106,22 +107,21 @@
 					<div class="space-y-3">
 						<!-- Theme Selection -->
 						<div>
-							<label class="block text-sm text-[var(--color-text-secondary)] mb-2">
+							<label for="theme-select" class="block text-sm text-[var(--color-text-secondary)] mb-2">
 								Theme
 							</label>
-							<div class="grid grid-cols-3 gap-2">
+							<select
+								id="theme-select"
+								value={name}
+								on:change={(e) => selectTheme(e.currentTarget.value as ThemeName)}
+								class="w-full px-4 py-2 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-brand-primary)]/50 focus:border-[var(--color-brand-primary)] focus:outline-none transition-colors"
+							>
 								{#each themes as theme}
-									<button
-										type="button"
-										on:click={() => selectTheme(theme.value)}
-										class="px-4 py-2 text-sm rounded border transition-colors {name === theme.value
-											? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10 text-[var(--color-brand-primary)]'
-											: 'border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 text-[var(--color-text-primary)]'}"
-									>
+									<option value={theme.value}>
 										{theme.label}
-									</button>
+									</option>
 								{/each}
-							</div>
+							</select>
 						</div>
 
 						<!-- Light/Dark Mode Toggle -->

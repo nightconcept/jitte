@@ -821,6 +821,9 @@
 		<!-- Commander Header with Gradient -->
 		<CommanderHeader />
 
+		<!-- Spacer for fixed CommanderHeader -->
+		<div class="h-26"></div>
+
 		<!-- Main Content -->
 		<div class="flex flex-1">
 			<!-- Card Preview Sidebar (Left, Sticky) -->

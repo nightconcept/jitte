@@ -1,0 +1,21 @@
+system: "base16"
+name: "Tokyo Night Dark (Fixed)"
+author: "enkia (official colors, fixed mapping)"
+variant: "dark"
+palette:
+  base00: "#1a1b26"  # background
+  base01: "#16161e"  # darker background
+  base02: "#2f3549"  # selection
+  base03: "#565f89"  # comments
+  base04: "#787c99"  # dark foreground
+  base05: "#a9b1d6"  # foreground
+  base06: "#cbccd1"  # light foreground
+  base07: "#d5d6db"  # lightest foreground
+  base08: "#f7768e"  # red (proper)
+  base09: "#ff9e64"  # orange (proper)
+  base0A: "#e0af68"  # yellow (proper)
+  base0B: "#9ece6a"  # green (proper)
+  base0C: "#7dcfff"  # cyan (proper)
+  base0D: "#7aa2f7"  # blue (proper)
+  base0E: "#bb9af7"  # purple (proper)
+  base0F: "#c0caf5"  # light blue

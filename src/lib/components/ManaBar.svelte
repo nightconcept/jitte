@@ -11,14 +11,14 @@
 
 	let { title, data, filterMinimum = 0.5, excludeColorless = false, children }: Props = $props();
 
-	// Mana color mappings (exact colors used by mana symbols)
+	// Mana color mappings - using CSS custom properties for universal pastel system
 	const manaColors: Record<string, string> = {
-		W: '#f0f0d8',
-		U: '#0e68ab',
-		B: '#150b00',
-		R: '#d3202a',
-		G: '#00733e',
-		C: '#cac5c0'
+		W: 'var(--color-mana-white)',
+		U: 'var(--color-mana-blue)',
+		B: 'var(--color-mana-black)',
+		R: 'var(--color-mana-red)',
+		G: 'var(--color-mana-green)',
+		C: 'var(--color-mana-colorless)'
 	};
 
 	// Filter to only include colors above minimum threshold
@@ -63,7 +63,7 @@
 		{/if}
 	</div>
 
-	<div class="relative h-12 w-full bg-[var(--color-surface)] rounded-lg overflow-hidden">
+	<div class="relative h-12 w-full rounded-lg overflow-hidden">
 		<div class="absolute inset-0 flex">
 			{#each segments as segment}
 				<div

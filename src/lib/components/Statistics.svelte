@@ -23,14 +23,14 @@
 		1
 	);
 
-	// Color mappings (kept for backward compatibility if needed)
+	// Color mappings - using CSS custom properties for universal pastel system
 	const manaColorMap: Record<string, string> = {
-		W: '#f0f0d8',
-		U: '#0e68ab',
-		B: '#150b00',
-		R: '#d3202a',
-		G: '#00733e',
-		C: '#cac5c0'
+		W: 'var(--color-mana-white)',
+		U: 'var(--color-mana-blue)',
+		B: 'var(--color-mana-black)',
+		R: 'var(--color-mana-red)',
+		G: 'var(--color-mana-green)',
+		C: 'var(--color-mana-colorless)'
 	};
 </script>
 

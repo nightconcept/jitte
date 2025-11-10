@@ -16,7 +16,9 @@
 		"check:all": "biome check --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:ui": "vitest --ui"
+		"test:ui": "vitest --ui",
+		"theme:generate": "node theme/parse-schemes.js",
+		"theme:list": "node theme/parse-schemes.js --check"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.4",

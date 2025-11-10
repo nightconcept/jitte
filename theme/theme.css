@@ -1,0 +1,207 @@
+/* Generated from Base16/Base24 schemes - All themes for runtime switching */
+
+/* Equilibrium Gray Dark */
+:root[data-theme="equilibrium-gray"], [data-theme="equilibrium-gray"].theme-dark {
+  --base-0: #111111;
+  --base-1: #1b1b1b;
+  --base-2: #262626;
+  --base-3: #777777;
+  --base-4: #919191;
+  --base-5: #ababab;
+  --base-6: #c6c6c6;
+  --base-7: #e2e2e2;
+  --accent-red: #f04339;
+  --accent-orange: #df5923;
+  --accent-yellow: #bb8801;
+  --accent-green: #7f8b00;
+  --accent-cyan: #00948b;
+  --accent-blue: #008dd1;
+  --accent-purple: #6a7fd2;
+  --accent-magenta: #e3488e;
+}
+
+/* Equilibrium Gray Light */
+[data-theme="equilibrium-gray"].theme-light {
+  --base-0: #f1f1f1;
+  --base-1: #e2e2e2;
+  --base-2: #d4d4d4;
+  --base-3: #777777;
+  --base-4: #5e5e5e;
+  --base-5: #474747;
+  --base-6: #303030;
+  --base-7: #1b1b1b;
+  --accent-red: #d02023;
+  --accent-orange: #bf3e05;
+  --accent-yellow: #9d6f00;
+  --accent-green: #637200;
+  --accent-cyan: #007a72;
+  --accent-blue: #0073b5;
+  --accent-purple: #4e66b6;
+  --accent-magenta: #c42775;
+}
+
+/* Rosé Pine Moon */
+:root[data-theme="rose-pine"], [data-theme="rose-pine"].theme-dark {
+  --base-0: #232136;
+  --base-1: #2a273f;
+  --base-2: #393552;
+  --base-3: #6e6a86;
+  --base-4: #908caa;
+  --base-5: #e0def4;
+  --base-6: #e0def4;
+  --base-7: #56526e;
+  --accent-red: #eb6f92;
+  --accent-orange: #f6c177;
+  --accent-yellow: #ea9a97;
+  --accent-green: #3e8fb0;
+  --accent-cyan: #9ccfd8;
+  --accent-blue: #c4a7e7;
+  --accent-purple: #f6c177;
+  --accent-magenta: #56526e;
+}
+
+/* Rosé Pine Dawn */
+[data-theme="rose-pine"].theme-light {
+  --base-0: #faf4ed;
+  --base-1: #fffaf3;
+  --base-2: #f2e9de;
+  --base-3: #9893a5;
+  --base-4: #797593;
+  --base-5: #575279;
+  --base-6: #575279;
+  --base-7: #cecacd;
+  --accent-red: #b4637a;
+  --accent-orange: #ea9d34;
+  --accent-yellow: #d7827e;
+  --accent-green: #286983;
+  --accent-cyan: #56949f;
+  --accent-blue: #907aa9;
+  --accent-purple: #ea9d34;
+  --accent-magenta: #cecacd;
+}
+
+/* Kanagawa */
+:root[data-theme="kanagawa"], [data-theme="kanagawa"].theme-dark {
+  --base-0: #1F1F28;
+  --base-1: #16161D;
+  --base-2: #223249;
+  --base-3: #54546D;
+  --base-4: #727169;
+  --base-5: #DCD7BA;
+  --base-6: #C8C093;
+  --base-7: #717C7C;
+  --accent-red: #C34043;
+  --accent-orange: #FFA066;
+  --accent-yellow: #C0A36E;
+  --accent-green: #76946A;
+  --accent-cyan: #6A9589;
+  --accent-blue: #7E9CD8;
+  --accent-purple: #957FB8;
+  --accent-magenta: #D27E99;
+}
+
+/* Rosé Pine Dawn */
+[data-theme="kanagawa"].theme-light {
+  --base-0: #faf4ed;
+  --base-1: #fffaf3;
+  --base-2: #f2e9de;
+  --base-3: #9893a5;
+  --base-4: #797593;
+  --base-5: #575279;
+  --base-6: #575279;
+  --base-7: #cecacd;
+  --accent-red: #b4637a;
+  --accent-orange: #ea9d34;
+  --accent-yellow: #d7827e;
+  --accent-green: #286983;
+  --accent-cyan: #56949f;
+  --accent-blue: #907aa9;
+  --accent-purple: #ea9d34;
+  --accent-magenta: #cecacd;
+}
+
+/* Tokyo Night Dark (Fixed) */
+:root[data-theme="tokyo-night"], [data-theme="tokyo-night"].theme-dark {
+  --base-0: #1a1b26;
+  --base-1: #16161e;
+  --base-2: #2f3549;
+  --base-3: #565f89;
+  --base-4: #787c99;
+  --base-5: #a9b1d6;
+  --base-6: #cbccd1;
+  --base-7: #d5d6db;
+  --accent-red: #f7768e;
+  --accent-orange: #ff9e64;
+  --accent-yellow: #e0af68;
+  --accent-green: #9ece6a;
+  --accent-cyan: #7dcfff;
+  --accent-blue: #7aa2f7;
+  --accent-purple: #bb9af7;
+  --accent-magenta: #c0caf5;
+}
+
+/* Tokyo Night Light */
+[data-theme="tokyo-night"].theme-light {
+  --base-0: #D5D6DB;
+  --base-1: #CBCCD1;
+  --base-2: #DFE0E5;
+  --base-3: #9699A3;
+  --base-4: #4C505E;
+  --base-5: #343B59;
+  --base-6: #1A1B26;
+  --base-7: #1A1B26;
+  --accent-red: #343B58;
+  --accent-orange: #965027;
+  --accent-yellow: #166775;
+  --accent-green: #485E30;
+  --accent-cyan: #3E6968;
+  --accent-blue: #34548A;
+  --accent-purple: #5A4A78;
+  --accent-magenta: #8C4351;
+}
+
+/* Default dark theme fallback */
+:root, .theme-dark {
+  --base-0: #111111;
+  --base-1: #1b1b1b;
+  --base-2: #262626;
+  --base-3: #777777;
+  --base-4: #919191;
+  --base-5: #ababab;
+  --base-6: #c6c6c6;
+  --base-7: #e2e2e2;
+  --accent-red: #f04339;
+  --accent-orange: #df5923;
+  --accent-yellow: #bb8801;
+  --accent-green: #7f8b00;
+  --accent-cyan: #00948b;
+  --accent-blue: #008dd1;
+  --accent-purple: #6a7fd2;
+  --accent-magenta: #e3488e;
+}
+
+/* Default light theme fallback */
+.theme-light {
+  --base-0: #f1f1f1;
+  --base-1: #e2e2e2;
+  --base-2: #d4d4d4;
+  --base-3: #777777;
+  --base-4: #5e5e5e;
+  --base-5: #474747;
+  --base-6: #303030;
+  --base-7: #1b1b1b;
+  --accent-red: #d02023;
+  --accent-orange: #bf3e05;
+  --accent-yellow: #9d6f00;
+  --accent-green: #637200;
+  --accent-cyan: #007a72;
+  --accent-blue: #0073b5;
+  --accent-purple: #4e66b6;
+  --accent-magenta: #c42775;
+}
+
+/* Brand colors */
+:root {
+  --logo-bg: #232136;
+  --logo-jitte: #ea9a97;
+}

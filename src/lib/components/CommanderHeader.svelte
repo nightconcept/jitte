@@ -98,17 +98,28 @@
 </script>
 
 <!-- Compact Fixed Header -->
-<div class="sticky top-[57px] z-40 h-20 flex-shrink-0 border-b border-[var(--color-border)]" style="transform: translateZ(0);">
+<div class="fixed top-[57px] left-0 right-0 z-40 h-28 flex-shrink-0 border-b border-[var(--color-border)]" style="transform: translateZ(0);">
 	<div class="relative h-full overflow-hidden">
-		<!-- Solid background -->
-		<div class="absolute inset-0 bg-[var(--color-bg-secondary)]"></div>
+		<!-- Solid black background -->
+		<div class="absolute inset-0 bg-black"></div>
+
+		<!-- Commander Art Background (blurred and faded) -->
+		{#if commanderImageUrl}
+			<div
+				class="absolute inset-0 bg-cover"
+				style="background-image: url('{commanderImageUrl}'); background-position: center 60%; filter: blur(6px) brightness(0.6); opacity: 0.8; transform: scale(1.05);"
+			></div>
+		{/if}
+
+		<!-- Solid background overlay -->
+		<div class="absolute inset-0 bg-[var(--color-bg-secondary)]/30 backdrop-blur-sm"></div>
 
 		<!-- Content -->
 		<div class="relative h-full px-6 flex items-center justify-between">
 			<!-- Left: Deck Info -->
 			<div class="min-w-[300px]">
-				<!-- Deck Name with Inline Editing -->
-				<div class="group flex items-center gap-2">
+				<!-- Deck Name with Inline Editing - Fixed height container to prevent layout shift -->
+				<div class="group flex items-center gap-2 h-8 mb-2">
 					{#if isEditingName}
 						<!-- Editing Mode -->
 						<input
@@ -116,12 +127,12 @@
 							bind:value={editedName}
 							on:keydown={handleNameKeydown}
 							on:blur={saveEditedName}
-							class="text-lg text-[var(--color-text-primary)] font-semibold bg-[var(--color-bg-primary)] border border-[var(--color-brand-primary)] rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] w-full max-w-[400px]"
+							class="text-lg text-[var(--color-text-primary)] font-semibold bg-[var(--color-bg-primary)] border border-[var(--color-brand-primary)] rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] w-full max-w-[400px] h-8"
 							type="text"
 						/>
 					{:else}
 						<!-- Display Mode -->
-						<h1 class="text-lg text-[var(--color-text-primary)] font-semibold">
+						<h1 class="text-lg text-[var(--color-text-primary)] font-semibold leading-8">
 							{deck?.name || 'Untitled Deck'}
 						</h1>
 						<!-- Always render button to prevent layout shift -->

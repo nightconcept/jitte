@@ -10,10 +10,12 @@
 		size = 'md'
 	}: {
 		cost: string;
-		size?: 'sm' | 'md' | 'lg';
+		size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
 	} = $props();
 
 	const sizeClasses = {
+		xxs: 'ms ms-cost ms-shadow',          // Extra Extra Small: 10px (custom)
+		xs: 'ms ms-cost ms-shadow text-xs',   // Extra Small: 12px
 		sm: 'ms ms-cost ms-shadow text-sm',   // Small: 14px
 		md: 'ms ms-cost ms-shadow text-base',  // Medium: 16px
 		lg: 'ms ms-cost ms-shadow text-xl'     // Large: 20px
@@ -57,6 +59,17 @@
 
 <div class="inline-flex items-center gap-0.5">
 	{#each symbols as symbol}
-		<i class="{sizeClass} {getManaClass(symbol)}" title={symbol}></i>
+		<i class="{sizeClass} {getManaClass(symbol)} {size === 'xxs' ? 'mana-xxs' : ''}" title={symbol}></i>
 	{/each}
 </div>
+
+<style>
+	.mana-xxs {
+		font-size: 10px;
+	}
+
+	i.ms {
+		transform: translateY(-4px);
+		display: inline-block;
+	}
+</style>

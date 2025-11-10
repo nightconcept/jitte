@@ -8,73 +8,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Tech Stack
 - **Framework**: SvelteKit with Svelte 5 (using Runes)
-- **Styling**: Tailwind CSS
-- **Storage**: Browser localStorage + FileSystem API
-- **APIs**: Scryfall (primary), MTG API (secondary fallback)
-- **Caching**: IndexedDB for card images and bulk data
+- **Styling**: Tailwind CSS 4 with Base16/Base24 color system
+- **Storage**: Browser localStorage + FileSystem Access API
+- **APIs**: Scryfall (primary card data source)
+- **Build**: Vite with automated versioning
+- **Code Quality**: Biome for linting/formatting
+
+### Project Structure
+
+```
+jitte/
+├── src/
+│   ├── lib/
+│   │   ├── api/              # Scryfall API client & card service
+│   │   ├── components/       # 47 Svelte components (all using Runes)
+│   │   ├── storage/          # Storage layer (FileSystem + localStorage)
+│   │   ├── stores/           # Svelte stores (4 total)
+│   │   ├── types/            # TypeScript type definitions
+│   │   └── utils/            # 26 utility modules
+│   └── routes/               # SvelteKit routes (+page.svelte)
+├── theme/                    # Base16/Base24 theme system
+├── project/                  # Documentation (PRD, TASKS, VERIFICATION)
+└── examples/                 # Example deck files
+```
+
+### Where to Look for Features
+
+| I want to... | Look here |
+|--------------|-----------|
+| **Work with themes** | `theme/QUICK-REFERENCE.md` for color usage, `theme/README.md` for setup |
+| **Understand version control** | `src/lib/utils/version-control.ts`, `src/lib/utils/semver.ts` |
+| **Modify deck operations** | `src/lib/stores/deck-store.ts` (current working deck) |
+| **Add/modify storage** | `src/lib/storage/storage-manager.ts` |
+| **Work with Scryfall API** | `src/lib/api/scryfall-client.ts`, `src/lib/api/card-service.ts` |
+| **Understand card types** | `src/lib/types/card.ts`, `src/lib/types/deck.ts` |
+| **Modify statistics** | `src/lib/utils/deck-statistics.ts`, `src/lib/components/Statistics.svelte` |
+| **Update validation** | `src/lib/utils/deck-validation.ts`, `src/lib/utils/partner-detection.ts` |
+| **Change import/export** | `src/routes/+page.svelte` → export handlers, `src/lib/utils/decklist-parser.ts` |
+| **Modify maybeboard** | `src/lib/components/Maybeboard.svelte`, `src/lib/utils/maybeboard-manager.ts` |
+| **Update diff/buylist** | `src/lib/utils/diff.ts`, `src/lib/components/BuylistModal.svelte` |
+| **Understand project goals** | `project/PRD.md` for full product requirements |
+| **See what's implemented** | `project/TASKS.md` for task status |
+| **Test a feature** | `project/VERIFICATION_GUIDE.md` for testing checklists |
 
 ### Icon Libraries
-This project uses two specialized icon libraries for Magic: The Gathering:
 
-#### Mana Font (https://mana.andrewgioia.com/)
-Used for rendering mana symbols and color identity.
+**Mana Font** (https://mana.andrewgioia.com/):
+- Use `ManaSymbol.svelte` component for mana costs
+- Direct usage: `<i class="ms ms-w ms-cost ms-shadow"></i>`
+- Classes: `ms`, `ms-cost`, `ms-shadow`, `ms-{color}`, `ms-{0-20}`, `ms-x`
+- Hybrid: `ms-wu`, `ms-ub`, `ms-br`, `ms-rg`, `ms-gw`
 
-**Usage with ManaSymbol component:**
-```svelte
-import ManaSymbol from '$lib/components/ManaSymbol.svelte';
+**Keyrune** (https://keyrune.andrewgioia.com/):
+- Used for set symbols with rarity
+- Usage: `<i class="ss ss-cmm ss-rare ss-grad ss-2x"></i>`
+- Classes: `ss`, `ss-{set}`, `ss-{rarity}`, `ss-grad`, `ss-{2-6}x`
 
-<!-- Display mana cost -->
-{#if card.mana_cost}
-  <ManaSymbol cost={card.mana_cost} size="lg" />
-{/if}
+### Theme System
+
+**Quick Commands:**
+```bash
+pnpm theme:list       # List available color schemes
+pnpm theme:generate   # Apply theme from theme-config.json
 ```
 
-**Direct usage for color identity:**
+**Documentation:**
+- `theme/QUICK-REFERENCE.md` - ⭐ Color usage patterns (start here)
+- `theme/README.md` - Quick start guide
+- `theme/THEMES.md` - Available themes showcase
+- `theme/INTEGRATION.md` - How the system works
+
+**Color Variables:**
+Use semantic color tokens in components:
 ```svelte
-<!-- Display color identity -->
-{#each card.colorIdentity as color}
-  <i class="ms ms-{color.toLowerCase()} ms-cost ms-shadow text-lg" title={color}></i>
-{/each}
-```
-
-**Available classes:**
-- Base: `ms` (required)
-- Cost style: `ms-cost` (for mana symbols)
-- Shadow: `ms-shadow` (adds depth)
-- Sizes: `text-sm`, `text-base`, `text-lg`, `text-xl`, `text-2xl`
-- Symbols: `ms-w`, `ms-u`, `ms-b`, `ms-r`, `ms-g`, `ms-c`, `ms-0` through `ms-20`, `ms-x`, etc.
-- Hybrid: `ms-wu`, `ms-ub`, `ms-br`, `ms-rg`, `ms-gw`, etc.
-- Phyrexian: `ms-wp`, `ms-up`, `ms-bp`, `ms-rp`, `ms-gp`
-
-#### Keyrune (https://keyrune.andrewgioia.com/)
-Used for rendering Magic set symbols.
-
-**Usage:**
-```svelte
-<!-- Display set symbol with rarity -->
-<i class="ss ss-{set.toLowerCase()} ss-{rarity} ss-grad ss-2x"
-   title="{setName} - {rarity}">
-</i>
-
-<!-- Full set information display -->
-<div class="flex items-center gap-2">
-  <i class="ss ss-cmm ss-rare ss-grad ss-2x" title="Commander Masters - rare"></i>
-  <span>Commander Masters (CMM) #123</span>
+<div class="bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
+  <h1 class="text-[var(--color-accent-blue)]">Heading</h1>
 </div>
 ```
 
-**Available classes:**
-- Base: `ss` (required)
-- Set code: `ss-{set}` (e.g., `ss-cmm`, `ss-ltr`, `ss-woe`)
-- Rarity: `ss-common`, `ss-uncommon`, `ss-rare`, `ss-mythic`
-- Gradient: `ss-grad` (adds color gradient based on rarity)
-- Sizes: `ss-2x`, `ss-3x`, `ss-4x`, `ss-5x`, `ss-6x`
-
-**Best practices:**
-- Always include set name and rarity in the title attribute for accessibility
-- Use `ss-grad` with rarity classes for colored symbols
-- Always display full set information: set name, set code (uppercase), and collector number
-- Example: "Commander Masters (CMM) #123" not just "CMM #123"
+See `theme/QUICK-REFERENCE.md` for the full list of available color tokens.
 
 ## Svelte 5 Runes
 
@@ -520,186 +532,83 @@ Snippets can accept parameters: `Snippet<[param1: Type, param2: Type]>`
 
 ## Key Architecture Concepts
 
-### Version Control System
-The application implements a git-like version control system for MTG decks:
-- **Semantic versioning** (MAJOR.MINOR.PATCH) with auto-suggestion based on card change magnitude
-- **Branching support** with "main" as default branch
-- **Commit system** storing full snapshots per version
-- **Stash system** auto-saves every 60 seconds with one stash per branch
-
-### Storage Structure
-Decks are stored as `.zip` files with this internal structure:
+### Storage System
+Decks are stored as `.zip` files with this structure:
 ```
 deck-name.zip
-├── manifest.json              # Deck metadata, branch info
-├── maybeboard.json            # Shared across all revisions
+├── manifest.json              # Deck metadata, branches, versions
+├── maybeboard.json            # Shared maybeboard
 ├── main/
-│   ├── v1.0.0.txt            # Full decklist snapshots
-│   ├── v1.1.0.txt
-│   └── metadata.json         # Per-version commit messages, timestamps
-├── experimental/
-│   ├── v1.0.0.txt
-│   └── metadata.json
-└── stash.json                # Per-branch unsaved changes
+│   ├── v0.0.1.json           # JSON format (current)
+│   ├── v1.0.0.txt            # Legacy plaintext format
+│   └── metadata.json         # Per-version metadata
+└── experimental/
+    └── ...
 ```
 
-Decklists use plaintext format compatible with Moxfield/MTGGoldfish:
-```
-1 Lightning Bolt
-1 Sol Ring (2XM) 97
-```
+**See:** `src/lib/storage/` for implementation, `src/lib/utils/zip.ts` for archive operations
 
-### Data Flow
-1. **localStorage** for settings and temporary work before first save
-2. **FileSystem API** for persistent deck storage in user-selected directory
-3. **IndexedDB** for card image cache and optional bulk Scryfall data
-4. **Scryfall API** with 100ms rate limiting (configurable) for card search and metadata
+### Version Control
+Git-like branching with semantic versioning (MAJOR.MINOR.PATCH):
+- Auto-suggestion based on card change magnitude (1-2 cards = patch, 3-10 = minor, 10+ = major)
+- Full snapshot per version (no diffs stored)
+- Stash system (one per branch)
+
+**See:** `src/lib/utils/version-control.ts`, `src/lib/utils/semver.ts`, `src/lib/utils/stash.ts`
 
 ### Card Type Ordering
-Cards are always displayed in this canonical order:
-1. Commander
-2. Companion (if present)
-3. Planeswalkers
-4. Creatures
-5. Instants
-6. Sorceries
-7. Artifacts
-8. Enchantments
-9. Lands
+Canonical order for display:
+1. Commander → 2. Companion → 3. Planeswalkers → 4. Creatures → 5. Instants → 6. Sorceries → 7. Artifacts → 8. Enchantments → 9. Lands → 10. Other
 
-### Maybeboard System
-- Shared across all versions of a deck (not versioned per branch)
-- Supports user-created categories (e.g., "Burn Package", "Ramp")
-- Cards can be moved between maybeboard categories and main deck
+**See:** `src/lib/utils/deck-categorization.ts`, `src/lib/types/card.ts` (CardCategory enum)
 
-## Development Commands
+### State Management
+4 Svelte stores:
+- `deck-store.ts` - Current working deck (addCard, removeCard, updateQuantity, etc.)
+- `deck-manager.ts` - Deck persistence & lifecycle (load, save, createBranch, etc.)
+- `themeStore.ts` - Theme state (light/dark mode)
+- `toast-store.ts` - Toast notifications
 
-**IMPORTANT FOR CLAUDE CODE**: Never start dev servers, build processes, or long-running commands automatically. Always prompt the user to run these commands themselves. Only run quick verification commands like `pnpm check` or file system operations.
+**See:** `src/lib/stores/`
 
-Once the SvelteKit project is initialized, typical commands will be:
+### API Integration
+- Scryfall API with 100ms rate limiting (configurable)
+- Autocomplete (min 2 characters)
+- Batch card fetching (max 75 cards)
+- IndexedDB caching (prepared but not fully wired up)
 
-### Development
+**See:** `src/lib/api/scryfall-client.ts`, `src/lib/api/card-service.ts`, `src/lib/api/rate-limiter.ts`
+
+### Validation & Statistics
+**Validation:**
+- Deck size (100 cards for Commander)
+- Banned cards detection
+- Color identity validation
+- Duplicate detection
+- Partner compatibility (Partner, Partner With, Friends Forever, Choose a Background)
+
+**Statistics:**
+- Mana curve (split by permanents/spells)
+- Color distribution
+- Type breakdown
+- Average/median CMC
+- Price tracking (3 vendors: CardKingdom, TCGPlayer, Manapool)
+- Commander bracket level (1-4) with Game Changer detection (68 cards)
+
+**See:** `src/lib/utils/deck-validation.ts`, `src/lib/utils/partner-detection.ts`, `src/lib/utils/deck-statistics.ts`, `src/lib/utils/game-changers.ts`
+
+## Development Workflow
+
+**Commands:**
 ```bash
-npm run dev              # Start dev server
-npm run dev -- --open    # Start dev server and open browser
+pnpm dev              # Start dev server
+pnpm build            # Build for production
+pnpm check            # Type-check with svelte-check
+pnpm format           # Format with Biome
+pnpm lint             # Lint with Biome
+pnpm test             # Run tests (Vitest)
+pnpm theme:list       # List available color schemes
+pnpm theme:generate   # Apply theme from theme-config.json
 ```
 
-### Building
-```bash
-npm run build           # Build for production
-npm run preview         # Preview production build locally
-```
-
-### Testing
-```bash
-npm run test            # Run test suite (when implemented)
-npm run test:unit       # Run unit tests (when implemented)
-```
-
-### Linting & Formatting
-```bash
-npm run lint            # Run ESLint
-npm run format          # Run Prettier
-npm run check           # Run svelte-check for TypeScript/component errors
-```
-
-## Important Implementation Notes
-
-### Scryfall API Integration
-- **Rate limit**: 100ms between requests (enforced via queue/delay)
-- **Bulk data option**: Download entire Scryfall database to IndexedDB (user opt-in)
-- Download ALL cards, not just Commander-legal (rules change over time)
-- **Caching**: 24-hour cache for card data, daily price updates
-
-### Semver Auto-suggestion Logic
-Default thresholds (configurable in settings):
-- 1-2 cards changed → Patch (0.0.x)
-- 3-10 cards changed → Minor (0.x.0)
-- 10+ cards changed → Major (x.0.0)
-
-### Commander Validation Warnings
-Show non-blocking warnings (⚠️ icon) for:
-- Banned cards in Commander format
-- Deck size ≠ 100 cards
-- Duplicate cards (including non-basic lands)
-- Cards outside commander's color identity
-
-### Performance Requirements
-- Deck list rendering: < 100ms for 100-card decks
-- Search results: < 200ms after 4 characters typed
-- Lazy load and aggressively cache images
-
-### Browser Compatibility
-- Primary: Chrome, Edge, Opera (FileSystem API support)
-- Fallback: localStorage-only mode for other browsers
-
-## File Naming & Cross-Platform Compatibility
-Deck zip files must be sanitized for Windows/Mac/Linux filesystem compatibility. Special characters should be converted or removed to ensure portability.
-
-## Export Formats
-1. **Plaintext** (clipboard)
-2. **Moxfield** (new tab with `import?=` parameters)
-3. **Archidekt** (new tab with `sandbox?deck=` parameters)
-4. **Buylist/Diff** (clipboard with price information)
-
-## Import Sources
-1. Moxfield/Archidekt URLs (parse and create local deck)
-2. Plaintext paste (Arena/MTGO format)
-3. Zip files (import with version history)
-
-## Statistics & Analysis
-Implement Moxfield-parity statistics:
-- Mana curve (CMC distribution chart)
-- Color distribution (pie chart of mana symbols)
-- Card type breakdown (percentage by type)
-- Average CMC
-- Mana source analysis (sources per color)
-- Land count with recommendations
-
-Display below main deck list with collapsible sections that update in real-time.
-
-## UI/UX Principles
-- **1080p optimized**: Minimal scrolling on standard displays
-- **Card preview pane**: Left side, shows hovered card (defaults to commander)
-- **Search activation**: Only trigger after 4 characters typed
-- **Top 10 results**: 11th row links to "Search for more on Scryfall"
-- **Auto-stash**: Every 60 seconds
-- **Prompt on reload**: Option to load stash or last saved version
-- **Prompt on branch switch**: Save or discard unsaved changes
-
-## Task Management & Verification
-
-When working on this project, Claude Code must:
-
-### Task Tracking (TASKS.md)
-1. **Update TASKS.md at the end of each phase** with completion status
-2. Check off completed items with [x]
-3. Add any discovered subtasks or issues that need addressing
-4. Update verification checklists as tasks are completed
-
-### Automated Verification
-For verification tasks in TASKS.md that **do not require human visual inspection**, Claude Code must perform these checks automatically:
-
-**Automated Checks (DO THESE):**
-- File existence checks (e.g., "Verify package.json exists")
-- Package dependency verification (e.g., "Check that tailwindcss is in devDependencies")
-- Command execution verification (e.g., "Run `pnpm check` and verify no errors")
-- TypeScript compilation checks (e.g., "Run `pnpm check` to verify types compile")
-- Test execution (e.g., "Run `pnpm test` and verify all tests pass")
-- Code structure verification (e.g., "Check that function exists in file")
-- Configuration validation (e.g., "Verify config file has required settings")
-- Build process checks (e.g., "Run `pnpm build` and verify success")
-
-**Manual Checks (SKIP THESE):**
-- Browser visual inspection (e.g., "Visit http://localhost:5173 and confirm page loads")
-- UI/UX validation (e.g., "Verify Tailwind classes work by inspecting styled elements")
-- Interactive testing (e.g., "Test HMR by editing a file")
-- Visual design verification (e.g., "Check responsive design")
-
-### Phase Completion Protocol
-At the end of each phase:
-1. Run all automated verification checks for that phase
-2. Update TASKS.md with [x] for completed items
-3. Document any issues or blockers discovered
-4. List verification items that require manual testing for the user
-5. Commit the updated TASKS.md
+**IMPORTANT FOR CLAUDE CODE**: Never start dev servers or long-running commands automatically. Only run quick verification commands like `pnpm check`.

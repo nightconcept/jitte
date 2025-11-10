@@ -50,7 +50,10 @@ function isValidTheme(obj: unknown): obj is ThemeState {
 	if (typeof obj !== 'object' || obj === null) return false;
 	const { name, mode } = obj as Record<string, unknown>;
 	return (
-		(name === 'tokyo-night' || name === 'kanagawa' || name === 'rose-pine') &&
+		(name === 'equilibrium-gray' ||
+			name === 'rose-pine' ||
+			name === 'kanagawa' ||
+			name === 'tokyo-night') &&
 		(mode === 'light' || mode === 'dark')
 	);
 }

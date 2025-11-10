@@ -8,7 +8,7 @@
 	import CardSearch from './CardSearch.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import CardDetailModal from './CardDetailModal.svelte';
-	import PartnerBadge from './PartnerBadge.svelte';
+	import ManaSymbol from './ManaSymbol.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
 	import { canAddPartner } from '$lib/utils/partner-detection';
@@ -572,14 +572,17 @@
 													</span>
 
 													<!-- Card Name -->
-													<span class="text-[var(--color-text-primary)] text-sm truncate">
+													<span class="text-[var(--color-text-primary)] text-sm truncate card-name">
 														{card.name}
 													</span>
 
-													<!-- Partner Badge (Commander only) -->
-													{#if category === CardCategory.Commander}
-														<PartnerBadge card={card} />
+													<!-- Mana Cost -->
+													{#if card.manaCost}
+														<span class="flex-shrink-0">
+															<ManaSymbol cost={card.manaCost} size="xxs" />
+														</span>
 													{/if}
+
 
 													<!-- Banned Icon -->
 													{#if isCardBanned(card)}
@@ -594,15 +597,16 @@
 														</span>
 													{/if}
 
-													<!-- Game Changer Icon -->
+													<!-- Game Changer Badge -->
 													{#if isGameChanger(card.name)}
 														<span
-															class="flex-shrink-0 text-amber-500 font-bold text-xs"
+															class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/40"
 															title="Game Changer - This card affects your deck's bracket level"
 														>
-															<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+															<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
 																<path d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
 															</svg>
+															GC
 														</span>
 													{/if}
 
@@ -804,6 +808,12 @@
 />
 
 <style>
+	.card-name {
+		font-family: 'Roboto Condensed', sans-serif;
+		font-weight: 500;
+		letter-spacing: -0.01em;
+	}
+
 	.responsive-card-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

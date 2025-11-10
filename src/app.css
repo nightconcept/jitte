@@ -1,58 +1,61 @@
 @import 'tailwindcss';
+@import '../theme/theme.css';
 
 @theme {
-	/* Dynamic theme colors - set via JavaScript from theme store */
-	/* These variables are updated when theme changes */
+	/* Base16 Color Mapping to Jitte Tokens
+	 * Our theme system uses Base16 colors (base-0 through base-7, accent-*)
+	 * These are mapped to Jitte's semantic color system
+	 */
 
-	/* Primary backgrounds - Tokyo Night Dark (default) */
-	--color-bg-primary: #1A1B26;
-	--color-bg-secondary: #16161E;
-	--color-bg-tertiary: #2F3549;
-	--color-bg-elevated: #444B6A;
+	/* Primary backgrounds - from Base16 base-0, base-1, base-2, base-3 */
+	--color-bg-primary: var(--base-0);
+	--color-bg-secondary: var(--base-1);
+	--color-bg-tertiary: var(--base-2);
+	--color-bg-elevated: var(--base-3);
 
 	/* Surface colors */
-	--color-surface: #2F3549;
-	--color-surface-hover: #444B6A;
-	--color-surface-active: #565f89;
+	--color-surface: var(--base-2);
+	--color-surface-hover: var(--base-3);
+	--color-surface-active: var(--base-4);
 
 	/* Border colors */
-	--color-border: #444B6A;
-	--color-border-light: #787C99;
-	--color-border-focus: #2AC3DE;
+	--color-border: var(--base-3);
+	--color-border-light: var(--base-4);
+	--color-border-focus: var(--accent-blue);
 
-	/* Text colors */
-	--color-text-primary: #A9B1D6;
-	--color-text-secondary: #787C99;
-	--color-text-tertiary: #444B6A;
-	--color-text-muted: #2F3549;
+	/* Text colors - from Base16 base-5, base-4, base-3, base-2 */
+	--color-text-primary: var(--base-5);
+	--color-text-secondary: var(--base-4);
+	--color-text-tertiary: var(--base-3);
+	--color-text-muted: var(--base-3);
 
-	/* Brand colors */
-	--color-brand-primary: #2AC3DE;
-	--color-brand-secondary: #B4F9F8;
-	--color-brand-tertiary: #0DB9D7;
+	/* Brand colors - using accent-cyan/blue */
+	--color-brand-primary: var(--accent-cyan);
+	--color-brand-secondary: var(--accent-blue);
+	--color-brand-tertiary: var(--accent-cyan);
 
-	/* Accent colors */
-	--color-accent-blue: #2AC3DE;
-	--color-accent-green: #9ECE6A;
-	--color-accent-red: #F7768E;
-	--color-accent-yellow: #0DB9D7;
-	--color-accent-purple: #BB9AF7;
-	--color-accent-cyan: #B4F9F8;
+	/* Accent colors - from Base16 accents */
+	--color-accent-blue: var(--accent-blue);
+	--color-accent-green: var(--accent-green);
+	--color-accent-red: var(--accent-red);
+	--color-accent-yellow: var(--accent-yellow);
+	--color-accent-purple: var(--accent-purple);
+	--color-accent-cyan: var(--accent-cyan);
 
-	/* Status colors */
-	--color-success: #9ECE6A;
-	--color-warning: #0DB9D7;
-	--color-error: #F7768E;
-	--color-info: #2AC3DE;
+	/* Status colors - semantic mapping */
+	--color-success: var(--accent-green);
+	--color-warning: var(--accent-yellow);
+	--color-error: var(--accent-red);
+	--color-info: var(--accent-blue);
 
-	/* MTG color identity - static, not theme-dependent */
-	--color-mana-white: #f0f0d8;
-	--color-mana-blue: #0e68ab;
-	--color-mana-black: #150b00;
-	--color-mana-red: #d3202a;
-	--color-mana-green: #00733e;
-	--color-mana-colorless: #cac5c0;
-	--color-mana-multicolor: #f0e68c;
+	/* MTG color identity - Pastel system (universal across all themes) */
+	--color-mana-white: #f2eadb;      /* Soft cream */
+	--color-mana-blue: #9dbfe0;       /* Soft sky blue */
+	--color-mana-black: #6b6470;      /* Soft charcoal/mauve */
+	--color-mana-red: #e09d9d;        /* Soft coral */
+	--color-mana-green: #9dd0a8;      /* Soft sage */
+	--color-mana-colorless: #d4cfc7;  /* Soft stone */
+	--color-mana-multicolor: #e8d89f; /* Soft gold */
 
 	/* Semantic tokens */
 	--color-primary: var(--color-brand-primary);
