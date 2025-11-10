@@ -3,7 +3,7 @@
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
 	import { toastStore } from '$lib/stores/toast-store';
-	import UniversalCardSearchModal from './UniversalCardSearchModal.svelte';
+	import CardSearchModal from './CardSearchModal.svelte';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
 	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
@@ -20,7 +20,7 @@
 	let modalOpen = false;
 
 	// Get commander color identity for filtering
-	$: commanders = $deckStore?.deck?.commanders || [];
+	$: commanders = $deckStore?.deck?.cards?.commander || [];
 	$: commanderColors = (() => {
 		console.log('[CardSearch] Recalculating commander colors. Commanders:', commanders);
 
@@ -99,19 +99,24 @@
 					console.log('[CardSearch] No commander, showing all Commander-legal cards');
 				}
 
-				// Search with the constructed query
-				const searchResults = await cardService.searchCards(query, 20, false);
+				// Fetch more results (175 is Scryfall's page size) to have better pool for sorting
+				const searchResults = await cardService.searchCards(query, 175, false);
 
-				// Sort results: prioritize matches at the start of the name
+				// Sort results: prioritize exact matches first, then starts-with
 				const sorted = searchResults.sort((a, b) => {
 					const aName = a.name.toLowerCase();
 					const bName = b.name.toLowerCase();
 					const searchLower = searchQuery.toLowerCase();
 
+					// Exact match priority
+					const aExact = aName === searchLower;
+					const bExact = bName === searchLower;
+					if (aExact && !bExact) return -1;
+					if (!aExact && bExact) return 1;
+
+					// Starts-with priority
 					const aStartsWith = aName.startsWith(searchLower);
 					const bStartsWith = bName.startsWith(searchLower);
-
-					// If one starts with query and other doesn't, prioritize the one that does
 					if (aStartsWith && !bStartsWith) return -1;
 					if (!aStartsWith && bStartsWith) return 1;
 
@@ -325,10 +330,11 @@
 	{/if}
 </div>
 
-<!-- Universal Search Modal -->
-<UniversalCardSearchModal
+<!-- Card Search Modal -->
+<CardSearchModal
 	isOpen={modalOpen}
 	addToMaybeboard={addToMaybeboard}
 	maybeboardCategoryId={maybeboardCategoryId}
+	initialQuery={searchQuery}
 	onClose={() => modalOpen = false}
 />

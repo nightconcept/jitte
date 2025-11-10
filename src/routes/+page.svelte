@@ -51,6 +51,27 @@
 		if (!hasCompletedOnboarding()) {
 			showOnboarding = true;
 		}
+
+		// Warn user about unsaved changes when leaving page
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			const hasUnsavedChanges = $deckStore?.hasUnsavedChanges ?? false;
+
+			if (hasUnsavedChanges) {
+				// Standard way to trigger browser confirmation dialog
+				e.preventDefault();
+				// Chrome requires returnValue to be set
+				e.returnValue = '';
+				// Some browsers use the return value
+				return '';
+			}
+		};
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+
+		// Cleanup on component destroy
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+		};
 	});
 
 	// Auto-preview first commander when deck changes
@@ -728,6 +749,7 @@
 	}
 
 	function handleOnboardingClose() {
+		markOnboardingComplete();
 		showOnboarding = false;
 	}
 

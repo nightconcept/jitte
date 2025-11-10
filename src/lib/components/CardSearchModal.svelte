@@ -13,16 +13,21 @@
 		isOpen = false,
 		addToMaybeboard = false,
 		maybeboardCategoryId = undefined,
+		initialQuery = '',
 		onClose
 	}: {
 		isOpen?: boolean;
 		addToMaybeboard?: boolean;
 		maybeboardCategoryId?: string | undefined;
+		initialQuery?: string;
 		onClose: () => void;
 	} = $props();
 
 	let searchQuery = $state('');
-	let results = $state<CardSearchResult[]>([]);
+	let allResults = $state<CardSearchResult[]>([]);
+	let totalCards = $state(0);
+	let currentPage = $state(1);
+	const itemsPerPage = 50;
 	let isLoading = $state(false);
 	let debounceTimer: number | undefined;
 	let selectedResult = $state<CardSearchResult | null>(null);
@@ -42,7 +47,7 @@
 
 	// Get commander color identity
 	let commanderColors = $derived(() => {
-		const commanders = deckStoreState?.deck?.commanders;
+		const commanders = deckStoreState?.deck?.cards?.commander;
 		if (!commanders || commanders.length === 0) return [];
 
 		// Combine all commander color identities
@@ -59,6 +64,16 @@
 		const colorOrder = ['W', 'U', 'B', 'R', 'G'];
 		return Array.from(allColors).sort((a, b) => colorOrder.indexOf(a) - colorOrder.indexOf(b));
 	});
+
+	// Paginated results for current page
+	let results = $derived(() => {
+		const start = (currentPage - 1) * itemsPerPage;
+		const end = start + itemsPerPage;
+		return allResults.slice(start, end);
+	});
+
+	// Calculate total pages
+	let totalPages = $derived(Math.ceil(allResults.length / itemsPerPage));
 
 	// Check if a card is outside commander's color identity
 	function isOutsideColorIdentity(cardResult: CardSearchResult): boolean {
@@ -83,12 +98,19 @@
 	// Reset when modal opens
 	$effect(() => {
 		if (isOpen) {
-			searchQuery = '';
-			results = [];
+			searchQuery = initialQuery;
+			allResults = [];
+			totalCards = 0;
+			currentPage = 1;
 			selectedResult = null;
 			selectedCardFull = null;
 			selectedScryfallCard = null;
 			commanderLegalOnly = true;
+
+			// Trigger search if there's an initial query
+			if (initialQuery && initialQuery.length >= MIN_SEARCH_CHARACTERS) {
+				handleInput();
+			}
 		}
 	});
 
@@ -98,24 +120,28 @@
 
 		// Only search if enough characters
 		if (searchQuery.length < MIN_SEARCH_CHARACTERS) {
-			results = [];
+			allResults = [];
+			totalCards = 0;
+			currentPage = 1;
 			return;
 		}
 
 		// Debounce the search
 		debounceTimer = window.setTimeout(async () => {
 			isLoading = true;
+			currentPage = 1; // Reset to first page on new search
 
 			try {
 				// Build search query - always show Commander-legal cards
-				// We'll mark invalid color identity ones with "!" instead of filtering them out
 				let query = searchQuery + ' format:commander';
 
-				// Search with the constructed query
-				const searchResults = await cardService.searchCards(query, 100, false);
+				// Fetch ALL results across all pages
+				const { cards, totalCards: total } = await cardService.searchCardsAll(query, false);
+
+				totalCards = total;
 
 				// Sort results: prioritize exact matches first, then starts-with
-				const sorted = searchResults.sort((a, b) => {
+				const sorted = cards.sort((a, b) => {
 					const aName = a.name.toLowerCase();
 					const bName = b.name.toLowerCase();
 					const searchLower = searchQuery.toLowerCase();
@@ -137,19 +163,35 @@
 				});
 
 				// Filter out cards outside color identity if checkbox is checked
-				const filtered = commanderLegalOnly
+				allResults = commanderLegalOnly
 					? sorted.filter(card => !isOutsideColorIdentity(card))
 					: sorted;
-
-				// Take top 50 after sorting and filtering
-				results = filtered.slice(0, 50);
 			} catch (error) {
 				console.error('Search error:', error);
-				results = [];
+				allResults = [];
+				totalCards = 0;
 			} finally {
 				isLoading = false;
 			}
 		}, 300);
+	}
+
+	function goToPage(page: number) {
+		if (page >= 1 && page <= totalPages) {
+			currentPage = page;
+		}
+	}
+
+	function nextPage() {
+		if (currentPage < totalPages) {
+			currentPage++;
+		}
+	}
+
+	function prevPage() {
+		if (currentPage > 1) {
+			currentPage--;
+		}
 	}
 
 	async function selectCard(result: CardSearchResult) {
@@ -307,50 +349,133 @@
 							</span>
 						</label>
 
-						{#if results.length > 0}
+						{#if allResults.length > 0}
 							<p class="text-xs text-[var(--color-text-tertiary)]">
-								Found {results.length} cards {results.length === 50 ? '(showing first 50)' : ''}
+								Found {allResults.length} cards • Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, allResults.length)} of {allResults.length}
 							</p>
 						{/if}
 					</div>
 
 					<!-- Search Results -->
 					<div class="flex-1 overflow-y-auto p-4">
-						{#if results.length > 0}
+						{#if results().length > 0}
 							<div class="space-y-2">
-								{#each results as result}
+								{#each results() as result}
 									<button
 										onclick={() => selectCard(result)}
-										class="w-full px-4 py-3 text-left rounded border-2 transition-all {selectedResult?.id === result.id ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10' : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-surface-hover)]'}"
+										class="w-full px-4 py-2 text-left rounded border-2 transition-all {selectedResult?.id === result.id ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)]/10' : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-surface-hover)]'}"
 									>
-										<div class="flex items-start gap-3">
-											{#if result.image_uri}
-												<img
-													src={result.image_uri}
-													alt={result.name}
-													class="w-12 h-16 object-cover rounded flex-shrink-0"
-												/>
-											{/if}
-											<div class="flex-1 min-w-0">
-												<div class="font-medium text-[var(--color-text-primary)] truncate flex items-center gap-2">
-													{#if isOutsideColorIdentity(result)}
-														<span class="text-red-500 font-bold flex-shrink-0" title="Outside commander's color identity">!</span>
-													{/if}
-													{result.name}
-												</div>
-												<div class="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2">
-													{result.type_line || ''}
-												</div>
-												{#if result.set}
-													<div class="text-xs text-[var(--color-text-tertiary)] mt-1">
-														{result.set.toUpperCase()} {#if result.collector_number}#{result.collector_number}{/if}
-													</div>
+										<div class="flex items-center justify-between gap-3">
+											<div class="flex-1 min-w-0 flex items-center gap-2">
+												{#if isOutsideColorIdentity(result)}
+													<span class="text-red-500 font-bold flex-shrink-0" title="Outside commander's color identity">!</span>
 												{/if}
+												<span class="font-medium text-[var(--color-text-primary)] truncate">
+													{result.name}
+												</span>
 											</div>
+											{#if result.set}
+												<span class="text-xs text-[var(--color-text-tertiary)] flex-shrink-0">
+													{result.set.toUpperCase()}{#if result.collector_number} #{result.collector_number}{/if}
+												</span>
+											{/if}
 										</div>
 									</button>
 								{/each}
 							</div>
+
+							<!-- Pagination Controls -->
+							{#if totalPages > 1}
+								<div class="mt-4 flex items-center justify-center gap-2">
+									<button
+										onclick={prevPage}
+										disabled={currentPage === 1}
+										class="px-3 py-1.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+									>
+										Previous
+									</button>
+
+									<div class="flex items-center gap-1">
+										{#if totalPages <= 7}
+											<!-- Show all pages if 7 or fewer -->
+											{#each Array(totalPages) as _, i}
+												<button
+													onclick={() => goToPage(i + 1)}
+													class="w-8 h-8 rounded {currentPage === i + 1 ? 'bg-[var(--color-brand-primary)] text-white' : 'bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'} border border-[var(--color-border)] transition-colors"
+												>
+													{i + 1}
+												</button>
+											{/each}
+										{:else}
+											<!-- Show truncated pagination for many pages -->
+											{#if currentPage <= 3}
+												{#each Array(5) as _, i}
+													<button
+														onclick={() => goToPage(i + 1)}
+														class="w-8 h-8 rounded {currentPage === i + 1 ? 'bg-[var(--color-brand-primary)] text-white' : 'bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'} border border-[var(--color-border)] transition-colors"
+													>
+														{i + 1}
+													</button>
+												{/each}
+												<span class="px-2 text-[var(--color-text-tertiary)]">...</span>
+												<button
+													onclick={() => goToPage(totalPages)}
+													class="w-8 h-8 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] transition-colors"
+												>
+													{totalPages}
+												</button>
+											{:else if currentPage >= totalPages - 2}
+												<button
+													onclick={() => goToPage(1)}
+													class="w-8 h-8 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] transition-colors"
+												>
+													1
+												</button>
+												<span class="px-2 text-[var(--color-text-tertiary)]">...</span>
+												{#each Array(5) as _, i}
+													<button
+														onclick={() => goToPage(totalPages - 4 + i)}
+														class="w-8 h-8 rounded {currentPage === totalPages - 4 + i ? 'bg-[var(--color-brand-primary)] text-white' : 'bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'} border border-[var(--color-border)] transition-colors"
+													>
+														{totalPages - 4 + i}
+													</button>
+												{/each}
+											{:else}
+												<button
+													onclick={() => goToPage(1)}
+													class="w-8 h-8 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] transition-colors"
+												>
+													1
+												</button>
+												<span class="px-2 text-[var(--color-text-tertiary)]">...</span>
+												{#each Array(3) as _, i}
+													<button
+														onclick={() => goToPage(currentPage - 1 + i)}
+														class="w-8 h-8 rounded {currentPage === currentPage - 1 + i ? 'bg-[var(--color-brand-primary)] text-white' : 'bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'} border border-[var(--color-border)] transition-colors"
+													>
+														{currentPage - 1 + i}
+													</button>
+												{/each}
+												<span class="px-2 text-[var(--color-text-tertiary)]">...</span>
+												<button
+													onclick={() => goToPage(totalPages)}
+													class="w-8 h-8 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] transition-colors"
+												>
+													{totalPages}
+												</button>
+											{/if}
+										{/if}
+									</div>
+
+									<button
+										onclick={nextPage}
+										disabled={currentPage === totalPages}
+										class="px-3 py-1.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+									>
+										Next
+									</button>
+								</div>
+							{/if}
 						{:else if searchQuery.length >= 4 && !isLoading}
 							<div class="text-center py-12 space-y-4">
 								<div class="text-[var(--color-text-secondary)]">

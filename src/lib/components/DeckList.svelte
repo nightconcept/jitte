@@ -51,7 +51,7 @@
 
 	// Check if a card is outside commander's color identity
 	function isOutsideColorIdentity(card: Card): boolean {
-		const commanders = deck?.commanders || [];
+		const commanders = deck?.cards?.commander || [];
 		if (commanders.length === 0) return false;
 
 		// Get commander's combined color identity

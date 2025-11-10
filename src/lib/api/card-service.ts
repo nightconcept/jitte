@@ -84,6 +84,65 @@ export class CardService {
 	}
 
 	/**
+	 * Search for cards with full details, fetching ALL pages
+	 * Returns ALL results formatted for display (follows pagination)
+	 * @param query - Search query
+	 * @param commanderLegalOnly - If true, only return Commander-legal cards (default: false)
+	 * @returns Object with all cards and total count
+	 */
+	async searchCardsAll(
+		query: string,
+		commanderLegalOnly = false
+	): Promise<{ cards: CardSearchResult[]; totalCards: number }> {
+		if (query.length < MIN_SEARCH_CHARACTERS) {
+			return { cards: [], totalCards: 0 };
+		}
+
+		try {
+			// Add Commander-legal filter if requested
+			const searchQuery = commanderLegalOnly ? `${query} format:commander` : query;
+
+			let allCards: CardSearchResult[] = [];
+			let page = 1;
+			let hasMore = true;
+
+			// Fetch first page
+			let results = await scryfallClient.search(searchQuery, {
+				unique: 'cards',
+				order: 'name',
+				page
+			});
+
+			allCards.push(...results.data.map((card) => this.formatCardForSearch(card)));
+
+			// Follow pagination to get all results
+			while (results.has_more && results.next_page) {
+				page++;
+				results = await scryfallClient.search(searchQuery, {
+					unique: 'cards',
+					order: 'name',
+					page
+				});
+				allCards.push(...results.data.map((card) => this.formatCardForSearch(card)));
+			}
+
+			return {
+				cards: allCards,
+				totalCards: results.total_cards ?? allCards.length
+			};
+		} catch (error) {
+			if (error instanceof ScryfallApiError) {
+				// No results found is not an error for UI purposes
+				if (error.code === 'not_found') {
+					return { cards: [], totalCards: 0 };
+				}
+			}
+			console.error('Search error:', error);
+			return { cards: [], totalCards: 0 };
+		}
+	}
+
+	/**
 	 * Get a card by exact name, with caching
 	 */
 	async getCardByName(name: string): Promise<ScryfallCard | null> {
