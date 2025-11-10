@@ -467,7 +467,7 @@
             {#each cards as card}
               <div class="relative">
                 <div
-                  class="flex items-center justify-between py-2 px-3 hover:bg-[var(--color-surface)] rounded transition-colors group {isEditing
+                  class="flex items-center justify-between py-2 px-3 hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {isEditing
                     ? 'cursor-grab active:cursor-grabbing'
                     : ''}"
                   draggable={isEditing}

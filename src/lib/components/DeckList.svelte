@@ -556,7 +556,7 @@
 							<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
 											<div
-												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+												class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
 												draggable={isEditing && category !== CardCategory.Commander}
 												ondragstart={(e) => handleDragStart(e, card, category)}
 												ondragend={handleDragEnd}
