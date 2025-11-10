@@ -1,0 +1,279 @@
+{
+	"keywords": {
+		"deathtouch": {
+			"name": "Deathtouch",
+			"definition": "Any amount of damage this creature deals to another creature is enough to destroy it.",
+			"category": "evergreen"
+		},
+		"defender": {
+			"name": "Defender",
+			"definition": "This creature can't attack.",
+			"category": "evergreen"
+		},
+		"double strike": {
+			"name": "Double Strike",
+			"definition": "This creature deals both first-strike and regular combat damage.",
+			"category": "evergreen"
+		},
+		"first strike": {
+			"name": "First Strike",
+			"definition": "This creature deals combat damage before creatures without first strike.",
+			"category": "evergreen"
+		},
+		"flash": {
+			"name": "Flash",
+			"definition": "You may cast this spell any time you could cast an instant.",
+			"category": "evergreen"
+		},
+		"flying": {
+			"name": "Flying",
+			"definition": "This creature can't be blocked except by creatures with flying or reach.",
+			"category": "evergreen"
+		},
+		"haste": {
+			"name": "Haste",
+			"definition": "This creature can attack and tap as soon as it comes under your control.",
+			"category": "evergreen"
+		},
+		"hexproof": {
+			"name": "Hexproof",
+			"definition": "This permanent can't be the target of spells or abilities your opponents control.",
+			"category": "evergreen"
+		},
+		"indestructible": {
+			"name": "Indestructible",
+			"definition": "Effects that say \"destroy\" don't destroy this permanent. A creature with indestructible can't be destroyed by damage.",
+			"category": "evergreen"
+		},
+		"lifelink": {
+			"name": "Lifelink",
+			"definition": "Damage dealt by this creature also causes you to gain that much life.",
+			"category": "evergreen"
+		},
+		"menace": {
+			"name": "Menace",
+			"definition": "This creature can't be blocked except by two or more creatures.",
+			"category": "evergreen"
+		},
+		"reach": {
+			"name": "Reach",
+			"definition": "This creature can block creatures with flying.",
+			"category": "evergreen"
+		},
+		"trample": {
+			"name": "Trample",
+			"definition": "This creature can deal excess combat damage to the player or planeswalker it's attacking.",
+			"category": "evergreen"
+		},
+		"vigilance": {
+			"name": "Vigilance",
+			"definition": "Attacking doesn't cause this creature to tap.",
+			"category": "evergreen"
+		},
+		"ward": {
+			"name": "Ward",
+			"definition": "Whenever this permanent becomes the target of a spell or ability an opponent controls, counter it unless that player pays the ward cost.",
+			"category": "evergreen"
+		},
+		"affinity": {
+			"name": "Affinity",
+			"definition": "This spell costs you less to cast for each permanent you control of the specified type.",
+			"category": "mechanic"
+		},
+		"cascade": {
+			"name": "Cascade",
+			"definition": "When you cast this spell, exile cards from the top of your library until you exile a nonland card with lesser mana value. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.",
+			"category": "mechanic"
+		},
+		"convoke": {
+			"name": "Convoke",
+			"definition": "Your creatures can help cast this spell. Each creature you tap while casting this spell pays for 1 or one mana of that creature's color.",
+			"category": "mechanic"
+		},
+		"cycling": {
+			"name": "Cycling",
+			"definition": "You may pay the cycling cost and discard this card to draw a card.",
+			"category": "mechanic"
+		},
+		"delve": {
+			"name": "Delve",
+			"definition": "Each card you exile from your graveyard while casting this spell pays for 1.",
+			"category": "mechanic"
+		},
+		"equip": {
+			"name": "Equip",
+			"definition": "Attach this Equipment to target creature you control. Equip only as a sorcery.",
+			"category": "mechanic"
+		},
+		"flashback": {
+			"name": "Flashback",
+			"definition": "You may cast this card from your graveyard by paying its flashback cost. Then exile it.",
+			"category": "mechanic"
+		},
+		"kicker": {
+			"name": "Kicker",
+			"definition": "You may pay an additional cost as you cast this spell. If the kicker cost was paid, the spell has additional or alternative effects.",
+			"category": "mechanic"
+		},
+		"prowess": {
+			"name": "Prowess",
+			"definition": "Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.",
+			"category": "mechanic"
+		},
+		"scry": {
+			"name": "Scry",
+			"definition": "Look at the top N cards of your library, then put any number of them on the bottom and the rest on top in any order.",
+			"category": "mechanic"
+		},
+		"storm": {
+			"name": "Storm",
+			"definition": "When you cast this spell, copy it for each spell cast before it this turn.",
+			"category": "mechanic"
+		},
+		"commander ninjutsu": {
+			"name": "Commander Ninjutsu",
+			"definition": "Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand or the command zone tapped and attacking.",
+			"category": "commander"
+		},
+		"eminence": {
+			"name": "Eminence",
+			"definition": "This ability functions as long as this card is in the command zone or on the battlefield.",
+			"category": "commander"
+		},
+		"partner": {
+			"name": "Partner",
+			"definition": "You can have two commanders if both have partner.",
+			"category": "commander"
+		},
+		"companion": {
+			"name": "Companion",
+			"definition": "If this card is your chosen companion, you may cast it once from outside the game.",
+			"category": "mechanic"
+		},
+		"enchant": {
+			"name": "Enchant",
+			"definition": "Target a permanent of the specified type. This Aura can enchant only that type of permanent.",
+			"category": "mechanic"
+		},
+		"protection": {
+			"name": "Protection",
+			"definition": "This permanent can't be blocked, targeted, dealt damage, enchanted, or equipped by sources with the stated quality.",
+			"category": "mechanic"
+		},
+		"mutate": {
+			"name": "Mutate",
+			"definition": "If you cast this spell for its mutate cost, put it over or under target non-Human creature you own. They mutate into the creature on top plus all abilities from under it.",
+			"category": "mechanic"
+		},
+		"ninjutsu": {
+			"name": "Ninjutsu",
+			"definition": "Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.",
+			"category": "mechanic"
+		},
+		"escape": {
+			"name": "Escape",
+			"definition": "You may cast this card from your graveyard by paying its escape cost rather than its mana cost.",
+			"category": "mechanic"
+		},
+		"foretell": {
+			"name": "Foretell",
+			"definition": "During your turn, you may pay 2 and exile this card from your hand face down. You may cast it on a later turn for its foretell cost.",
+			"category": "mechanic"
+		},
+		"disturb": {
+			"name": "Disturb",
+			"definition": "You may cast this card transformed from your graveyard for its disturb cost.",
+			"category": "mechanic"
+		},
+		"daybound": {
+			"name": "Daybound",
+			"definition": "If it's night and no spells were cast on your last turn, this transforms as it enters. If it's day and a player casts two or more spells during their turn, it becomes night.",
+			"category": "mechanic"
+		},
+		"nightbound": {
+			"name": "Nightbound",
+			"definition": "If it's day and a player casts no spells during their turn, it becomes night. If it's night and a player casts two or more spells during their turn, it becomes day.",
+			"category": "mechanic"
+		},
+		"bloodthirst": {
+			"name": "Bloodthirst",
+			"definition": "If an opponent was dealt damage this turn, this creature enters with N +1/+1 counters on it.",
+			"category": "mechanic"
+		},
+		"devoid": {
+			"name": "Devoid",
+			"definition": "This card has no color.",
+			"category": "mechanic"
+		},
+		"exalted": {
+			"name": "Exalted",
+			"definition": "Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.",
+			"category": "mechanic"
+		},
+		"explore": {
+			"name": "Explore",
+			"definition": "Reveal the top card of your library. If it's a land, put it into your hand. Otherwise, put a +1/+1 counter on this creature, then put the card back or put it into your graveyard.",
+			"category": "mechanic"
+		},
+		"fabricate": {
+			"name": "Fabricate",
+			"definition": "When this creature enters, put N +1/+1 counters on it or create N 1/1 colorless Servo artifact creature tokens.",
+			"category": "mechanic"
+		},
+		"hideaway": {
+			"name": "Hideaway",
+			"definition": "When this permanent enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in any order.",
+			"category": "mechanic"
+		},
+		"improvise": {
+			"name": "Improvise",
+			"definition": "Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for 1.",
+			"category": "mechanic"
+		},
+		"madness": {
+			"name": "Madness",
+			"definition": "If you discard this card, discard it into exile. When you do, cast it for its madness cost or put it into your graveyard.",
+			"category": "mechanic"
+		},
+		"mentor": {
+			"name": "Mentor",
+			"definition": "Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.",
+			"category": "mechanic"
+		},
+		"persist": {
+			"name": "Persist",
+			"definition": "When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.",
+			"category": "mechanic"
+		},
+		"undying": {
+			"name": "Undying",
+			"definition": "When this creature dies, if it had no +1/+1 counters on it, return it to the battlefield under its owner's control with a +1/+1 counter on it.",
+			"category": "mechanic"
+		},
+		"riot": {
+			"name": "Riot",
+			"definition": "This creature enters with your choice of a +1/+1 counter or haste.",
+			"category": "mechanic"
+		},
+		"shroud": {
+			"name": "Shroud",
+			"definition": "This permanent can't be the target of spells or abilities.",
+			"category": "mechanic"
+		},
+		"suspend": {
+			"name": "Suspend",
+			"definition": "Rather than cast this card from your hand, you may pay its suspend cost and exile it with N time counters. At the beginning of your upkeep, remove a time counter. When the last is removed, cast it without paying its mana cost.",
+			"category": "mechanic"
+		},
+		"transmute": {
+			"name": "Transmute",
+			"definition": "Pay the transmute cost, discard this card: Search your library for a card with the same mana value, reveal it, put it into your hand, then shuffle.",
+			"category": "mechanic"
+		},
+		"toxic": {
+			"name": "Toxic",
+			"definition": "Players dealt combat damage by this creature also get N poison counters.",
+			"category": "mechanic"
+		}
+	}
+}
