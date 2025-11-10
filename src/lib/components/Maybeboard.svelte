@@ -125,6 +125,72 @@
 			document.removeEventListener('mousedown', handleClickOutside);
 		};
 	});
+
+	// Drag and drop handlers
+	let draggedMaybeboardCard = $state<{ card: Card; categoryId: string } | null>(null);
+	let isDragging = $state(false);
+
+	function handleDragStart(event: DragEvent, card: Card) {
+		if (!isEditing) return;
+
+		draggedMaybeboardCard = { card, categoryId: activeCategory };
+		isDragging = true;
+
+		// Set drag data
+		event.dataTransfer!.effectAllowed = 'move';
+		event.dataTransfer!.setData('application/json', JSON.stringify({
+			card,
+			categoryId: activeCategory,
+			source: 'maybeboard'
+		}));
+
+		// Create custom drag image with card image
+		if (card.imageUrls?.small) {
+			const dragImage = new Image();
+			dragImage.src = card.imageUrls.small;
+			dragImage.style.width = '146px';
+			dragImage.style.height = '204px';
+			dragImage.style.borderRadius = '8px';
+			dragImage.style.position = 'absolute';
+			dragImage.style.top = '-9999px';
+			document.body.appendChild(dragImage);
+
+			// Set drag image after a brief delay to ensure image is loaded
+			setTimeout(() => {
+				event.dataTransfer!.setDragImage(dragImage, 73, 102);
+				setTimeout(() => document.body.removeChild(dragImage), 0);
+			}, 0);
+		}
+	}
+
+	function handleDragEnd() {
+		draggedMaybeboardCard = null;
+		isDragging = false;
+	}
+
+	function handleDragOver(event: DragEvent) {
+		if (!isEditing) return;
+		event.preventDefault();
+		event.dataTransfer!.dropEffect = 'move';
+	}
+
+	function handleDrop(event: DragEvent) {
+		if (!isEditing) return;
+		event.preventDefault();
+
+		try {
+			const data = JSON.parse(event.dataTransfer!.getData('application/json'));
+			if (data.source === 'decklist') {
+				// Card dropped from decklist to maybeboard
+				deckStore.moveToMaybeboard(data.card.name, data.category, activeCategory);
+			}
+		} catch (e) {
+			console.error('Failed to parse drag data:', e);
+		}
+
+		draggedMaybeboardCard = null;
+		isDragging = false;
+	}
 </script>
 
 <aside class="{isCollapsed ? 'w-12' : 'w-80'} bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)] relative transition-all duration-200">
@@ -292,12 +358,21 @@
 		{/if}
 
 		<!-- Cards in Active Category -->
-		<div class="space-y-1 flex-1 overflow-y-auto" onclick={closeCardMenu} role="presentation">
+		<div
+			class="space-y-1 flex-1 overflow-y-auto"
+			onclick={closeCardMenu}
+			ondragover={handleDragOver}
+			ondrop={handleDrop}
+			role="presentation"
+		>
 			{#if cards.length > 0}
 				{#each cards as card}
 					<div class="relative">
 						<div
-							class="flex items-center justify-between py-2 px-3 hover:bg-[var(--color-surface)] rounded transition-colors group"
+							class="flex items-center justify-between py-2 px-3 hover:bg-[var(--color-surface)] rounded transition-colors group {isEditing ? 'cursor-grab active:cursor-grabbing' : ''}"
+							draggable={isEditing}
+							ondragstart={(e) => handleDragStart(e, card)}
+							ondragend={handleDragEnd}
 							onmouseenter={() => onCardHover?.(card)}
 							onmouseleave={() => onCardHover?.(null)}
 							role="button"

@@ -266,6 +266,68 @@
 		if (!deck) return -1;
 		return deck.cards.commander.findIndex(c => c.name === commanderName);
 	}
+
+	// Drag and drop handlers
+	let draggedCard = $state<{ card: Card; category: CardCategory } | null>(null);
+	let isDragging = $state(false);
+
+	function handleDragStart(event: DragEvent, card: Card, category: CardCategory) {
+		if (!isEditing || category === CardCategory.Commander) return;
+
+		draggedCard = { card, category };
+		isDragging = true;
+
+		// Set drag data
+		event.dataTransfer!.effectAllowed = 'move';
+		event.dataTransfer!.setData('application/json', JSON.stringify({ card, category, source: 'decklist' }));
+
+		// Create custom drag image with card image
+		if (card.imageUrls?.small) {
+			const dragImage = new Image();
+			dragImage.src = card.imageUrls.small;
+			dragImage.style.width = '146px';
+			dragImage.style.height = '204px';
+			dragImage.style.borderRadius = '8px';
+			dragImage.style.position = 'absolute';
+			dragImage.style.top = '-9999px';
+			document.body.appendChild(dragImage);
+
+			// Set drag image after a brief delay to ensure image is loaded
+			setTimeout(() => {
+				event.dataTransfer!.setDragImage(dragImage, 73, 102);
+				setTimeout(() => document.body.removeChild(dragImage), 0);
+			}, 0);
+		}
+	}
+
+	function handleDragEnd() {
+		draggedCard = null;
+		isDragging = false;
+	}
+
+	function handleDragOver(event: DragEvent) {
+		if (!isEditing) return;
+		event.preventDefault();
+		event.dataTransfer!.dropEffect = 'move';
+	}
+
+	function handleDrop(event: DragEvent) {
+		if (!isEditing) return;
+		event.preventDefault();
+
+		try {
+			const data = JSON.parse(event.dataTransfer!.getData('application/json'));
+			if (data.source === 'maybeboard') {
+				// Card dropped from maybeboard to decklist
+				deckStore.moveToDeck(data.card.name, data.categoryId);
+			}
+		} catch (e) {
+			console.error('Failed to parse drag data:', e);
+		}
+
+		draggedCard = null;
+		isDragging = false;
+	}
 </script>
 
 <div class="flex-1 p-6" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
@@ -418,11 +480,18 @@
 
 					<!-- Card List in Responsive Columns -->
 					{#if !collapsed[category]}
-						<div class="px-4 pb-2 rounded-b-lg overflow-visible">
+						<div
+							class="px-4 pb-2 rounded-b-lg overflow-visible"
+							ondragover={handleDragOver}
+							ondrop={handleDrop}
+						>
 							<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
 											<div
-												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} cursor-pointer"
+												class="relative flex items-center justify-between hover:bg-[var(--color-surface-active)] rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+												draggable={isEditing && category !== CardCategory.Commander}
+												ondragstart={(e) => handleDragStart(e, card, category)}
+												ondragend={handleDragEnd}
 												onmouseenter={() => onCardHover?.(card)}
 												onclick={() => { detailModalCard = card; }}
 												role="button"
