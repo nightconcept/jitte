@@ -24,11 +24,6 @@
 	tabindex="0"
 >
 	<div class="flex items-center gap-2 flex-1 min-w-0">
-		<!-- Suggested Quantity -->
-		<span class="text-gray-400 text-sm font-semibold flex-shrink-0 min-w-[1.5rem]">
-			{suggestedQuantity}×
-		</span>
-
 		<!-- Token Name -->
 		<span class="text-gray-300 text-sm truncate">
 			{token.name}

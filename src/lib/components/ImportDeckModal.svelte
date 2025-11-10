@@ -3,6 +3,8 @@
   import CommanderSearch from "./CommanderSearch.svelte";
   import BaseModal from "./BaseModal.svelte";
   import type { Card } from "$lib/types/card";
+  import { cardService } from "$lib/api/card-service";
+  import { scryfallToCard } from "$lib/utils/card-converter";
 
   let {
     isOpen = false,
@@ -23,6 +25,7 @@
   let selectedCommanders = $state<Card[]>([]);
   let parseResult = $state<ParseResult | null>(null);
   let showErrors = $state(false);
+  let isDetectingCommanders = $state(false);
 
   // Reset when modal opens
   $effect(() => {
@@ -32,18 +35,88 @@
       selectedCommanders = [];
       parseResult = null;
       showErrors = false;
+      isDetectingCommanders = false;
     }
   });
 
-  // Parse decklist when input changes
+  // Parse decklist and auto-detect commanders when input changes
   $effect(() => {
     if (decklistInput.trim()) {
       const newParseResult = parsePlaintext(decklistInput);
       parseResult = newParseResult;
+
+      // Auto-detect commanders if we haven't already and user hasn't manually selected any
+      if (selectedCommanders.length === 0 && newParseResult) {
+        detectCommanders(newParseResult);
+      }
     } else {
       parseResult = null;
     }
   });
+
+  async function detectCommanders(result: ParseResult) {
+    isDetectingCommanders = true;
+    const detectedCommanders: Card[] = [];
+
+    try {
+      // First, check if the parser found commanders via [Commander{top}] tags
+      if (result.commanderNames && result.commanderNames.length > 0) {
+        for (const commanderName of result.commanderNames.slice(0, 2)) {
+          const card = await fetchAndValidateCommander(commanderName);
+          if (card) {
+            detectedCommanders.push(card);
+          }
+        }
+      } else {
+        // If no tags, try to detect from first 1-2 lines
+        const firstCards = result.cards.slice(0, 2);
+        for (const parsedCard of firstCards) {
+          const card = await fetchAndValidateCommander(parsedCard.name);
+          if (card) {
+            detectedCommanders.push(card);
+            // Stop after finding 2 valid commanders
+            if (detectedCommanders.length >= 2) break;
+          } else {
+            // If first card is not a valid commander, stop looking
+            break;
+          }
+        }
+      }
+
+      // Only update if we found valid commanders
+      if (detectedCommanders.length > 0) {
+        selectedCommanders = detectedCommanders;
+      }
+    } catch (error) {
+      console.error("Error detecting commanders:", error);
+    } finally {
+      isDetectingCommanders = false;
+    }
+  }
+
+  async function fetchAndValidateCommander(cardName: string): Promise<Card | null> {
+    try {
+      const scryfallCard = await cardService.getCardByName(cardName);
+      if (!scryfallCard) return null;
+
+      // Validate it's a valid commander
+      const typeLine = scryfallCard.type_line.toLowerCase();
+      const oracleText = scryfallCard.oracle_text?.toLowerCase() || '';
+      const isLegendary = typeLine.includes('legendary');
+      const isCreature = typeLine.includes('creature');
+      const canBeCommander = oracleText.includes('can be your commander');
+
+      if (!canBeCommander && !(isLegendary && isCreature)) {
+        return null;
+      }
+
+      // Convert to our Card type
+      return scryfallToCard(scryfallCard);
+    } catch (error) {
+      console.error(`Error fetching commander ${cardName}:`, error);
+      return null;
+    }
+  }
 
   function handleImport() {
     // Validate deck name
@@ -131,7 +204,16 @@
         >
           Commander(s) <span class="text-red-500">*</span>
         </label>
-        <CommanderSearch bind:selectedCommanders maxCommanders={2} />
+        {#if isDetectingCommanders}
+          <div class="px-4 py-3 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Detecting commanders from decklist...
+          </div>
+        {:else}
+          <CommanderSearch bind:selectedCommanders maxCommanders={2} />
+        {/if}
         {#if showErrors && selectedCommanders.length === 0}
           <div class="mt-3 p-3 bg-red-900/20 border border-red-800 rounded">
             <div class="flex items-start gap-2">

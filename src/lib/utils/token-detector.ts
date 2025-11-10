@@ -117,7 +117,7 @@ export async function detectTokensInDeck(
 	const tokenPromises = cards.map((card) => extractTokensFromCard(card, scryfallClient));
 	const tokenResults = await Promise.all(tokenPromises);
 
-	// Flatten and group by token ID
+	// Flatten and group by token ID (first pass)
 	const tokenMap = new Map<string, Set<string>>();
 
 	for (const tokens of tokenResults) {
@@ -155,13 +155,43 @@ export async function detectTokensInDeck(
 	const results = await Promise.all(tokenInfoPromises);
 	const tokenInfos = results.filter((info): info is TokenInfo => info !== null);
 
+	// Deduplicate tokens by name and key characteristics
+	// This handles cases where different printings of the same token have different IDs
+	const dedupedMap = new Map<string, TokenInfo>();
+
+	for (const tokenInfo of tokenInfos) {
+		// Create a unique key based on token name and relevant attributes
+		let key = tokenInfo.token.name;
+
+		// For creature tokens, include power/toughness
+		if (tokenInfo.token.cardFaces && tokenInfo.token.cardFaces.length > 0) {
+			const face = tokenInfo.token.cardFaces[0];
+			if (face.power && face.toughness) {
+				key += `|${face.power}/${face.toughness}`;
+			}
+		}
+
+		// If we've seen this token before, merge the createdBy lists
+		if (dedupedMap.has(key)) {
+			const existing = dedupedMap.get(key)!;
+			const mergedCreatedBy = Array.from(new Set([...existing.createdBy, ...tokenInfo.createdBy])).sort();
+			existing.createdBy = mergedCreatedBy;
+			existing.suggestedQuantity = Math.max(mergedCreatedBy.length * 3, 1);
+		} else {
+			dedupedMap.set(key, tokenInfo);
+		}
+	}
+
+	// Convert back to array
+	const dedupedTokenInfos = Array.from(dedupedMap.values());
+
 	// Sort by token name for consistent display
-	tokenInfos.sort((a, b) => a.token.name.localeCompare(b.token.name));
+	dedupedTokenInfos.sort((a, b) => a.token.name.localeCompare(b.token.name));
 
 	// Cache the result
-	tokenCache.set(hash, tokenInfos);
+	tokenCache.set(hash, dedupedTokenInfos);
 
-	return tokenInfos;
+	return dedupedTokenInfos;
 }
 
 /**
