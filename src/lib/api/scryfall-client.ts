@@ -9,7 +9,8 @@ import type {
 	ScryfallList,
 	ScryfallCatalog,
 	ScryfallError,
-	ScryfallBulkData
+	ScryfallBulkData,
+	ScryfallSet
 } from '../types/scryfall';
 
 export interface ScryfallClientConfig {
@@ -254,6 +255,14 @@ export class ScryfallClient {
 		type: 'oracle_cards' | 'unique_artwork' | 'default_cards' | 'all_cards' | 'rulings'
 	): Promise<ScryfallBulkData> {
 		return this.request<ScryfallBulkData>(`/bulk-data/${type}`);
+	}
+
+	/**
+	 * Get set information by set code
+	 * @param code - The set code (e.g., "cmm", "ltr")
+	 */
+	async getSet(code: string): Promise<ScryfallSet> {
+		return this.request<ScryfallSet>(`/sets/${code.toLowerCase()}`);
 	}
 
 	/**

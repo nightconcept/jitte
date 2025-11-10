@@ -371,6 +371,153 @@ let isEditing = $derived(deckStoreState?.isEditing ?? false);
 let cardCount = $derived(deck?.cardCount || 0);
 ```
 
+## Svelte 5 Snippets
+
+**🚨 CRITICAL:** Snippets replace slots in Svelte 5. You **CANNOT** mix `<slot>` and `{@render}` syntax in the same component.
+
+### What Are Snippets?
+
+Snippets are reusable chunks of markup that can be passed around and rendered. They replace the slot system from Svelte 4 with a more powerful and flexible API.
+
+### Default Slot → `children` Snippet
+
+In Svelte 4, the default slot was used with `<slot />`. In Svelte 5, this becomes the `children` snippet prop.
+
+**❌ Svelte 4 (OLD - Don't use):**
+```svelte
+<script>
+  // Component that accepts content
+</script>
+
+<div class="wrapper">
+  <slot />
+</div>
+```
+
+**✅ Svelte 5 (CORRECT):**
+```svelte
+<script lang="ts">
+  import { type Snippet } from 'svelte';
+
+  let { children }: { children?: Snippet } = $props();
+</script>
+
+<div class="wrapper">
+  {#if children}
+    {@render children()}
+  {/if}
+</div>
+```
+
+**Usage:**
+```svelte
+<Wrapper>
+  <p>This content becomes the children snippet</p>
+</Wrapper>
+```
+
+### Named Slots → Named Snippet Props
+
+Named slots become named snippet props.
+
+**Svelte 5:**
+```svelte
+<script lang="ts">
+  let { header, children }: { header?: Snippet; children?: Snippet } = $props();
+</script>
+
+{#if header} {@render header()} {/if}
+{#if children} {@render children()} {/if}
+
+<!-- Usage -->
+<Component>
+  {#snippet header()}<span>Title</span>{/snippet}
+  <p>Content here</p>
+</Component>
+```
+
+### Snippets with Parameters (Slot Props)
+
+Snippets can accept parameters: `Snippet<[param1: Type, param2: Type]>`
+
+```svelte
+<!-- Component -->
+<script lang="ts">
+  let { row }: { row: Snippet<[item: any, index: number]> } = $props();
+</script>
+{#each items as item, i}
+  {@render row(item, i)}
+{/each}
+
+<!-- Usage -->
+<Table>
+  {#snippet row(user, index)}
+    <td>{user.name}</td>
+  {/snippet}
+</Table>
+```
+
+### Common Patterns
+
+**Component with optional snippets:**
+```svelte
+<script lang="ts">
+  import { type Snippet } from 'svelte';
+  let { header, children }: { header?: Snippet; children?: Snippet } = $props();
+</script>
+
+{#if header} {@render header()} {/if}
+{#if children} {@render children()} {/if}
+```
+
+### Critical Rules
+
+**🚨 NEVER mix `<slot>` and `{@render}` in the same component:**
+
+**❌ WRONG - This will cause a compilation error:**
+```svelte
+<script lang="ts">
+  import { type Snippet } from 'svelte';
+  let { trigger }: { trigger?: Snippet } = $props();
+</script>
+
+{#if trigger}
+  {@render trigger()}
+{:else}
+  <slot />  <!-- ERROR: Cannot mix slot and render -->
+{/if}
+```
+
+**✅ CORRECT - Use snippets exclusively:**
+```svelte
+<script lang="ts">
+  import { type Snippet } from 'svelte';
+  let {
+    trigger,
+    children
+  }: {
+    trigger?: Snippet;
+    children?: Snippet;
+  } = $props();
+</script>
+
+{#if trigger}
+  {@render trigger()}
+{:else if children}
+  {@render children()}
+{/if}
+```
+
+### Key Takeaways
+
+1. **Default slot** → `children` snippet prop
+2. **Named slots** → Named snippet props
+3. **Slot props** → Snippet parameters with type `Snippet<[param1: Type, param2: Type]>`
+4. **Always import** `type Snippet` from 'svelte'
+5. **Never mix** `<slot>` and `{@render}` in the same component
+6. **Always check** if snippet exists before rendering: `{#if children} {@render children()} {/if}`
+7. **Use optional chaining** when unsure: `{@render children?.()}`
+
 ## Key Architecture Concepts
 
 ### Version Control System

@@ -5,7 +5,7 @@
 
 import { scryfallClient, ScryfallApiError } from './scryfall-client';
 import { cardCache } from './cache';
-import type { ScryfallCard } from '../types/scryfall';
+import type { ScryfallCard, ScryfallSet } from '../types/scryfall';
 import { MIN_SEARCH_CHARACTERS } from '../constants/search';
 
 export interface CardSearchResult {
@@ -349,6 +349,28 @@ export class CardService {
 		} catch (error) {
 			console.error('Get card printings error:', error);
 			return [];
+		}
+	}
+
+	/**
+	 * Get set information by set code, with caching
+	 * @param code - The set code (e.g., "cmm", "ltr")
+	 */
+	async getSetByCode(code: string): Promise<ScryfallSet | null> {
+		// Try cache first
+		const cached = await cardCache.getSet(code);
+		if (cached) {
+			return cached;
+		}
+
+		// Fetch from API
+		try {
+			const set = await scryfallClient.getSet(code);
+			await cardCache.cacheSet(set);
+			return set;
+		} catch (error) {
+			console.error('Get set error:', error);
+			return null;
 		}
 	}
 

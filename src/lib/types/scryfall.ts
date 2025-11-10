@@ -293,3 +293,23 @@ export interface ScryfallBulkData {
 	content_type: string;
 	content_encoding: string;
 }
+
+/**
+ * Set object
+ */
+export interface ScryfallSet {
+	id: string;
+	object: 'set';
+	code: string;
+	name: string;
+	released_at: string;
+	card_count: number;
+	set_type: string;
+	uri: string;
+	scryfall_uri: string;
+	search_uri: string;
+	digital?: boolean;
+	foil_only?: boolean;
+	nonfoil_only?: boolean;
+	icon_svg_uri?: string;
+}
