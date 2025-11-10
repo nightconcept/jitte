@@ -58,6 +58,40 @@
 		hoveredCard = $deckStore.deck.cards.commander[0];
 	}
 
+	// Dynamic page title
+	$: pageTitle = (() => {
+		if (!$deckStore?.deck || !$deckManager) {
+			return 'Jitte';
+		}
+
+		const deck = $deckStore.deck;
+		const parts: string[] = ['Jitte'];
+
+		// Add deck name
+		if (deck.name) {
+			parts.push(deck.name);
+		}
+
+		// Add commander names
+		const commanders = deck.cards?.commander || [];
+		if (commanders.length > 0) {
+			const commanderNames = commanders.map(c => c.name).join(' + ');
+			parts.push(commanderNames);
+		}
+
+		// Add branch
+		if ($deckManager.currentBranch) {
+			parts.push($deckManager.currentBranch);
+		}
+
+		// Add version
+		if ($deckManager.currentVersion) {
+			parts.push($deckManager.currentVersion);
+		}
+
+		return parts.join(' | ');
+	})();
+
 	function handleCardHover(card: Card | null) {
 		// Only update if a card is provided, otherwise keep the last hovered card
 		if (card !== null) {
@@ -710,6 +744,10 @@
 	$: availableBranches = $deckManager.activeManifest?.branches
 		?.map(b => b.name) || ['main'];
 </script>
+
+<svelte:head>
+	<title>{pageTitle}</title>
+</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
 	<!-- Top Navigation Bar -->
