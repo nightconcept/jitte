@@ -24,8 +24,13 @@ export function calculateStatistics(deck: Deck): DeckStatistics {
 		totalCards: deck.cardCount,
 		manaCurve: calculateManaCurve(allCards),
 		colorDistribution: calculateColorDistribution(allCards),
+		manaProduction: calculateManaProduction(allCards),
 		typeDistribution: calculateTypeDistribution(deck),
 		averageCmc: calculateAverageCmc(allCards),
+		averageCmcWithLands: calculateAverageCmcWithLands(allCards),
+		medianCmc: calculateMedianCmc(allCards),
+		medianCmcWithLands: calculateMedianCmcWithLands(allCards),
+		totalManaValue: calculateTotalManaValue(allCards),
 		landCount: countLands(deck),
 		nonLandCount: deck.cardCount - countLands(deck),
 		totalPrice: calculateTotalPrice(allCards),
@@ -65,10 +70,10 @@ function getUniqueCardNames(deck: Deck): string[] {
 }
 
 /**
- * Calculate mana curve (CMC distribution)
+ * Calculate mana curve (CMC distribution) split by permanents vs spells
  */
-function calculateManaCurve(cards: Card[]): Record<number, number> {
-	const curve: Record<number, number> = {};
+function calculateManaCurve(cards: Card[]): Record<number, { permanents: number; spells: number }> {
+	const curve: Record<number, { permanents: number; spells: number }> = {};
 
 	for (const card of cards) {
 		// Skip lands
@@ -77,7 +82,36 @@ function calculateManaCurve(cards: Card[]): Record<number, number> {
 		const cmc = card.cmc ?? 0;
 		// Group CMC 7+ as "7+"
 		const key = Math.min(cmc, 7);
-		curve[key] = (curve[key] || 0) + 1;
+
+		// Initialize if not exists
+		if (!curve[key]) {
+			curve[key] = { permanents: 0, spells: 0 };
+		}
+
+		// Determine if permanent or spell
+		const isPermanent = card.types?.some((t) => {
+			const type = t.toLowerCase();
+			return (
+				type === 'creature' ||
+				type === 'artifact' ||
+				type === 'enchantment' ||
+				type === 'planeswalker'
+			);
+		});
+
+		const isSpell = card.types?.some((t) => {
+			const type = t.toLowerCase();
+			return type === 'instant' || type === 'sorcery';
+		});
+
+		if (isPermanent) {
+			curve[key].permanents++;
+		} else if (isSpell) {
+			curve[key].spells++;
+		} else {
+			// If neither, count as permanent (catches weird card types)
+			curve[key].permanents++;
+		}
 	}
 
 	return curve;
@@ -124,6 +158,75 @@ function calculateColorDistribution(cards: Card[]): Record<string, number> {
 }
 
 /**
+ * Calculate mana production based on lands and mana-producing permanents
+ * NOTE: This is a simplified implementation that will be refined later
+ */
+function calculateManaProduction(cards: Card[]): Record<string, number> {
+	const production: Record<string, number> = {
+		W: 0,
+		U: 0,
+		B: 0,
+		R: 0,
+		G: 0,
+		C: 0
+	};
+
+	// Basic land names and their corresponding colors
+	const basicLands: Record<string, string> = {
+		Plains: 'W',
+		Island: 'U',
+		Swamp: 'B',
+		Mountain: 'R',
+		Forest: 'G',
+		Wastes: 'C'
+	};
+
+	for (const card of cards) {
+		// Skip non-lands and non-mana-producing permanents
+		const isLand = card.types?.some((t) => t.toLowerCase() === 'land');
+		const isArtifact = card.types?.some((t) => t.toLowerCase() === 'artifact');
+
+		if (!isLand && !isArtifact) continue;
+
+		// Check basic lands first
+		if (basicLands[card.name]) {
+			production[basicLands[card.name]]++;
+			continue;
+		}
+
+		// Parse oracle text for mana production
+		const oracleText = card.oracleText || '';
+
+		// Look for "Add {X}" patterns in oracle text
+		const addManaPattern = /Add (\{[WUBRGC]\})+/gi;
+		const matches = oracleText.matchAll(addManaPattern);
+
+		for (const match of matches) {
+			// Extract mana symbols from the match
+			const symbols = match[0].match(/\{[WUBRGC]\}/g) || [];
+			for (const symbol of symbols) {
+				const color = symbol.replace(/[{}]/g, '');
+				if (color in production) {
+					production[color]++;
+				}
+			}
+			// Only count the first match per card to avoid overcounting
+			break;
+		}
+
+		// Handle "Choose one" or "Add one mana of any color" type effects
+		// These count as 0.2 for each color (flexible mana sources)
+		if (oracleText.match(/add one mana of any color/i)) {
+			for (const color of ['W', 'U', 'B', 'R', 'G']) {
+				production[color] += 0.2;
+			}
+		}
+	}
+
+	return production;
+}
+
+/**
  * Calculate card type distribution (percentage by category)
  */
 function calculateTypeDistribution(deck: Deck): Record<string, number> {
@@ -140,7 +243,7 @@ function calculateTypeDistribution(deck: Deck): Record<string, number> {
 }
 
 /**
- * Calculate average converted mana cost
+ * Calculate average converted mana cost (without lands)
  */
 function calculateAverageCmc(cards: Card[]): number {
 	// Exclude lands from CMC calculation
@@ -150,6 +253,57 @@ function calculateAverageCmc(cards: Card[]): number {
 
 	const totalCmc = nonLands.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
 	return Number((totalCmc / nonLands.length).toFixed(2));
+}
+
+/**
+ * Calculate average converted mana cost (with lands)
+ */
+function calculateAverageCmcWithLands(cards: Card[]): number {
+	if (cards.length === 0) return 0;
+
+	const totalCmc = cards.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
+	return Number((totalCmc / cards.length).toFixed(2));
+}
+
+/**
+ * Calculate median converted mana cost (without lands)
+ */
+function calculateMedianCmc(cards: Card[]): number {
+	const nonLands = cards.filter((card) => !card.types?.some((t) => t.toLowerCase() === 'land'));
+
+	if (nonLands.length === 0) return 0;
+
+	const cmcs = nonLands.map((card) => card.cmc ?? 0).sort((a, b) => a - b);
+	const mid = Math.floor(cmcs.length / 2);
+
+	if (cmcs.length % 2 === 0) {
+		return Number(((cmcs[mid - 1] + cmcs[mid]) / 2).toFixed(2));
+	} else {
+		return cmcs[mid];
+	}
+}
+
+/**
+ * Calculate median converted mana cost (with lands)
+ */
+function calculateMedianCmcWithLands(cards: Card[]): number {
+	if (cards.length === 0) return 0;
+
+	const cmcs = cards.map((card) => card.cmc ?? 0).sort((a, b) => a - b);
+	const mid = Math.floor(cmcs.length / 2);
+
+	if (cmcs.length % 2 === 0) {
+		return Number(((cmcs[mid - 1] + cmcs[mid]) / 2).toFixed(2));
+	} else {
+		return cmcs[mid];
+	}
+}
+
+/**
+ * Calculate total mana value of the deck
+ */
+function calculateTotalManaValue(cards: Card[]): number {
+	return cards.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
 }
 
 /**

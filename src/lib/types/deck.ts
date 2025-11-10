@@ -69,17 +69,32 @@ export interface DeckStatistics {
 	/** Total cards */
 	totalCards: number;
 
-	/** Mana curve (CMC distribution) */
-	manaCurve: Record<number, number>;
+	/** Mana curve (CMC distribution) split by permanents vs spells */
+	manaCurve: Record<number, { permanents: number; spells: number }>;
 
-	/** Color distribution */
+	/** Color distribution (mana cost requirements) */
 	colorDistribution: Record<string, number>;
+
+	/** Mana production by color */
+	manaProduction: Record<string, number>;
 
 	/** Type distribution */
 	typeDistribution: Record<string, number>;
 
-	/** Average CMC */
+	/** Average CMC (without lands) */
 	averageCmc: number;
+
+	/** Average CMC (with lands) */
+	averageCmcWithLands: number;
+
+	/** Median CMC (without lands) */
+	medianCmc: number;
+
+	/** Median CMC (with lands) */
+	medianCmcWithLands: number;
+
+	/** Total mana value of all cards */
+	totalManaValue: number;
 
 	/** Land count */
 	landCount: number;

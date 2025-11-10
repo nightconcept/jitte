@@ -216,7 +216,7 @@
 	.flip-card {
 		width: 100%;
 		transform-style: preserve-3d;
-		transition: transform 0.6s ease-in-out;
+		transition: transform 0.4s ease-in-out;
 		position: relative;
 		/* Maintain aspect ratio even with absolute children */
 		aspect-ratio: 5 / 7;
