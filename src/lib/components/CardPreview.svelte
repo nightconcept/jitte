@@ -3,7 +3,15 @@
 	import { deckStore } from '$lib/stores/deck-store';
 	import VendorIcon from './VendorIcon.svelte';
 
-	let { hoveredCard = null }: { hoveredCard: Card | null } = $props();
+	let {
+		hoveredCard = null,
+		showPricing = true,
+		className = ''
+	}: {
+		hoveredCard: Card | null;
+		showPricing?: boolean;
+		className?: string;
+	} = $props();
 
 	// Store subscription using Svelte 5 runes pattern
 	let deckStoreState = $state($deckStore);
@@ -58,7 +66,7 @@
 	}
 </script>
 
-<aside class="w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)]">
+<aside class="{className || 'w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)]'}">
 	<!-- Card Image -->
 	<div class="flex-shrink-0 mb-2">
 		{#if imageUrl}
@@ -110,7 +118,7 @@
 	{/if}
 
 	<!-- Vendor Pricing (Non-Foil) -->
-	{#if displayCard?.prices}
+	{#if showPricing && displayCard?.prices}
 		<div class="pt-4 border-t border-[var(--color-border)]">
 			<div class="text-xs font-semibold text-[var(--color-text-primary)] mb-3">Prices</div>
 			<div class="space-y-2">

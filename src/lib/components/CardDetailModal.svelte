@@ -2,8 +2,8 @@
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import { cardService } from '$lib/api/card-service';
-	import { onMount } from 'svelte';
-	import ManaSymbol from './ManaSymbol.svelte';
+	import CardPreview from './CardPreview.svelte';
+	import CardPreviewInfo from './CardPreviewInfo.svelte';
 	import OracleText from './OracleText.svelte';
 
 	let {
@@ -157,62 +157,19 @@
 					</div>
 				{:else if scryfallCard}
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<!-- Left Column: Image -->
+						<!-- Left Column: Card Image with Flip Functionality -->
 						<div class="flex flex-col items-center sticky top-0 self-start">
-							{#if scryfallCard.image_uris?.normal}
-								<img
-									src={scryfallCard.image_uris.normal}
-									alt={scryfallCard.name}
-									class="rounded-lg shadow-lg max-w-full h-auto"
-								/>
-							{:else if scryfallCard.card_faces?.[0]?.image_uris?.normal}
-								<img
-									src={scryfallCard.card_faces[0].image_uris.normal}
-									alt={scryfallCard.name}
-									class="rounded-lg shadow-lg max-w-full h-auto"
-								/>
-							{/if}
+							<CardPreview
+								hoveredCard={card}
+								showPricing={false}
+								className="w-full bg-transparent border-none p-0 flex flex-col static h-auto"
+							/>
 						</div>
 
 						<!-- Right Column: Details -->
 						<div class="flex flex-col gap-4">
-							<!-- Card Name & Mana Cost -->
-							<div class="flex items-center justify-between gap-3">
-								<h3 class="text-xl font-bold text-[var(--color-text-primary)]">{scryfallCard.name}</h3>
-								{#if scryfallCard.mana_cost}
-									<ManaSymbol cost={scryfallCard.mana_cost} size="lg" />
-								{/if}
-							</div>
-
-							<!-- Type Line -->
-							<p class="text-base font-semibold text-[var(--color-text-primary)]">{scryfallCard.type_line}</p>
-
-							<!-- Oracle Text -->
-							{#if scryfallCard.oracle_text}
-								<div class="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-									<OracleText text={scryfallCard.oracle_text} />
-								</div>
-							{/if}
-
-							<!-- Flavor Text -->
-							{#if scryfallCard.flavor_text}
-								<div class="text-sm text-[var(--color-text-tertiary)] leading-relaxed italic border-t border-[var(--color-border)] pt-2 mt-2">
-									{scryfallCard.flavor_text}
-								</div>
-							{/if}
-
-							<!-- Power/Toughness -->
-							{#if scryfallCard.power && scryfallCard.toughness}
-								<div class="text-lg font-bold text-[var(--color-text-primary)]">
-									{scryfallCard.power} / {scryfallCard.toughness}
-								</div>
-							{/if}
-
-							<!-- Set Information -->
-							<div class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-								<i class="ss ss-{scryfallCard.set.toLowerCase()} ss-{scryfallCard.rarity} ss-grad ss-2x" title={`${scryfallCard.set_name} - ${scryfallCard.rarity}`}></i>
-								<span>{scryfallCard.set_name} ({scryfallCard.set.toUpperCase()}) #{scryfallCard.collector_number}</span>
-							</div>
+							<!-- Card Info (Name, Type, Oracle Text, etc.) -->
+							<CardPreviewInfo card={card} scryfallCard={scryfallCard} />
 
 							<!-- Pricing -->
 							<div>
