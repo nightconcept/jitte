@@ -7,6 +7,7 @@
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
 	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
+	import { scryfallToCard } from '$lib/utils/card-converter';
 
 	export let addToMaybeboard = false;
 	export let maybeboardCategoryId: string | undefined = undefined;
@@ -162,36 +163,7 @@
 			}
 
 			// Convert to our Card type
-			const card: Card = {
-				name: scryfallCard.name,
-				quantity: 1,
-				setCode: scryfallCard.set.toUpperCase(),
-				collectorNumber: scryfallCard.collector_number,
-				scryfallId: scryfallCard.id,
-				oracleId: scryfallCard.oracle_id,
-				types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
-					['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
-				),
-				cmc: scryfallCard.cmc,
-				manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
-				colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
-				oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
-				imageUrls: {
-					small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
-					normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
-					large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
-					png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
-					artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
-					borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
-				},
-				price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
-				prices: scryfallCard.prices.usd ? {
-					cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
-					tcgplayer: parseFloat(scryfallCard.prices.usd),
-					manapool: parseFloat(scryfallCard.prices.usd) * 0.95
-				} : undefined,
-				priceUpdatedAt: Date.now()
-			};
+			const card = scryfallToCard(scryfallCard);
 
 			// Add to deck or maybeboard
 			if (addToMaybeboard) {

@@ -24,6 +24,7 @@
 	import { CardService } from '$lib/api/card-service';
 	import { parsePlaintext } from '$lib/utils/decklist-parser';
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
+	import { scryfallToCard } from '$lib/utils/card-converter';
 
 	let hoveredCard: Card | null = null;
 	let showCommitModal = false;
@@ -293,36 +294,10 @@
 
 				if (scryfallCard) {
 					// Convert to our Card type
-					const fullCard: Card = {
-						name: scryfallCard.name,
-						quantity: parsedCard.quantity,
-						setCode: parsedCard.setCode || scryfallCard.set.toUpperCase(),
-						collectorNumber: parsedCard.collectorNumber || scryfallCard.collector_number,
-						scryfallId: scryfallCard.id,
-						oracleId: scryfallCard.oracle_id,
-						types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
-							['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
-						),
-						cmc: scryfallCard.cmc,
-						manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
-						colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
-						oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
-						imageUrls: {
-							small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
-							normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
-							large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
-							png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
-							artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
-							borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
-						},
-						price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
-						prices: scryfallCard.prices.usd ? {
-							cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
-							tcgplayer: parseFloat(scryfallCard.prices.usd),
-							manapool: parseFloat(scryfallCard.prices.usd) * 0.95
-						} : undefined,
-						priceUpdatedAt: Date.now()
-					};
+					const fullCard = scryfallToCard(scryfallCard, parsedCard.quantity, {
+						setCode: parsedCard.setCode,
+						collectorNumber: parsedCard.collectorNumber
+					});
 
 					finalCards.push(fullCard);
 					successCount++;
@@ -624,37 +599,11 @@
 				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
 
 				if (scryfallCard) {
-					// Convert to our Card type (same as CardSearch.svelte)
-					const fullCard: Card = {
-						name: scryfallCard.name,
-						quantity: parsedCard.quantity,
-						setCode: parsedCard.setCode || scryfallCard.set.toUpperCase(),
-						collectorNumber: parsedCard.collectorNumber || scryfallCard.collector_number,
-						scryfallId: scryfallCard.id,
-						oracleId: scryfallCard.oracle_id,
-						types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
-							['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
-						),
-						cmc: scryfallCard.cmc,
-						manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
-						colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
-						oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
-						imageUrls: {
-							small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
-							normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
-							large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
-							png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
-							artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
-							borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
-						},
-						price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
-						prices: scryfallCard.prices.usd ? {
-							cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
-							tcgplayer: parseFloat(scryfallCard.prices.usd),
-							manapool: parseFloat(scryfallCard.prices.usd) * 0.95
-						} : undefined,
-						priceUpdatedAt: Date.now()
-					};
+					// Convert to our Card type
+					const fullCard = scryfallToCard(scryfallCard, parsedCard.quantity, {
+						setCode: parsedCard.setCode,
+						collectorNumber: parsedCard.collectorNumber
+					});
 
 					finalCards.push(fullCard);
 					successCount++;

@@ -71,7 +71,7 @@
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl {sizeClasses[
 				size
-			]} w-full mx-4 border border-[var(--color-border)] relative {height || ''} {contentClass}"
+			]} w-full mx-4 border border-[var(--color-border)] relative flex flex-col {height || ''} {contentClass}"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
@@ -107,7 +107,7 @@
 			{/if}
 
 			<!-- Modal Content (Snippet) -->
-			<div class="modal-content flex-1 min-h-0 overflow-hidden">
+			<div class="modal-content flex-1 min-h-0 overflow-hidden flex flex-col">
 				{#if children}
 					{@render children()}
 				{/if}

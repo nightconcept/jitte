@@ -3,6 +3,45 @@
  */
 
 /**
+ * Represents one face of a double-faced card
+ */
+export interface CardFace {
+	/** Face name */
+	name: string;
+
+	/** Mana cost for this face */
+	manaCost?: string;
+
+	/** Type line for this face */
+	typeLine?: string;
+
+	/** Oracle text for this face */
+	oracleText?: string;
+
+	/** Image URLs for this face */
+	imageUrls?: {
+		small?: string;
+		normal?: string;
+		large?: string;
+		png?: string;
+		artCrop?: string;
+		borderCrop?: string;
+	};
+
+	/** Colors for this face */
+	colors?: string[];
+
+	/** Power (for creatures) */
+	power?: string;
+
+	/** Toughness (for creatures) */
+	toughness?: string;
+
+	/** Loyalty (for planeswalkers) */
+	loyalty?: string;
+}
+
+/**
  * Represents a single Magic card in a deck
  */
 export interface Card {
@@ -54,6 +93,12 @@ export interface Card {
 		artCrop?: string;
 		borderCrop?: string;
 	};
+
+	/** Card layout type (e.g., "normal", "transform", "modal_dfc", "flip") */
+	layout?: string;
+
+	/** Array of card faces for double-faced cards */
+	cardFaces?: CardFace[];
 
 	/** Pricing information (USD non-foil) - legacy single price field */
 	price?: number;

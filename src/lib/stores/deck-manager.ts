@@ -6,6 +6,7 @@
 import { writable, get } from 'svelte/store';
 import type { Deck, DeckManifest } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
+import type { Card } from '$lib/types/card';
 import { getStorageManager } from '$lib/storage/storage-manager';
 import type { DeckListEntry } from '$lib/storage/types';
 import { deckStore } from './deck-store';

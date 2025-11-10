@@ -8,6 +8,7 @@ import { cardService } from '$lib/api/card-service';
 import type { Card } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { Deck } from '$lib/types/deck';
+import { scryfallToCard } from './card-converter';
 
 /**
  * Load a deck from plaintext content
@@ -33,38 +34,11 @@ export async function loadDeckFromPlaintext(text: string, deckName: string): Pro
 
 			if (scryfallCard) {
 				// Convert Scryfall card to our Card type
-				enrichedCards.push({
-					name: scryfallCard.name,
-					quantity: card.quantity,
-					setCode: card.setCode || scryfallCard.set.toUpperCase(),
-					collectorNumber: card.collectorNumber || scryfallCard.collector_number,
-					scryfallId: scryfallCard.id,
-					oracleId: scryfallCard.oracle_id,
-					types: scryfallCard.type_line.split(/[\s—]+/).filter(t =>
-						['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
-					),
-					cmc: scryfallCard.cmc,
-					manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
-					colorIdentity: scryfallCard.color_identity as Card['colorIdentity'],
-					oracleText: scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
-					imageUrls: {
-						small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small,
-						normal: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal,
-						large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large,
-						png: scryfallCard.image_uris?.png || scryfallCard.card_faces?.[0]?.image_uris?.png,
-						artCrop: scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
-						borderCrop: scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
-					},
-					price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
-					// Mock vendor pricing based on Scryfall USD price
-					// TODO: Replace with real vendor API integration
-					prices: scryfallCard.prices.usd ? {
-						cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05, // Card Kingdom typically 5% higher
-						tcgplayer: parseFloat(scryfallCard.prices.usd), // TCGPlayer as baseline
-						manapool: parseFloat(scryfallCard.prices.usd) * 0.95 // Mana Pool typically 5% lower
-					} : undefined,
-					priceUpdatedAt: Date.now()
+				const enrichedCard = scryfallToCard(scryfallCard, card.quantity, {
+					setCode: card.setCode,
+					collectorNumber: card.collectorNumber
 				});
+				enrichedCards.push(enrichedCard);
 			} else {
 				// Fallback: use basic card data if Scryfall lookup fails
 				console.warn(`Failed to fetch data for card: ${card.name}`);

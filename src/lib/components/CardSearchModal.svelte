@@ -8,6 +8,7 @@
   import type { ScryfallCard } from "$lib/types/scryfall";
   import CardPreviewInfo from "./CardPreviewInfo.svelte";
   import { MIN_SEARCH_CHARACTERS } from "$lib/constants/search";
+  import { scryfallToCard } from "$lib/utils/card-converter";
 
   let {
     isOpen = false,
@@ -34,6 +35,31 @@
   let selectedCardFull = $state<Card | null>(null);
   let selectedScryfallCard = $state<ScryfallCard | null>(null);
   let loadingCardDetails = $state(false);
+
+  // Flip animation state
+  let currentFaceIndex = $state(0);
+
+  // Check if selected card has multiple faces
+  let isDoubleFaced = $derived(
+    selectedCardFull?.cardFaces && selectedCardFull.cardFaces.length > 1
+  );
+
+  // Debug logging for double-faced cards
+  $effect(() => {
+    if (selectedCardFull) {
+      if (selectedCardFull.layout && (selectedCardFull.layout === 'modal_dfc' || selectedCardFull.layout === 'transform')) {
+        console.log('[CardSearchModal] Double-faced card detected:', {
+          name: selectedCardFull.name,
+          layout: selectedCardFull.layout,
+          hasCardFaces: !!selectedCardFull.cardFaces,
+          cardFacesCount: selectedCardFull.cardFaces?.length || 0,
+          isDoubleFaced,
+          willShowFlipButton: isDoubleFaced
+        });
+      }
+    }
+  });
+
   let commanderLegalOnly = $state(true);
 
   // Track whether modal was previously open (to detect opening transition)
@@ -236,73 +262,25 @@
       }
 
       // Convert to our Card type
-      const card: Card = {
-        name: scryfallCard.name,
-        quantity: 1,
-        setCode: scryfallCard.set.toUpperCase(),
-        collectorNumber: scryfallCard.collector_number,
-        scryfallId: scryfallCard.id,
-        oracleId: scryfallCard.oracle_id,
-        types: scryfallCard.type_line
-          .split(/[\s—]+/)
-          .filter((t) =>
-            [
-              "Creature",
-              "Instant",
-              "Sorcery",
-              "Enchantment",
-              "Artifact",
-              "Planeswalker",
-              "Land",
-            ].includes(t),
-          ),
-        cmc: scryfallCard.cmc,
-        manaCost:
-          scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
-        colorIdentity: scryfallCard.color_identity as Card["colorIdentity"],
-        oracleText:
-          scryfallCard.oracle_text || scryfallCard.card_faces?.[0]?.oracle_text,
-        keywords: scryfallCard.keywords,
-        imageUrls: {
-          small:
-            scryfallCard.image_uris?.small ||
-            scryfallCard.card_faces?.[0]?.image_uris?.small,
-          normal:
-            scryfallCard.image_uris?.normal ||
-            scryfallCard.card_faces?.[0]?.image_uris?.normal,
-          large:
-            scryfallCard.image_uris?.large ||
-            scryfallCard.card_faces?.[0]?.image_uris?.large,
-          png:
-            scryfallCard.image_uris?.png ||
-            scryfallCard.card_faces?.[0]?.image_uris?.png,
-          artCrop:
-            scryfallCard.image_uris?.art_crop ||
-            scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
-          borderCrop:
-            scryfallCard.image_uris?.border_crop ||
-            scryfallCard.card_faces?.[0]?.image_uris?.border_crop,
-        },
-        price: scryfallCard.prices.usd
-          ? parseFloat(scryfallCard.prices.usd)
-          : undefined,
-        prices: scryfallCard.prices.usd
-          ? {
-              cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05,
-              tcgplayer: parseFloat(scryfallCard.prices.usd),
-              manapool: parseFloat(scryfallCard.prices.usd) * 0.95,
-            }
-          : undefined,
-        priceUpdatedAt: Date.now(),
-      };
+      const card = scryfallToCard(scryfallCard);
 
       selectedCardFull = card;
       selectedScryfallCard = scryfallCard;
       loadingCardDetails = false;
+
+      // Reset to front face when new card is selected
+      currentFaceIndex = 0;
     } catch (error) {
       console.error("Error selecting card:", error);
       toastStore.error("Failed to fetch card data");
       loadingCardDetails = false;
+    }
+  }
+
+  function toggleFace() {
+    if (isDoubleFaced) {
+      // Toggle between front (0) and back (1) face
+      currentFaceIndex = currentFaceIndex === 0 ? 1 : 0;
     }
   }
 
@@ -600,14 +578,65 @@
             </div>
           {:else if selectedCardFull && selectedScryfallCard}
             <div class="w-full max-w-md">
-              <!-- Large Card Image -->
-              {#if selectedCardFull.imageUrls?.large || selectedCardFull.imageUrls?.normal}
-                <img
-                  src={selectedCardFull.imageUrls.large ||
-                    selectedCardFull.imageUrls.normal}
-                  alt={selectedCardFull.name}
-                  class="w-full rounded-lg shadow-2xl mb-4"
-                />
+              <!-- Large Card Image with 3D Flip -->
+              <div class="perspective-container mb-2">
+                <div class="flip-card" class:is-flipped={currentFaceIndex === 1}>
+                  <!-- Front Face -->
+                  <div class="card-face card-face--front">
+                    {#if isDoubleFaced && selectedCardFull.cardFaces?.[0]?.imageUrls}
+                      <img
+                        src={selectedCardFull.cardFaces[0].imageUrls.large || selectedCardFull.cardFaces[0].imageUrls.normal}
+                        alt={selectedCardFull.cardFaces[0].name || selectedCardFull.name}
+                        class="w-full h-full object-cover rounded-lg shadow-2xl"
+                      />
+                    {:else if selectedCardFull.imageUrls}
+                      <img
+                        src={selectedCardFull.imageUrls.large || selectedCardFull.imageUrls.normal}
+                        alt={selectedCardFull.name}
+                        class="w-full h-full object-cover rounded-lg shadow-2xl"
+                      />
+                    {/if}
+                  </div>
+
+                  <!-- Back Face -->
+                  <div class="card-face card-face--back">
+                    {#if isDoubleFaced && selectedCardFull.cardFaces?.[1]?.imageUrls}
+                      <img
+                        src={selectedCardFull.cardFaces[1].imageUrls.large || selectedCardFull.cardFaces[1].imageUrls.normal}
+                        alt={selectedCardFull.cardFaces[1].name || 'Card back'}
+                        class="w-full h-full object-cover rounded-lg shadow-2xl"
+                      />
+                    {/if}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Flip button for double-faced cards -->
+              {#if isDoubleFaced}
+                <button
+                  type="button"
+                  onclick={toggleFace}
+                  class="w-full mb-4 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded py-2 px-3 transition-colors duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                  aria-label="Flip to {currentFaceIndex === 0 ? 'back' : 'front'} face"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3l4 4-4 4" />
+                    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                    <path d="M7 21l-4-4 4-4" />
+                    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                  </svg>
+                  <span>Turn Over</span>
+                </button>
               {/if}
 
               <!-- Card Info -->
@@ -665,3 +694,41 @@
     </div>
   {/snippet}
 </BaseModal>
+
+<style>
+  .perspective-container {
+    perspective: 1000px;
+    width: 100%;
+  }
+
+  .flip-card {
+    width: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease-in-out;
+    position: relative;
+    /* Maintain aspect ratio even with absolute children */
+    aspect-ratio: 5 / 7;
+  }
+
+  .flip-card.is-flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .card-face--front {
+    /* Front face is at 0 degrees */
+  }
+
+  .card-face--back {
+    /* Back face is pre-rotated 180 degrees */
+    transform: rotateY(180deg);
+  }
+</style>

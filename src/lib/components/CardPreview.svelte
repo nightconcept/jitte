@@ -38,6 +38,26 @@
 		displayCard?.cardFaces && displayCard.cardFaces.length > 1
 	);
 
+	// Debug logging for double-faced cards
+	$effect(() => {
+		if (displayCard) {
+			if (displayCard.layout && (displayCard.layout === 'modal_dfc' || displayCard.layout === 'transform')) {
+				console.log('[CardPreview] Double-faced card detected:', {
+					name: displayCard.name,
+					layout: displayCard.layout,
+					hasCardFaces: !!displayCard.cardFaces,
+					cardFacesCount: displayCard.cardFaces?.length || 0,
+					isDoubleFaced,
+					willShowFlipButton: isDoubleFaced
+				});
+
+				if (!displayCard.cardFaces || displayCard.cardFaces.length < 2) {
+					console.warn('[CardPreview] ⚠️ MISSING DATA: This card needs cardFaces data. Re-add from search to enable flip functionality.');
+				}
+			}
+		}
+	});
+
 	// Get image URL based on current face
 	let imageUrl = $derived.by(() => {
 		if (!displayCard) return null;
@@ -61,6 +81,7 @@
 
 	function toggleFace() {
 		if (isDoubleFaced) {
+			// Toggle between front (0) and back (1) face
 			currentFaceIndex = currentFaceIndex === 0 ? 1 : 0;
 		}
 	}
@@ -68,25 +89,51 @@
 
 <aside class="{className || 'w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[121px] self-start h-[calc(100vh-121px)]'}">
 	<!-- Card Image -->
-	<div class="flex-shrink-0 mb-2">
-		{#if imageUrl}
-			<img
-				src={imageUrl}
-				alt={displayCard?.name || 'Card preview'}
-				class="w-full rounded-lg shadow-lg"
-			/>
-		{:else if displayCard}
-			<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
-				<div class="text-center">
-					<div class="text-sm font-medium">{displayCard.name}</div>
-					<div class="text-xs mt-1">Image not available</div>
-				</div>
+	<div class="flex-shrink-0 mb-2 perspective-container">
+		<div class="flip-card" class:is-flipped={currentFaceIndex === 1}>
+			<!-- Front Face -->
+			<div class="card-face card-face--front">
+				{#if isDoubleFaced && displayCard?.cardFaces?.[0]?.imageUrls}
+					<img
+						src={displayCard.cardFaces[0].imageUrls.normal || displayCard.cardFaces[0].imageUrls.large}
+						alt={displayCard.cardFaces[0].name || displayCard?.name || 'Card front'}
+						class="w-full rounded-lg shadow-lg"
+					/>
+				{:else if imageUrl}
+					<img
+						src={imageUrl}
+						alt={displayCard?.name || 'Card preview'}
+						class="w-full rounded-lg shadow-lg"
+					/>
+				{:else if displayCard}
+					<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
+						<div class="text-center">
+							<div class="text-sm font-medium">{displayCard.name}</div>
+							<div class="text-xs mt-1">Image not available</div>
+						</div>
+					</div>
+				{:else}
+					<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
+						<div class="text-center text-sm">No card selected</div>
+					</div>
+				{/if}
 			</div>
-		{:else}
-			<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
-				<div class="text-center text-sm">No card selected</div>
+
+			<!-- Back Face -->
+			<div class="card-face card-face--back">
+				{#if isDoubleFaced && displayCard?.cardFaces?.[1]?.imageUrls}
+					<img
+						src={displayCard.cardFaces[1].imageUrls.normal || displayCard.cardFaces[1].imageUrls.large}
+						alt={displayCard.cardFaces[1].name || 'Card back'}
+						class="w-full rounded-lg shadow-lg"
+					/>
+				{:else}
+					<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
+						<div class="text-center text-sm">No back face</div>
+					</div>
+				{/if}
 			</div>
-		{/if}
+		</div>
 	</div>
 
 	<!-- Flip button for double-faced cards -->
@@ -99,8 +146,8 @@
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				width="16"
-				height="16"
+				width="18"
+				height="18"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
@@ -108,10 +155,10 @@
 				stroke-linecap="round"
 				stroke-linejoin="round"
 			>
-				<path d="M21 2v6h-6" />
-				<path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-				<path d="M3 22v-6h6" />
-				<path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+				<path d="M17 3l4 4-4 4" />
+				<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+				<path d="M7 21l-4-4 4-4" />
+				<path d="M21 13v1a4 4 0 0 1-4 4H3" />
 			</svg>
 			<span>Turn Over</span>
 		</button>
@@ -159,3 +206,41 @@
 		</div>
 	{/if}
 </aside>
+
+<style>
+	.perspective-container {
+		perspective: 1000px;
+		width: 100%;
+	}
+
+	.flip-card {
+		width: 100%;
+		transform-style: preserve-3d;
+		transition: transform 0.6s ease-in-out;
+		position: relative;
+		/* Maintain aspect ratio even with absolute children */
+		aspect-ratio: 5 / 7;
+	}
+
+	.flip-card.is-flipped {
+		transform: rotateY(180deg);
+	}
+
+	.card-face {
+		width: 100%;
+		height: 100%;
+		backface-visibility: hidden;
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	.card-face--front {
+		/* Front face is at 0 degrees */
+	}
+
+	.card-face--back {
+		/* Back face is pre-rotated 180 degrees */
+		transform: rotateY(180deg);
+	}
+</style>
