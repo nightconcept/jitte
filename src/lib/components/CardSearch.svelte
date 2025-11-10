@@ -3,8 +3,10 @@
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
 	import { toastStore } from '$lib/stores/toast-store';
+	import UniversalCardSearchModal from './UniversalCardSearchModal.svelte';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
+	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
 
 	export let addToMaybeboard = false;
 	export let maybeboardCategoryId: string | undefined = undefined;
@@ -15,6 +17,40 @@
 	let showDropdown = false;
 	let debounceTimer: number | undefined;
 	let searchInputRef: HTMLInputElement;
+	let modalOpen = false;
+
+	// Get commander color identity for filtering
+	$: commanders = $deckStore?.deck?.commanders || [];
+	$: commanderColors = (() => {
+		console.log('[CardSearch] Recalculating commander colors. Commanders:', commanders);
+
+		if (commanders.length === 0) {
+			console.log('[CardSearch] No commanders found, returning empty color array');
+			return [];
+		}
+
+		// Combine all commander color identities
+		const allColors = new Set<string>();
+		for (const commander of commanders) {
+			console.log('[CardSearch] Processing commander:', {
+				name: commander.name,
+				hasColorIdentity: !!commander.colorIdentity,
+				colorIdentity: commander.colorIdentity
+			});
+
+			if (commander.colorIdentity) {
+				for (const color of commander.colorIdentity) {
+					allColors.add(color);
+				}
+			}
+		}
+
+		// Sort in WUBRG order for Scryfall
+		const colorOrder = ['W', 'U', 'B', 'R', 'G'];
+		const result = Array.from(allColors).sort((a, b) => colorOrder.indexOf(a) - colorOrder.indexOf(b));
+		console.log('[CardSearch] Final commander colors:', result);
+		return result;
+	})();
 
 	// Close dropdown when clicking outside
 	function handleClickOutside(event: MouseEvent) {
@@ -37,8 +73,8 @@
 		// Clear previous timer
 		if (debounceTimer) clearTimeout(debounceTimer);
 
-		// Only search if 4+ characters
-		if (searchQuery.length < 4) {
+		// Only search if enough characters
+		if (searchQuery.length < MIN_SEARCH_CHARACTERS) {
 			results = [];
 			showDropdown = false;
 			return;
@@ -50,7 +86,21 @@
 			showDropdown = true;
 
 			try {
-				const searchResults = await cardService.searchCards(searchQuery, 20);
+				// Build search query with color identity filter for inline dropdown
+				let query = searchQuery + ' format:commander';
+
+				// Add color identity filter if we have a commander
+				if (commanderColors.length > 0) {
+					// Scryfall uses "id<=" to mean "color identity is subset of or equal to"
+					const colorString = commanderColors.join('').toLowerCase();
+					query += ` id<=${colorString}`;
+					console.log('[CardSearch] Filtering by color identity:', commanderColors, 'Query:', query);
+				} else {
+					console.log('[CardSearch] No commander, showing all Commander-legal cards');
+				}
+
+				// Search with the constructed query
+				const searchResults = await cardService.searchCards(query, 20, false);
 
 				// Sort results: prioritize matches at the start of the name
 				const sorted = searchResults.sort((a, b) => {
@@ -178,7 +228,34 @@
 		if (event.key === 'Escape') {
 			showDropdown = false;
 			searchQuery = '';
+		} else if (event.key === 'Enter') {
+			// If there's a search query but no results shown, or user hasn't selected anything
+			// Open the modal to show more results
+			if (searchQuery.length >= MIN_SEARCH_CHARACTERS) {
+				event.preventDefault();
+				modalOpen = true;
+				showDropdown = false;
+			}
 		}
+	}
+
+	// Check if a card is outside commander's color identity
+	function isOutsideColorIdentity(cardResult: CardSearchResult): boolean {
+		// If no commander, all cards are valid
+		if (commanderColors.length === 0) return false;
+
+		// If card has no color identity, it's colorless and valid for all decks
+		if (!cardResult.color_identity || cardResult.color_identity.length === 0) return false;
+
+		// Check if any color in the card's identity is NOT in the commander's identity
+		const commanderColorSet = new Set(commanderColors);
+		for (const color of cardResult.color_identity) {
+			if (!commanderColorSet.has(color)) {
+				return true; // Card has a color not in commander's identity
+			}
+		}
+
+		return false; // All colors are within commander's identity
 	}
 </script>
 
@@ -196,15 +273,20 @@
 			}}
 			type="text"
 			placeholder="Search for cards..."
-			class="w-full px-4 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+			class="w-full pl-4 pr-24 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 		/>
 
-		<!-- Search icon -->
-		<div class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]">
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<!-- Search button -->
+		<button
+			on:click={() => modalOpen = true}
+			class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
+			title="Open advanced search"
+		>
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 			</svg>
-		</div>
+			<span>Search</span>
+		</button>
 	</div>
 
 	<!-- Dropdown Results -->
@@ -216,7 +298,7 @@
 				</div>
 			{:else if results.length === 0}
 				<div class="px-4 py-3 text-center text-[var(--color-text-secondary)]">
-					{searchQuery.length < 4 ? 'Type at least 4 characters to search' : 'No results found'}
+					{searchQuery.length < MIN_SEARCH_CHARACTERS ? `Type at least ${MIN_SEARCH_CHARACTERS} characters to search` : 'No results found'}
 				</div>
 			{:else}
 				<!-- Search Results -->
@@ -242,3 +324,11 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Universal Search Modal -->
+<UniversalCardSearchModal
+	isOpen={modalOpen}
+	addToMaybeboard={addToMaybeboard}
+	maybeboardCategoryId={maybeboardCategoryId}
+	onClose={() => modalOpen = false}
+/>

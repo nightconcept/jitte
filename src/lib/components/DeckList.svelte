@@ -49,6 +49,34 @@
 		return warnings.filter(w => w.cardName === cardName);
 	}
 
+	// Check if a card is outside commander's color identity
+	function isOutsideColorIdentity(card: Card): boolean {
+		const commanders = deck?.commanders || [];
+		if (commanders.length === 0) return false;
+
+		// Get commander's combined color identity
+		const commanderColors = new Set<string>();
+		for (const commander of commanders) {
+			if (commander.colorIdentity) {
+				for (const color of commander.colorIdentity) {
+					commanderColors.add(color);
+				}
+			}
+		}
+
+		// If card has no color identity, it's colorless and valid
+		if (!card.colorIdentity || card.colorIdentity.length === 0) return false;
+
+		// Check if any color in card's identity is not in commander's identity
+		for (const color of card.colorIdentity) {
+			if (!commanderColors.has(color)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	// View options
 	type ViewMode = 'text' | 'condensed';
 	type GroupMode = 'type';
@@ -535,6 +563,16 @@
 															<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
 																<path d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
 															</svg>
+														</span>
+													{/if}
+
+													<!-- Color Identity Violation Icon -->
+													{#if isOutsideColorIdentity(card)}
+														<span
+															class="flex-shrink-0 text-red-500 font-bold text-sm"
+															title="Outside commander's color identity"
+														>
+															!
 														</span>
 													{/if}
 

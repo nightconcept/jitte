@@ -2,6 +2,7 @@
 	import { cardService } from '$lib/api/card-service';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
+	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
 
 	let {
 		selectedCommanders = $bindable([]),
@@ -57,8 +58,8 @@
 		// Clear previous timer
 		if (debounceTimer) clearTimeout(debounceTimer);
 
-		// Only search if 4+ characters
-		if (searchQuery.length < 4) {
+		// Only search if enough characters
+		if (searchQuery.length < MIN_SEARCH_CHARACTERS) {
 			results = [];
 			showDropdown = false;
 			return;
@@ -287,8 +288,8 @@
 						</div>
 					{:else if results.length === 0}
 						<div class="px-4 py-3 text-center text-[var(--color-text-secondary)]">
-							{searchQuery.length < 4
-								? 'Type at least 4 characters to search'
+							{searchQuery.length < MIN_SEARCH_CHARACTERS
+								? `Type at least ${MIN_SEARCH_CHARACTERS} characters to search`
 								: 'No legendary creatures found'}
 						</div>
 					{:else}

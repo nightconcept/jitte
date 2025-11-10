@@ -1,29 +1,25 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { cardService } from '$lib/api/card-service';
+	import { deckStore } from '$lib/stores/deck-store';
 	import { toastStore } from '$lib/stores/toast-store';
+	import BaseModal from './BaseModal.svelte';
 	import type { CardSearchResult } from '$lib/api/card-service';
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import ManaSymbol from './ManaSymbol.svelte';
-	import PartnerBadge from './PartnerBadge.svelte';
-	import { canBePartners, detectPartnerType } from '$lib/utils/partner-detection';
 	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
 
 	let {
 		isOpen = false,
-		mode = 'replace_all',
-		existingCommanders = []
+		addToMaybeboard = false,
+		maybeboardCategoryId = undefined,
+		onClose
 	}: {
 		isOpen?: boolean;
-		mode?: 'replace_all' | 'replace_partner' | 'add_partner';
-		existingCommanders?: Card[];
+		addToMaybeboard?: boolean;
+		maybeboardCategoryId?: string | undefined;
+		onClose: () => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		close: void;
-		select: Card;
-	}>();
 
 	let searchQuery = $state('');
 	let results = $state<CardSearchResult[]>([]);
@@ -33,6 +29,56 @@
 	let selectedCardFull = $state<Card | null>(null);
 	let selectedScryfallCard = $state<ScryfallCard | null>(null);
 	let loadingCardDetails = $state(false);
+	let commanderLegalOnly = $state(true);
+
+	// Subscribe to deck store to get commander color identity
+	let deckStoreState = $state($deckStore);
+	$effect(() => {
+		const unsubscribe = deckStore.subscribe(value => {
+			deckStoreState = value;
+		});
+		return unsubscribe;
+	});
+
+	// Get commander color identity
+	let commanderColors = $derived(() => {
+		const commanders = deckStoreState?.deck?.commanders;
+		if (!commanders || commanders.length === 0) return [];
+
+		// Combine all commander color identities
+		const allColors = new Set<string>();
+		for (const commander of commanders) {
+			if (commander.colorIdentity) {
+				for (const color of commander.colorIdentity) {
+					allColors.add(color);
+				}
+			}
+		}
+
+		// Sort in WUBRG order for Scryfall
+		const colorOrder = ['W', 'U', 'B', 'R', 'G'];
+		return Array.from(allColors).sort((a, b) => colorOrder.indexOf(a) - colorOrder.indexOf(b));
+	});
+
+	// Check if a card is outside commander's color identity
+	function isOutsideColorIdentity(cardResult: CardSearchResult): boolean {
+		const cmdColors = commanderColors();
+		// If no commander, all cards are valid
+		if (cmdColors.length === 0) return false;
+
+		// If card has no color identity, it's colorless and valid for all decks
+		if (!cardResult.color_identity || cardResult.color_identity.length === 0) return false;
+
+		// Check if any color in the card's identity is NOT in the commander's identity
+		const commanderColorSet = new Set(cmdColors);
+		for (const color of cardResult.color_identity) {
+			if (!commanderColorSet.has(color)) {
+				return true; // Card has a color not in commander's identity
+			}
+		}
+
+		return false; // All colors are within commander's identity
+	}
 
 	// Reset when modal opens
 	$effect(() => {
@@ -42,38 +88,9 @@
 			selectedResult = null;
 			selectedCardFull = null;
 			selectedScryfallCard = null;
+			commanderLegalOnly = true;
 		}
 	});
-
-	/**
-	 * Check if a card can be a commander based on type line and oracle text
-	 */
-	function canBeCommander(typeLine: string, oracleText?: string): boolean {
-		const lowerType = typeLine.toLowerCase();
-		const lowerOracle = oracleText?.toLowerCase() || '';
-
-		// Check if it's a legendary creature
-		if (lowerType.includes('legendary') && lowerType.includes('creature')) {
-			return true;
-		}
-
-		// Check if it explicitly says it can be your commander
-		if (lowerOracle.includes('can be your commander')) {
-			return true;
-		}
-
-		// Check for partner keywords (these can be commanders)
-		if (
-			lowerOracle.includes('partner') ||
-			lowerOracle.includes('friends forever') ||
-			lowerOracle.includes('choose a background')
-		) {
-			// But only if it's also legendary
-			return lowerType.includes('legendary');
-		}
-
-		return false;
-	}
 
 	async function handleInput() {
 		// Clear previous timer
@@ -90,33 +107,42 @@
 			isLoading = true;
 
 			try {
-				// Search for legendary creatures and cards that can be commanders
-				const searchResults = await cardService.searchCards(searchQuery, 50);
+				// Build search query - always show Commander-legal cards
+				// We'll mark invalid color identity ones with "!" instead of filtering them out
+				let query = searchQuery + ' format:commander';
 
-				// Filter to only legal commanders
-				const legalCommanders = searchResults.filter((card) =>
-					canBeCommander(card.type_line, card.oracle_text)
-				);
+				// Search with the constructed query
+				const searchResults = await cardService.searchCards(query, 100, false);
 
-				// Sort results: prioritize matches at the start of the name
-				const sorted = legalCommanders.sort((a, b) => {
+				// Sort results: prioritize exact matches first, then starts-with
+				const sorted = searchResults.sort((a, b) => {
 					const aName = a.name.toLowerCase();
 					const bName = b.name.toLowerCase();
 					const searchLower = searchQuery.toLowerCase();
 
+					// Exact match priority
+					const aExact = aName === searchLower;
+					const bExact = bName === searchLower;
+					if (aExact && !bExact) return -1;
+					if (!aExact && bExact) return 1;
+
+					// Starts-with priority
 					const aStartsWith = aName.startsWith(searchLower);
 					const bStartsWith = bName.startsWith(searchLower);
-
-					// If one starts with query and other doesn't, prioritize the one that does
 					if (aStartsWith && !bStartsWith) return -1;
 					if (!aStartsWith && bStartsWith) return 1;
 
-					// Otherwise, maintain alphabetical order
+					// Alphabetical fallback
 					return aName.localeCompare(bName);
 				});
 
-				// Take top 20 after filtering and sorting
-				results = sorted.slice(0, 20);
+				// Filter out cards outside color identity if checkbox is checked
+				const filtered = commanderLegalOnly
+					? sorted.filter(card => !isOutsideColorIdentity(card))
+					: sorted;
+
+				// Take top 50 after sorting and filtering
+				results = filtered.slice(0, 50);
 			} catch (error) {
 				console.error('Search error:', error);
 				results = [];
@@ -197,75 +223,57 @@
 		}
 	}
 
-	function confirmSelection() {
-		if (selectedCardFull) {
-			dispatch('select', selectedCardFull);
+	async function confirmSelection() {
+		if (!selectedCardFull) return;
+
+		try {
+			// Add to deck or maybeboard
+			if (addToMaybeboard) {
+				deckStore.addCardToMaybeboard(selectedCardFull, maybeboardCategoryId);
+			} else {
+				deckStore.addCard(selectedCardFull);
+			}
+
+			// Show success message
+			toastStore.success(`Added ${selectedCardFull.name} to ${addToMaybeboard ? 'maybeboard' : 'deck'}`);
+
+			// Close modal
+			onClose();
+		} catch (error) {
+			console.error('Error adding card:', error);
+			toastStore.error(`Failed to add ${selectedCardFull.name}`);
 		}
 	}
 
-	function handleClose() {
-		dispatch('close');
+	function searchOnScryfall() {
+		const query = encodeURIComponent(searchQuery);
+		window.open(`https://scryfall.com/search?q=${query}`, '_blank');
 	}
-
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			handleClose();
-		}
-	}
-
-	// Check if selected card is valid commander (should always be true due to filtering)
-	let isValidCommander = $derived(selectedResult ? canBeCommander(selectedResult.type_line, selectedResult.oracle_text) : true);
 </script>
 
-{#if isOpen}
-	<!-- Modal Backdrop -->
-	<div
-		class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
-		onclick={handleBackdropClick}
-		role="presentation"
-	>
-		<!-- Modal Content -->
-		<div
-			class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-6xl mx-4 border border-[var(--color-border)] h-[85vh] flex flex-col"
-			onclick={(e) => e.stopPropagation()}
-			role="dialog"
-			aria-modal="true"
-			tabindex="-1"
-		>
-			<!-- Header -->
-			<div class="px-6 py-4 border-b border-[var(--color-border)]">
-				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">
-					{#if mode === 'add_partner'}
-						Add Partner Commander
-					{:else if mode === 'replace_partner'}
-						Replace Partner Commander
-					{:else}
-						Change Commander
-					{/if}
-				</h2>
-				<p class="text-sm text-[var(--color-text-secondary)] mt-1">
-					{#if mode === 'add_partner'}
-						Search for a partner commander compatible with {existingCommanders[0]?.name || 'your commander'}
-					{:else if mode === 'replace_partner'}
-						Search for a new partner commander
-					{:else}
-						Search for a legendary creature or card that can be your commander
-					{/if}
-				</p>
-			</div>
+<BaseModal
+	isOpen={isOpen}
+	onClose={onClose}
+	title="Search All Cards"
+	subtitle={addToMaybeboard ? "Search for any card to add to your maybeboard" : "Search for any card to add to your deck"}
+	size="4xl"
+	height="h-[85vh]"
+	contentClass="flex flex-col"
+>
+	{#snippet children()}
 
 			<!-- Body - Split Layout -->
 			<div class="flex-1 flex overflow-hidden">
 				<!-- Left Side: Search and Results -->
 				<div class="w-1/2 border-r border-[var(--color-border)] flex flex-col">
 					<!-- Search Input -->
-					<div class="p-4 border-b border-[var(--color-border)]">
+					<div class="p-4 border-b border-[var(--color-border)] space-y-3">
 						<div class="relative">
 							<input
 								type="text"
 								bind:value={searchQuery}
 								oninput={handleInput}
-								placeholder="Search for commander (min {MIN_SEARCH_CHARACTERS} characters)..."
+								placeholder="Search for cards (min {MIN_SEARCH_CHARACTERS} characters)..."
 								class="w-full px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
 								autofocus
 							/>
@@ -276,9 +284,32 @@
 								</div>
 							{/if}
 						</div>
+
+						<!-- Commander-legal filter toggle -->
+						<label class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+							<input
+								type="checkbox"
+								bind:checked={commanderLegalOnly}
+								oninput={handleInput}
+								class="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-primary)] text-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+							/>
+							<span>
+								{#if commanderColors().length > 0}
+									Cards within commander's color identity
+									<span class="inline-flex gap-0.5 ml-1">
+										{#each commanderColors() as color}
+											<i class="ms ms-{color.toLowerCase()} ms-cost ms-shadow text-sm" title={color}></i>
+										{/each}
+									</span>
+								{:else}
+									Commander-legal cards only
+								{/if}
+							</span>
+						</label>
+
 						{#if results.length > 0}
-							<p class="text-xs text-[var(--color-text-tertiary)] mt-2">
-								Found {results.length} legal commanders
+							<p class="text-xs text-[var(--color-text-tertiary)]">
+								Found {results.length} cards {results.length === 50 ? '(showing first 50)' : ''}
 							</p>
 						{/if}
 					</div>
@@ -301,7 +332,10 @@
 												/>
 											{/if}
 											<div class="flex-1 min-w-0">
-												<div class="font-medium text-[var(--color-text-primary)] truncate">
+												<div class="font-medium text-[var(--color-text-primary)] truncate flex items-center gap-2">
+													{#if isOutsideColorIdentity(result)}
+														<span class="text-red-500 font-bold flex-shrink-0" title="Outside commander's color identity">!</span>
+													{/if}
 													{result.name}
 												</div>
 												<div class="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2">
@@ -317,17 +351,25 @@
 									</button>
 								{/each}
 							</div>
-						{:else if searchQuery.length >= MIN_SEARCH_CHARACTERS && !isLoading}
-							<div class="text-center py-12 text-[var(--color-text-secondary)]">
-								No legal commanders found for "{searchQuery}"
+						{:else if searchQuery.length >= 4 && !isLoading}
+							<div class="text-center py-12 space-y-4">
+								<div class="text-[var(--color-text-secondary)]">
+									No cards found for "{searchQuery}"
+								</div>
+								<button
+									onclick={searchOnScryfall}
+									class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white"
+								>
+									Search on Scryfall →
+								</button>
 							</div>
-						{:else if searchQuery.length > 0 && searchQuery.length < MIN_SEARCH_CHARACTERS}
+						{:else if searchQuery.length > 0 && searchQuery.length < 4}
 							<div class="text-center py-12 text-[var(--color-text-tertiary)]">
-								Type at least {MIN_SEARCH_CHARACTERS} characters to search
+								Type at least 4 characters to search
 							</div>
 						{:else}
 							<div class="text-center py-12 text-[var(--color-text-tertiary)]">
-								Start typing to search for a commander
+								Start typing to search for cards
 							</div>
 						{/if}
 					</div>
@@ -341,7 +383,7 @@
 							<p class="text-[var(--color-text-secondary)]">Loading card details...</p>
 						</div>
 					{:else if selectedCardFull && selectedScryfallCard}
-						<div class="w-full max-w-md">
+						<div class="w-full max-w-md overflow-y-auto">
 							<!-- Large Card Image -->
 							{#if selectedCardFull.imageUrls?.large || selectedCardFull.imageUrls?.normal}
 								<img
@@ -374,23 +416,6 @@
 									<span>{selectedScryfallCard.set_name} ({selectedScryfallCard.set.toUpperCase()}) #{selectedScryfallCard.collector_number}</span>
 								</div>
 
-								<!-- Commander Validity Warning -->
-								{#if !isValidCommander}
-									<div class="bg-red-900/20 border border-red-800 rounded p-3">
-										<div class="flex items-start gap-2">
-											<svg class="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-											</svg>
-											<div>
-												<p class="text-sm font-medium text-red-400">Not a Legal Commander</p>
-												<p class="text-xs text-red-300 mt-1">
-													This card cannot be used as a commander. Choose a legendary creature or a card with "can be your commander" text.
-												</p>
-											</div>
-										</div>
-									</div>
-								{/if}
-
 								<!-- Color Identity with Mana Symbols -->
 								{#if selectedCardFull.colorIdentity && selectedCardFull.colorIdentity.length > 0}
 									<div class="flex items-center gap-2">
@@ -400,6 +425,13 @@
 												<i class="ms ms-{color.toLowerCase()} ms-cost ms-shadow text-lg" title={color}></i>
 											{/each}
 										</div>
+									</div>
+								{/if}
+
+								<!-- Oracle Text -->
+								{#if selectedCardFull.oracleText}
+									<div class="text-sm text-[var(--color-text-secondary)] border-t border-[var(--color-border)] pt-3">
+										<div class="whitespace-pre-line">{selectedCardFull.oracleText}</div>
 									</div>
 								{/if}
 
@@ -422,33 +454,30 @@
 				</div>
 			</div>
 
-			<!-- Footer -->
-			<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-between items-center">
-				<div class="text-sm text-[var(--color-text-secondary)]">
-					{#if selectedCardFull && isValidCommander}
-						<span class="text-green-400">✓ Valid commander selected</span>
-					{:else if selectedCardFull && !isValidCommander}
-						<span class="text-red-400">⚠ Invalid commander selection</span>
-					{:else}
-						Select a commander to continue
-					{/if}
-				</div>
-				<div class="flex gap-3">
-					<button
-						onclick={handleClose}
-						class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
-					>
-						Cancel
-					</button>
-					<button
-						onclick={confirmSelection}
-						disabled={!selectedCardFull || !isValidCommander}
-						class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						Change Commander
-					</button>
-				</div>
+		<!-- Footer -->
+		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-between items-center">
+			<div class="text-sm text-[var(--color-text-secondary)]">
+				{#if selectedCardFull}
+					<span class="text-green-400">✓ Card selected</span>
+				{:else}
+					Select a card to continue
+				{/if}
+			</div>
+			<div class="flex gap-3">
+				<button
+					onclick={onClose}
+					class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={confirmSelection}
+					disabled={!selectedCardFull}
+					class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					Add Card
+				</button>
 			</div>
 		</div>
-	</div>
-{/if}
+	{/snippet}
+</BaseModal>

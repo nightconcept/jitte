@@ -6,6 +6,7 @@
 import { scryfallClient, ScryfallApiError } from './scryfall-client';
 import { cardCache } from './cache';
 import type { ScryfallCard } from '../types/scryfall';
+import { MIN_SEARCH_CHARACTERS } from '../constants/search';
 
 export interface CardSearchResult {
 	id: string;
@@ -17,6 +18,7 @@ export interface CardSearchResult {
 	price_usd?: string;
 	set: string;
 	collector_number: string;
+	color_identity?: string[]; // Color identity for Commander validation
 }
 
 export interface BulkDataDownloadProgress {
@@ -47,15 +49,23 @@ export class CardService {
 
 	/**
 	 * Search for cards with full details
-	 * Returns top 10 results formatted for display
+	 * Returns results formatted for display
+	 * @param query - Search query
+	 * @param limit - Maximum number of results to return (default: 10)
+	 * @param commanderLegalOnly - If true, only return Commander-legal cards (default: false)
 	 */
-	async searchCards(query: string, limit = 10): Promise<CardSearchResult[]> {
-		if (query.length < 4) {
+	async searchCards(query: string, limit = 10, commanderLegalOnly = false): Promise<CardSearchResult[]> {
+		if (query.length < MIN_SEARCH_CHARACTERS) {
 			return [];
 		}
 
 		try {
-			const results = await scryfallClient.search(query, {
+			// Add Commander-legal filter if requested
+			const searchQuery = commanderLegalOnly
+				? `${query} format:commander`
+				: query;
+
+			const results = await scryfallClient.search(searchQuery, {
 				unique: 'cards',
 				order: 'name'
 			});
@@ -412,7 +422,8 @@ export class CardService {
 			image_uri,
 			price_usd: card.prices.usd ?? undefined,
 			set: card.set,
-			collector_number: card.collector_number
+			collector_number: card.collector_number,
+			color_identity: card.color_identity
 		};
 	}
 
