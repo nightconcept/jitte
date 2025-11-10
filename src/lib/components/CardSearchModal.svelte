@@ -353,7 +353,7 @@
       <!-- Body - Split Layout -->
       <div class="flex-1 flex overflow-hidden min-h-0">
       <!-- Left Side: Search and Results -->
-      <div class="w-1/2 border-r border-[var(--color-border)] flex flex-col">
+      <div class="w-1/2 border-r border-[var(--color-border)] flex flex-col min-h-0">
         <!-- Search Input -->
         <div class="p-4 border-b border-[var(--color-border)] space-y-3">
           <div class="relative">
@@ -586,7 +586,7 @@
 
       <!-- Right Side: Large Card Preview -->
       <div
-        class="w-1/2 flex flex-col p-6 bg-[var(--color-bg-primary)] overflow-hidden"
+        class="w-1/2 flex flex-col p-6 bg-[var(--color-bg-primary)] overflow-hidden min-h-0"
       >
         <div class="flex-1 overflow-y-auto flex items-start justify-center">
           {#if loadingCardDetails}

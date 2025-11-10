@@ -107,7 +107,7 @@
 			{/if}
 
 			<!-- Modal Content (Snippet) -->
-			<div class="modal-content">
+			<div class="modal-content flex-1 min-h-0 overflow-hidden">
 				{#if children}
 					{@render children()}
 				{/if}
