@@ -23,23 +23,8 @@ push MESSAGE="":
     BASE_VERSION=$(echo $CURRENT_VERSION | sed -E 's/\.[0-9]+$//')
     BUILD_NUMBER=$(echo $CURRENT_VERSION | grep -oE '[0-9]+$')
 
-    # Store base version for comparison
-    BASE_VERSION_FILE=".base-version"
-    STORED_BASE=""
-    if [ -f "$BASE_VERSION_FILE" ]; then
-        STORED_BASE=$(cat "$BASE_VERSION_FILE")
-    fi
-
-    # Check if base version changed (e.g., alpha -> beta)
-    if [ "$STORED_BASE" != "$BASE_VERSION" ]; then
-        echo -e "${YELLOW}Base version changed from '$STORED_BASE' to '$BASE_VERSION', resetting build to 1${NC}"
-        NEW_BUILD=1
-        echo "$BASE_VERSION" > "$BASE_VERSION_FILE"
-    else
-        # Increment build number
-        NEW_BUILD=$((BUILD_NUMBER + 1))
-    fi
-
+    # Increment build number
+    NEW_BUILD=$((BUILD_NUMBER + 1))
     NEW_VERSION="${BASE_VERSION}.${NEW_BUILD}"
     echo -e "New version: ${GREEN}${NEW_VERSION}${NC}"
 
@@ -68,11 +53,6 @@ push MESSAGE="":
         echo -e "${GREEN}✓ Successfully pushed v${NEW_VERSION}${NC}"
         # Cleanup backup
         rm package.json.backup
-        if [ -f "$BASE_VERSION_FILE" ]; then
-            git add "$BASE_VERSION_FILE"
-            git commit --amend --no-edit
-            git push origin main --force-with-lease
-        fi
     else
         echo -e "${RED}✗ Push failed! Rolling back version...${NC}"
         # Restore backup
