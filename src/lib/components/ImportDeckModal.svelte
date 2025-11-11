@@ -5,6 +5,7 @@
   import type { Card } from "$lib/types/card";
   import { cardService } from "$lib/api/card-service";
   import { scryfallToCard } from "$lib/utils/card-converter";
+  import { detectPartnerType } from "$lib/utils/partner-detection";
 
   let {
     isOpen = false,
@@ -68,13 +69,13 @@
           }
         }
       } else {
-        // If no tags, try first couple of entries
-        await tryCommanderCandidates(result.cards.slice(0, 2), detectedCommanders);
+        // Moxfield exports often place the commander last; try trailing entries first
+        const trailingCards = getTrailingCards(result.cards, 2);
+        await tryCommanderCandidates(trailingCards, detectedCommanders);
 
-        // Moxfield exports often place the commander last; try trailing entries if needed
-        if (detectedCommanders.length < 2) {
-          const trailingCards = getTrailingCards(result.cards, 2);
-          await tryCommanderCandidates(trailingCards, detectedCommanders);
+        // If no commanders found in trailing entries, try first couple of entries
+        if (detectedCommanders.length === 0) {
+          await tryCommanderCandidates(result.cards.slice(0, 2), detectedCommanders);
         }
       }
 
@@ -94,7 +95,21 @@
     detectedCommanders: Card[],
   ): Promise<void> {
     for (const parsedCard of candidates) {
-      if (!parsedCard || detectedCommanders.length >= 2) break;
+      if (!parsedCard) break;
+
+      // If we already have 2 commanders, stop
+      if (detectedCommanders.length >= 2) break;
+
+      // If we have 1 commander and it doesn't have partner, stop
+      if (detectedCommanders.length === 1) {
+        const firstCommander = detectedCommanders[0];
+        const partnerType = detectPartnerType(firstCommander);
+        if (!partnerType) {
+          // First commander has no partner ability, stop looking for more
+          break;
+        }
+      }
+
       if (detectedCommanders.some((card) => card.name === parsedCard.name)) continue;
 
       const card = await fetchAndValidateCommander(parsedCard.name);
@@ -106,7 +121,8 @@
 
   function getTrailingCards(cards: Card[], count: number): Card[] {
     if (cards.length === 0) return [];
-    return cards.slice(Math.max(cards.length - count, 0));
+    // Return in reverse order so the very last card is checked first
+    return cards.slice(Math.max(cards.length - count, 0)).reverse();
   }
 
   async function fetchAndValidateCommander(cardName: string): Promise<Card | null> {

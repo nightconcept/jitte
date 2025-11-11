@@ -282,11 +282,5 @@
 				</div>
 			{/if}
 		</div>
-	{:else}
-		<div
-			class="px-4 py-2 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 text-center"
-		>
-			Maximum {maxCommanders} commander{maxCommanders > 1 ? 's' : ''} selected
-		</div>
 	{/if}
 </div>
