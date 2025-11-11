@@ -382,26 +382,24 @@
 	/* Scale the card preview based on available vertical space */
 	.card-preview-wrapper :global(.scale-card-preview) {
 		height: auto !important;
-		max-height: calc(90vh - 16rem);
 		width: auto !important;
+		max-width: 100% !important;
 		display: flex !important;
 		flex-direction: column !important;
-		align-items: center !important;
 	}
 
-	/* Perspective container: constrain by height, let width follow aspect ratio */
+	/* Perspective container: constrain height, width follows from flip-card */
 	.card-preview-wrapper :global(.perspective-container) {
-		max-height: calc(90vh - 21rem); /* Leave room for flip button */
-		height: auto;
 		width: auto;
+		height: calc(90vh - 21rem);
 		max-width: 100%;
 	}
 
-	/* Flip card: size based on height constraint, width follows 5:7 aspect ratio */
+	/* Flip card: set explicit height, let aspect ratio calculate width */
 	.card-preview-wrapper :global(.flip-card) {
-		max-height: calc(90vh - 21rem);
-		height: auto;
 		width: auto;
+		height: calc(90vh - 21rem);
+		max-width: 100%;
 		aspect-ratio: 5 / 7;
 	}
 
@@ -409,13 +407,13 @@
 		position: absolute !important;
 		top: 0;
 		left: 0;
-		height: 100%;
 		width: 100%;
+		height: 100%;
 	}
 
 	.card-preview-wrapper :global(.card-face img) {
-		height: 100%;
 		width: 100%;
+		height: 100%;
 		object-fit: contain;
 	}
 
@@ -423,7 +421,6 @@
 	.card-preview-wrapper :global(aside > button) {
 		flex-shrink: 0;
 		margin-top: 1rem;
-		width: auto;
 	}
 
 	/* Legend tooltip hover */
