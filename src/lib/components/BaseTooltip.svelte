@@ -8,6 +8,7 @@
 		closeDelay = 300,
 		maxWidth = '400px',
 		className = '',
+		offsetY = 0,
 		ariaLabel,
 		content,
 		children
@@ -18,6 +19,7 @@
 		closeDelay?: number;
 		maxWidth?: string;
 		className?: string;
+		offsetY?: number;
 		ariaLabel?: string;
 		content?: Snippet;
 		children?: Snippet;
@@ -34,7 +36,7 @@
 			if (positioning === 'fixed') {
 				// Fixed positioning - viewport-relative
 				tooltipPosition = {
-					top: position === 'above' ? rect.top - 8 : rect.bottom + 8,
+					top: position === 'above' ? rect.top - 8 + offsetY : rect.bottom + 8 + offsetY,
 					left: rect.left + rect.width / 2
 				};
 			} else {

@@ -18,6 +18,7 @@
 	positioning="fixed"
 	closeDelay={300}
 	maxWidth="400px"
+	offsetY={-55}
 	className="bracket-tooltip-content"
 >
 	{#snippet children()}
@@ -92,10 +93,10 @@
 
 <style>
 	/* Bracket-specific styling */
-	.bracket-tooltip-content {
+	:global(.bracket-tooltip-content) {
 		padding: 12px 16px;
 		min-width: 280px;
-		z-index: 9999;
+		z-index: 9999 !important;
 	}
 
 	/* Theme-aware text colors */
