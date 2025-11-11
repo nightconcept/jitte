@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
+	import { viewSettingsStore, type ViewMode } from '$lib/stores/viewSettingsStore';
 	import { CardCategory } from '$lib/types/card';
 	import type { Card } from '$lib/types/card';
 	import AddQuantityModal from './AddQuantityModal.svelte';
@@ -85,6 +86,16 @@
 		return unsubscribe;
 	});
 
+	// View settings subscription
+	let viewSettingsState = $state($viewSettingsStore);
+
+	$effect(() => {
+		const unsubscribe = viewSettingsStore.subscribe(value => {
+			viewSettingsState = value;
+		});
+		return unsubscribe;
+	});
+
 	// Helper function to get warnings for a specific card
 	function getCardWarnings(cardName: string) {
 		return warnings.filter(w => w.cardName === cardName);
@@ -119,11 +130,11 @@
 	}
 
 	// View options
-	type ViewMode = 'text' | 'condensed' | 'visual';
 	type GroupMode = 'type';
 	type SortMode = 'name' | 'mana_value';
 
-	let viewMode = $state<ViewMode>('text');
+	// Derive viewMode from store
+	let viewMode = $derived(viewSettingsState?.viewMode || 'text');
 	let groupMode = $state<GroupMode>('type');
 	let sortMode = $state<SortMode>('name');
 
@@ -441,19 +452,19 @@
 				{#if viewDropdownOpen}
 					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
 						<button
-							onclick={() => { viewMode = 'text'; viewDropdownOpen = false; }}
+							onclick={() => { viewSettingsStore.setViewMode('text'); viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'text' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Text
 						</button>
 						<button
-							onclick={() => { viewMode = 'condensed'; viewDropdownOpen = false; }}
+							onclick={() => { viewSettingsStore.setViewMode('condensed'); viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'condensed' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Condensed Text
 						</button>
 						<button
-							onclick={() => { viewMode = 'visual'; viewDropdownOpen = false; }}
+							onclick={() => { viewSettingsStore.setViewMode('visual'); viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'visual' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Visual Spoiler
