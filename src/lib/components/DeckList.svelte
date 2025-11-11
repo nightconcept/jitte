@@ -17,6 +17,7 @@
 	import { detectTokensInDeck } from '$lib/utils/token-detector';
 	import type { TokenInfo } from '$lib/utils/token-detector';
 	import VisualSpoilerView from './VisualSpoilerView.svelte';
+	import StacksView from './StacksView.svelte';
 
 	let { 
 		onCardHover = undefined,
@@ -179,6 +180,29 @@
 		}
 
 		if (openCardMenu) {
+			document.addEventListener('mousedown', handleClickOutside);
+			return () => {
+				document.removeEventListener('mousedown', handleClickOutside);
+			};
+		}
+	});
+
+	// Click outside handler for view/group/sort dropdowns
+	$effect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			const target = event.target as HTMLElement;
+
+			// Check if click is outside all dropdown menus and their buttons
+			const isClickInsideDropdown = target.closest('.dropdown-container');
+
+			if (!isClickInsideDropdown) {
+				viewDropdownOpen = false;
+				groupDropdownOpen = false;
+				sortDropdownOpen = false;
+			}
+		}
+
+		if (viewDropdownOpen || groupDropdownOpen || sortDropdownOpen) {
 			document.addEventListener('mousedown', handleClickOutside);
 			return () => {
 				document.removeEventListener('mousedown', handleClickOutside);
@@ -410,7 +434,7 @@
 	}
 </script>
 
-<div class="flex-1 p-6" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
+<div class="flex-1 p-6 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
 	<!-- Card Search (Edit Mode Only) -->
 	{#if isEditing}
 		<div class="mb-4">
@@ -438,13 +462,13 @@
 			{/if}
 
 			<!-- View Dropdown -->
-			<div class="relative">
+			<div class="relative dropdown-container">
 				<button
 					onclick={() => { viewDropdownOpen = !viewDropdownOpen; groupDropdownOpen = false; sortDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
 				>
 					<span class="text-[var(--color-text-tertiary)]">View:</span>
-					<span>{viewMode === 'text' ? 'Text' : viewMode === 'condensed' ? 'Condensed Text' : 'Visual Spoiler'}</span>
+					<span>{viewMode === 'text' ? 'Text' : viewMode === 'condensed' ? 'Condensed Text' : viewMode === 'stacks' ? 'Stacks' : 'Visual Spoiler'}</span>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 					</svg>
@@ -464,6 +488,12 @@
 							Condensed Text
 						</button>
 						<button
+							onclick={() => { viewSettingsStore.setViewMode('stacks'); viewDropdownOpen = false; }}
+							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'stacks' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
+						>
+							Stacks
+						</button>
+						<button
 							onclick={() => { viewSettingsStore.setViewMode('visual'); viewDropdownOpen = false; }}
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'visual' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
@@ -474,7 +504,7 @@
 			</div>
 
 			<!-- Group Dropdown -->
-			<div class="relative">
+			<div class="relative dropdown-container">
 				<button
 					onclick={() => { groupDropdownOpen = !groupDropdownOpen; viewDropdownOpen = false; sortDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
@@ -498,7 +528,7 @@
 			</div>
 
 			<!-- Sort Dropdown -->
-			<div class="relative">
+			<div class="relative dropdown-container">
 				<button
 					onclick={() => { sortDropdownOpen = !sortDropdownOpen; viewDropdownOpen = false; groupDropdownOpen = false; }}
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
@@ -537,6 +567,26 @@
 				{@const cards = getCategoryCards(category)}
 				{#if cards.length > 0}
 					<VisualSpoilerView
+						{cards}
+						{category}
+						categoryLabel={categoryLabels[category]}
+						categoryIcon={categoryIcons[category]}
+						isEditing={isEditing}
+						onCardClick={(card) => { detailModalCard = card; }}
+						onCardHover={onCardHover}
+						onDragStart={handleDragStart}
+						onDragEnd={handleDragEnd}
+					/>
+				{/if}
+			{/each}
+		</div>
+	{:else if viewMode === 'stacks'}
+		<!-- Stacks View -->
+		<div class="stacks-view-container" ondragover={handleDragOver} ondrop={handleDrop}>
+			{#each categoryOrder as category}
+				{@const cards = getCategoryCards(category)}
+				{#if cards.length > 0}
+					<StacksView
 						{cards}
 						{category}
 						categoryLabel={categoryLabels[category]}
@@ -878,6 +928,37 @@
 	@media (max-width: 768px) {
 		.responsive-card-grid {
 			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		}
+	}
+
+	/* Stacks View Layout */
+	.stacks-view-container {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+		gap: 1rem 0.5rem;
+		padding: 0;
+		margin-bottom: 3rem;
+		overflow: visible;
+	}
+
+	@media (min-width: 768px) {
+		.stacks-view-container {
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 1.5rem 0.625rem;
+		}
+	}
+
+	/* At 1024px+, aim for ~5 columns at 1080p (1920px) */
+	@media (min-width: 1024px) {
+		.stacks-view-container {
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 2rem 0.75rem;
+		}
+	}
+
+	@media (min-width: 1536px) {
+		.stacks-view-container {
+			gap: 2.5rem 1rem;
 		}
 	}
 </style>

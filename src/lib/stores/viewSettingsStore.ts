@@ -5,7 +5,7 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-export type ViewMode = 'text' | 'condensed' | 'visual';
+export type ViewMode = 'text' | 'condensed' | 'visual' | 'stacks';
 
 export interface ViewSettings {
 	viewMode: ViewMode;
@@ -44,7 +44,7 @@ function loadViewSettings(): ViewSettings {
 function isValidViewSettings(obj: unknown): obj is ViewSettings {
 	if (typeof obj !== 'object' || obj === null) return false;
 	const { viewMode } = obj as Record<string, unknown>;
-	return viewMode === 'text' || viewMode === 'condensed' || viewMode === 'visual';
+	return viewMode === 'text' || viewMode === 'condensed' || viewMode === 'visual' || viewMode === 'stacks';
 }
 
 /**
