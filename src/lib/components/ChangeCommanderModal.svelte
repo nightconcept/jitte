@@ -7,9 +7,11 @@
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import ManaSymbol from './ManaSymbol.svelte';
 	import PartnerBadge from './PartnerBadge.svelte';
+	import GameChangerBadge from './GameChangerBadge.svelte';
 	import { canBePartners, detectPartnerType } from '$lib/utils/partner-detection';
 	import { MIN_SEARCH_CHARACTERS } from '$lib/constants/search';
 	import { scryfallToCard } from '$lib/utils/card-converter';
+	import { isGameChanger } from '$lib/utils/game-changers';
 
 	let {
 		isOpen = false,
@@ -315,11 +317,16 @@
 						<div class="w-full max-w-md">
 							<!-- Large Card Image -->
 							{#if selectedCardFull.imageUrls?.large || selectedCardFull.imageUrls?.normal}
-								<img
-									src={selectedCardFull.imageUrls.large || selectedCardFull.imageUrls.normal}
-									alt={selectedCardFull.name}
-									class="w-full rounded-lg shadow-2xl mb-4"
-								/>
+								<div class="relative mb-4 overflow-hidden rounded-lg">
+									<img
+										src={selectedCardFull.imageUrls.large || selectedCardFull.imageUrls.normal}
+										alt={selectedCardFull.name}
+										class="w-full rounded-lg shadow-2xl"
+									/>
+									{#if isGameChanger(selectedCardFull.name)}
+										<GameChangerBadge size="large" title="Game Changer - This card affects your deck's bracket level" />
+									{/if}
+								</div>
 							{/if}
 
 							<!-- Card Info -->

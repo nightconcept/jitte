@@ -4,6 +4,8 @@
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import { CardCategory } from '$lib/types/card';
+	import GameChangerBadge from './GameChangerBadge.svelte';
+	import { isGameChanger } from '$lib/utils/game-changers';
 
 	export let card: Card;
 	export let category: CardCategory;
@@ -186,6 +188,9 @@
 										class="w-full rounded transition-transform group-hover:scale-105"
 										loading="lazy"
 									/>
+									{#if isGameChanger(card.name)}
+										<GameChangerBadge size="small" title="Game Changer - This card affects your deck's bracket level" />
+									{/if}
 									{#if printing.id === card.scryfallId}
 										<div class="absolute top-2 right-2 bg-[var(--color-brand-primary)] text-white text-xs font-bold px-2 py-1 rounded">
 											CURRENT

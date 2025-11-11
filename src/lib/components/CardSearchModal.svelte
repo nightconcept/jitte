@@ -7,8 +7,11 @@
   import type { Card } from "$lib/types/card";
   import type { ScryfallCard } from "$lib/types/scryfall";
   import CardPreviewInfo from "./CardPreviewInfo.svelte";
+  import ManaSymbol from "./ManaSymbol.svelte";
+  import GameChangerBadge from "./GameChangerBadge.svelte";
   import { MIN_SEARCH_CHARACTERS } from "$lib/constants/search";
   import { scryfallToCard } from "$lib/utils/card-converter";
+  import { isGameChanger } from "$lib/utils/game-changers";
 
   let {
     isOpen = false,
@@ -415,13 +418,10 @@
                         {result.name}
                       </span>
                     </div>
-                    {#if result.set}
-                      <span
-                        class="text-xs text-[var(--color-text-tertiary)] flex-shrink-0"
-                      >
-                        {result.set.toUpperCase()}{#if result.collector_number}
-                          #{result.collector_number}{/if}
-                      </span>
+                    {#if result.mana_cost}
+                      <div class="flex-shrink-0" style="transform: translateY(4px);">
+                        <ManaSymbol cost={result.mana_cost} size="xs" />
+                      </div>
                     {/if}
                   </div>
                 </button>
@@ -584,28 +584,43 @@
                   <!-- Front Face -->
                   <div class="card-face card-face--front">
                     {#if isDoubleFaced && selectedCardFull.cardFaces?.[0]?.imageUrls}
-                      <img
-                        src={selectedCardFull.cardFaces[0].imageUrls.large || selectedCardFull.cardFaces[0].imageUrls.normal}
-                        alt={selectedCardFull.cardFaces[0].name || selectedCardFull.name}
-                        class="w-full h-full object-cover rounded-lg shadow-2xl"
-                      />
+                      <div class="relative w-full h-full overflow-hidden rounded-lg">
+                        <img
+                          src={selectedCardFull.cardFaces[0].imageUrls.large || selectedCardFull.cardFaces[0].imageUrls.normal}
+                          alt={selectedCardFull.cardFaces[0].name || selectedCardFull.name}
+                          class="w-full h-full object-cover rounded-lg shadow-2xl"
+                        />
+                        {#if isGameChanger(selectedCardFull.name)}
+                          <GameChangerBadge size="large" title="Game Changer - This card affects your deck's bracket level" />
+                        {/if}
+                      </div>
                     {:else if selectedCardFull.imageUrls}
-                      <img
-                        src={selectedCardFull.imageUrls.large || selectedCardFull.imageUrls.normal}
-                        alt={selectedCardFull.name}
-                        class="w-full h-full object-cover rounded-lg shadow-2xl"
-                      />
+                      <div class="relative w-full h-full overflow-hidden rounded-lg">
+                        <img
+                          src={selectedCardFull.imageUrls.large || selectedCardFull.imageUrls.normal}
+                          alt={selectedCardFull.name}
+                          class="w-full h-full object-cover rounded-lg shadow-2xl"
+                        />
+                        {#if isGameChanger(selectedCardFull.name)}
+                          <GameChangerBadge size="large" title="Game Changer - This card affects your deck's bracket level" />
+                        {/if}
+                      </div>
                     {/if}
                   </div>
 
                   <!-- Back Face -->
                   <div class="card-face card-face--back">
                     {#if isDoubleFaced && selectedCardFull.cardFaces?.[1]?.imageUrls}
-                      <img
-                        src={selectedCardFull.cardFaces[1].imageUrls.large || selectedCardFull.cardFaces[1].imageUrls.normal}
-                        alt={selectedCardFull.cardFaces[1].name || 'Card back'}
-                        class="w-full h-full object-cover rounded-lg shadow-2xl"
-                      />
+                      <div class="relative w-full h-full overflow-hidden rounded-lg">
+                        <img
+                          src={selectedCardFull.cardFaces[1].imageUrls.large || selectedCardFull.cardFaces[1].imageUrls.normal}
+                          alt={selectedCardFull.cardFaces[1].name || 'Card back'}
+                          class="w-full h-full object-cover rounded-lg shadow-2xl"
+                        />
+                        {#if isGameChanger(selectedCardFull.name)}
+                          <GameChangerBadge size="large" title="Game Changer - This card affects your deck's bracket level" />
+                        {/if}
+                      </div>
                     {/if}
                   </div>
                 </div>

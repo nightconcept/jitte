@@ -2,6 +2,8 @@
 	import type { Card } from '$lib/types/card';
 	import { deckStore } from '$lib/stores/deck-store';
 	import VendorIcon from './VendorIcon.svelte';
+	import GameChangerBadge from './GameChangerBadge.svelte';
+	import { isGameChanger } from '$lib/utils/game-changers';
 
 	let {
 		hoveredCard = null,
@@ -94,17 +96,27 @@
 			<!-- Front Face -->
 			<div class="card-face card-face--front">
 				{#if isDoubleFaced && displayCard?.cardFaces?.[0]?.imageUrls}
-					<img
-						src={displayCard.cardFaces[0].imageUrls.normal || displayCard.cardFaces[0].imageUrls.large}
-						alt={displayCard.cardFaces[0].name || displayCard?.name || 'Card front'}
-						class="w-full rounded-lg shadow-lg"
-					/>
+					<div class="relative overflow-hidden rounded-lg">
+						<img
+							src={displayCard.cardFaces[0].imageUrls.normal || displayCard.cardFaces[0].imageUrls.large}
+							alt={displayCard.cardFaces[0].name || displayCard?.name || 'Card front'}
+							class="w-full rounded-lg shadow-lg"
+						/>
+						{#if displayCard && isGameChanger(displayCard.name)}
+							<GameChangerBadge size="normal" title="Game Changer - This card affects your deck's bracket level" />
+						{/if}
+					</div>
 				{:else if imageUrl}
-					<img
-						src={imageUrl}
-						alt={displayCard?.name || 'Card preview'}
-						class="w-full rounded-lg shadow-lg"
-					/>
+					<div class="relative overflow-hidden rounded-lg">
+						<img
+							src={imageUrl}
+							alt={displayCard?.name || 'Card preview'}
+							class="w-full rounded-lg shadow-lg"
+						/>
+						{#if displayCard && isGameChanger(displayCard.name)}
+							<GameChangerBadge size="normal" title="Game Changer - This card affects your deck's bracket level" />
+						{/if}
+					</div>
 				{:else if displayCard}
 					<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
 						<div class="text-center">
@@ -122,11 +134,16 @@
 			<!-- Back Face -->
 			<div class="card-face card-face--back">
 				{#if isDoubleFaced && displayCard?.cardFaces?.[1]?.imageUrls}
-					<img
-						src={displayCard.cardFaces[1].imageUrls.normal || displayCard.cardFaces[1].imageUrls.large}
-						alt={displayCard.cardFaces[1].name || 'Card back'}
-						class="w-full rounded-lg shadow-lg"
-					/>
+					<div class="relative overflow-hidden rounded-lg">
+						<img
+							src={displayCard.cardFaces[1].imageUrls.normal || displayCard.cardFaces[1].imageUrls.large}
+							alt={displayCard.cardFaces[1].name || 'Card back'}
+							class="w-full rounded-lg shadow-lg"
+						/>
+						{#if displayCard && isGameChanger(displayCard.name)}
+							<GameChangerBadge size="normal" title="Game Changer - This card affects your deck's bracket level" />
+						{/if}
+					</div>
 				{:else}
 					<div class="w-full aspect-[5/7] bg-[var(--color-surface)] rounded-lg flex items-center justify-center text-[var(--color-text-tertiary)]">
 						<div class="text-center text-sm">No back face</div>
