@@ -15,6 +15,7 @@
 	import TokensSection from './TokensSection.svelte';
 	import { detectTokensInDeck } from '$lib/utils/token-detector';
 	import type { TokenInfo } from '$lib/utils/token-detector';
+	import VisualSpoilerView from './VisualSpoilerView.svelte';
 
 	let { 
 		onCardHover = undefined,
@@ -118,7 +119,7 @@
 	}
 
 	// View options
-	type ViewMode = 'text' | 'condensed';
+	type ViewMode = 'text' | 'condensed' | 'visual';
 	type GroupMode = 'type';
 	type SortMode = 'name' | 'mana_value';
 
@@ -432,7 +433,7 @@
 					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
 				>
 					<span class="text-[var(--color-text-tertiary)]">View:</span>
-					<span>{viewMode === 'text' ? 'Text' : 'Condensed Text'}</span>
+					<span>{viewMode === 'text' ? 'Text' : viewMode === 'condensed' ? 'Condensed Text' : 'Visual Spoiler'}</span>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 					</svg>
@@ -450,6 +451,12 @@
 							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'condensed' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
 						>
 							Condensed Text
+						</button>
+						<button
+							onclick={() => { viewMode = 'visual'; viewDropdownOpen = false; }}
+							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'visual' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
+						>
+							Visual Spoiler
 						</button>
 					</div>
 				{/if}
@@ -512,48 +519,70 @@
 	</div>
 
 	<!-- Card List -->
-	<div class="space-y-2 overflow-visible">
-		{#each categoryOrder as category}
-			{@const cards = getCategoryCards(category)}
-			{@const count = getCategoryCount(category)}
+	{#if viewMode === 'visual'}
+		<!-- Visual Spoiler View -->
+		<div class="space-y-6 overflow-visible" ondragover={handleDragOver} ondrop={handleDrop}>
+			{#each categoryOrder as category}
+				{@const cards = getCategoryCards(category)}
+				{#if cards.length > 0}
+					<VisualSpoilerView
+						{cards}
+						{category}
+						categoryLabel={categoryLabels[category]}
+						categoryIcon={categoryIcons[category]}
+						isEditing={isEditing}
+						onCardClick={(card) => { detailModalCard = card; }}
+						onCardHover={onCardHover}
+						onDragStart={handleDragStart}
+						onDragEnd={handleDragEnd}
+					/>
+				{/if}
+			{/each}
+		</div>
+	{:else}
+		<!-- Text Views -->
+		<div class="space-y-2 overflow-visible">
+			{#each categoryOrder as category}
+				{@const cards = getCategoryCards(category)}
+				{@const count = getCategoryCount(category)}
 
-			{#if cards.length > 0}
-				<div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
-					<!-- Category Header -->
-					<button
-						onclick={() => toggleCategory(category)}
-						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
-					>
-						<div class="flex items-center gap-3">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform {collapsed[category] ? '-rotate-90' : ''}"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-							</svg>
-							{#if categoryIcons[category]}
-								<i class="ms {categoryIcons[category]} text-base text-[var(--color-text-primary)]"></i>
-							{/if}
-							<span class="font-semibold text-[var(--color-brand-primary)] transition-colors group-hover:text-[var(--color-brand-secondary)]">
-								{categoryLabels[category]}
-							</span>
-							<span class="text-sm text-[var(--color-text-tertiary)]">
-								({count})
-							</span>
-						</div>
-					</button>
-
-					<!-- Card List in Responsive Columns -->
-					{#if !collapsed[category]}
-						<div
-							class="px-4 pb-2 rounded-b-lg overflow-visible"
-							ondragover={handleDragOver}
-							ondrop={handleDrop}
+				{#if cards.length > 0}
+					<div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
+						<!-- Category Header -->
+						<button
+							onclick={() => toggleCategory(category)}
+							class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
 						>
-							<div class="responsive-card-grid overflow-visible">
+							<div class="flex items-center gap-3">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform {collapsed[category] ? '-rotate-90' : ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+								</svg>
+								{#if categoryIcons[category]}
+									<i class="ms {categoryIcons[category]} text-base text-[var(--color-text-primary)]"></i>
+								{/if}
+								<span class="font-semibold text-[var(--color-brand-primary)] transition-colors group-hover:text-[var(--color-brand-secondary)]">
+									{categoryLabels[category]}
+								</span>
+								<span class="text-sm text-[var(--color-text-tertiary)]">
+									({count})
+								</span>
+							</div>
+						</button>
+
+						<!-- Card List in Responsive Columns -->
+						{#if !collapsed[category]}
+							<div
+								class="px-4 pb-2 rounded-b-lg overflow-visible"
+								ondragover={handleDragOver}
+								ondrop={handleDrop}
+							>
+								<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
 											<div
 												class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
@@ -765,11 +794,12 @@
 					{/if}
 				</div>
 			{/if}
-		{/each}
+			{/each}
 
-		<!-- Tokens & Extras Section -->
-		<TokensSection {tokens} onCardHover={onCardHover} />
-	</div>
+			<!-- Tokens & Extras Section -->
+			<TokensSection {tokens} onCardHover={onCardHover} />
+		</div>
+	{/if}
 </div>
 
 <!-- Modals -->
