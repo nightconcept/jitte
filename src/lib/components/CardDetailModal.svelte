@@ -205,14 +205,16 @@
 						<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-brand-primary)]"></div>
 					</div>
 				{:else if scryfallCard}
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 						<!-- Left Column: Card Image with Flip Functionality -->
 						<div class="flex flex-col items-center sticky top-0 self-start">
-							<CardPreview
-								hoveredCard={cardWithFaces}
-								showPricing={false}
-								className="w-full bg-transparent border-none pb-4 flex flex-col static h-auto"
-							/>
+							<div class="card-preview-wrapper w-full max-w-sm flex flex-col">
+								<CardPreview
+									hoveredCard={cardWithFaces}
+									showPricing={false}
+									className="w-full bg-transparent border-none flex flex-col static h-auto scale-card-preview"
+								/>
+							</div>
 						</div>
 
 						<!-- Right Column: Details -->
@@ -366,6 +368,51 @@
 
 	.animate-scale-in {
 		animation: scale-in 150ms ease-out;
+	}
+
+	/* Card preview wrapper - scale to fit viewport */
+	.card-preview-wrapper {
+		max-height: calc(90vh - 16rem);
+		display: flex;
+		flex-direction: column;
+		overflow: visible;
+	}
+
+	/* Scale the card preview to fit smaller screens */
+	.card-preview-wrapper :global(.scale-card-preview) {
+		height: auto !important;
+		max-height: calc(90vh - 16rem);
+	}
+
+	.card-preview-wrapper :global(.perspective-container) {
+		max-height: calc(90vh - 20rem);
+		height: auto;
+	}
+
+	.card-preview-wrapper :global(.flip-card) {
+		max-height: calc(90vh - 20rem);
+		height: auto;
+		width: 100%;
+	}
+
+	.card-preview-wrapper :global(.card-face) {
+		position: relative !important;
+		max-height: calc(90vh - 20rem);
+		height: auto;
+	}
+
+	.card-preview-wrapper :global(.card-face img) {
+		max-height: calc(90vh - 20rem);
+		width: auto;
+		max-width: 100%;
+		object-fit: contain;
+		margin: 0 auto;
+	}
+
+	/* Ensure flip button is visible - it's a sibling after flip-card, not inside */
+	.card-preview-wrapper :global(aside > button) {
+		flex-shrink: 0;
+		margin-top: 0.5rem;
 	}
 
 	/* Legend tooltip hover */
