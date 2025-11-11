@@ -370,39 +370,49 @@
 		animation: scale-in 150ms ease-out;
 	}
 
-	/* Card preview wrapper - scale to fit viewport */
+	/* Card preview wrapper - fill vertical space */
 	.card-preview-wrapper {
+		height: calc(90vh - 16rem);
 		max-height: calc(90vh - 16rem);
 		display: flex;
 		flex-direction: column;
 		overflow: visible;
 	}
 
-	/* Scale the card preview to fit smaller screens */
+	/* Scale the card preview to fill vertical space */
 	.card-preview-wrapper :global(.scale-card-preview) {
-		height: auto !important;
-		max-height: calc(90vh - 16rem);
+		height: 100% !important;
+		max-height: 100%;
+		display: flex !important;
+		flex-direction: column !important;
 	}
 
 	.card-preview-wrapper :global(.perspective-container) {
-		max-height: calc(90vh - 20rem);
-		height: auto;
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.card-preview-wrapper :global(.flip-card) {
-		max-height: calc(90vh - 20rem);
-		height: auto;
+		flex: 1;
+		min-height: 0;
+		height: 100%;
 		width: 100%;
+		aspect-ratio: auto !important;
 	}
 
 	.card-preview-wrapper :global(.card-face) {
-		position: relative !important;
-		max-height: calc(90vh - 20rem);
-		height: auto;
+		position: absolute !important;
+		height: 100%;
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.card-preview-wrapper :global(.card-face img) {
-		max-height: calc(90vh - 20rem);
+		height: 100%;
 		width: auto;
 		max-width: 100%;
 		object-fit: contain;
