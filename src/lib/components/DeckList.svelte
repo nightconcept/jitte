@@ -931,11 +931,10 @@
 		}
 	}
 
-	/* Stacks View Layout */
+	/* Stacks View Layout - CSS Columns Masonry */
 	.stacks-view-container {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-		gap: 0.5rem 0.5rem;
+		column-width: 165px;
+		column-gap: 0.5rem;
 		padding: 0;
 		margin-bottom: 3rem;
 		overflow: visible;
@@ -943,22 +942,22 @@
 
 	@media (min-width: 768px) {
 		.stacks-view-container {
-			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-			gap: 0.5rem 0.625rem;
+			column-width: 180px;
+			column-gap: 0.625rem;
 		}
 	}
 
 	/* At 1024px+, aim for ~5 columns at 1080p (1920px) */
 	@media (min-width: 1024px) {
 		.stacks-view-container {
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-			gap: 0.5rem 0.75rem;
+			column-width: 200px;
+			column-gap: 0.75rem;
 		}
 	}
 
 	@media (min-width: 1536px) {
 		.stacks-view-container {
-			gap: 0.5rem 1rem;
+			column-gap: 1rem;
 		}
 	}
 </style>

@@ -192,6 +192,9 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		min-width: 0;
+		break-inside: avoid;
+		page-break-inside: avoid; /* Older browser support */
+		margin-bottom: 0.5rem; /* Small gap between stacks in column layout */
 	}
 
 	.stacks-category-header {
