@@ -211,6 +211,12 @@ export class CardService {
 				for (const card of result.data) {
 					await cardCache.cacheCard(card);
 					cards.set(card.name.toLowerCase(), card);
+
+					// For double-faced cards, also store by front face name only
+					if (card.card_faces && card.card_faces.length > 0 && card.card_faces[0].name) {
+						const frontFaceName = card.card_faces[0].name.toLowerCase();
+						cards.set(frontFaceName, card);
+					}
 				}
 
 				// Track not found cards
@@ -287,6 +293,14 @@ export class CardService {
 					cards.set(key, card);
 					// Also add by name for fallback lookups
 					cards.set(card.name.toLowerCase(), card);
+
+					// For double-faced cards, also store by front face name only
+					// This handles cases where decklist has "Growing Rites of Itlimoc"
+					// but Scryfall returns "Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun"
+					if (card.card_faces && card.card_faces.length > 0 && card.card_faces[0].name) {
+						const frontFaceName = card.card_faces[0].name.toLowerCase();
+						cards.set(frontFaceName, card);
+					}
 				}
 
 				// Track not found cards

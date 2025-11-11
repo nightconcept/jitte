@@ -45,8 +45,9 @@
 	const cardService = new CardService();
 
 	// Initialize storage on mount
-	onMount(async () => {
-		await deckManager.initializeStorage();
+	onMount(() => {
+		// Initialize storage asynchronously
+		deckManager.initializeStorage();
 
 		// Check if onboarding should be shown
 		if (!hasCompletedOnboarding()) {
@@ -225,23 +226,9 @@
 			// Enter edit mode
 			deckStore.setEditMode(true);
 
-			// Parse the full decklist first to detect if commander is tagged
+			// Parse the full decklist - don't skip any lines, we'll filter commanders later
 			const fullParseResult = parsePlaintext(decklist);
-
-			// Determine if we need to skip the first line or filter the commanders from cards
-			let decklistWithoutCommander: string;
-			if (fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0) {
-				// Commanders were found via [Commander{top}] tags
-				// Don't skip first line, but filter the commanders from the parsed cards
-				decklistWithoutCommander = decklist;
-			} else {
-				// Commander is on the first line (Moxfield format)
-				// Skip the first line
-				const lines = decklist.split('\n');
-				decklistWithoutCommander = lines.slice(1).join('\n');
-			}
-
-			const parseResult = parsePlaintext(decklistWithoutCommander);
+			const parseResult = fullParseResult;
 
 			if (parseResult.cards.length === 0) {
 				showImportDeckModal = false;
@@ -275,13 +262,29 @@
 			let failedCards: string[] = [];
 			const finalCards: Card[] = [];
 
-			// Filter out the commanders if they were tagged (to avoid duplicates)
-			const cardsToImport = fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0
-				? parseResult.cards.filter(card => !fullParseResult.commanderNames!.includes(card.name))
-				: parseResult.cards;
+			// Filter out the commanders (both tagged and manually selected) to avoid duplicates
+			const commanderNamesToFilter = new Set<string>();
+
+			// Add tagged commanders
+			if (fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0) {
+				fullParseResult.commanderNames.forEach(name => commanderNamesToFilter.add(name.toLowerCase()));
+			}
+
+			// Add manually selected commanders
+			commanderNames.forEach(name => commanderNamesToFilter.add(name.toLowerCase()));
+
+			const cardsToImport = parseResult.cards.filter(card =>
+				!commanderNamesToFilter.has(card.name.toLowerCase())
+			);
 
 			// Fetch all cards from Scryfall using batch API
+			console.log(`[handleImportDeck] Fetching ${cardsToImport.length} cards from Scryfall`);
+			console.log('[handleImportDeck] Cards to import:', cardsToImport.map(c => c.name).join(', '));
 			const batchResult = await cardService.getCardsBatch(cardsToImport);
+			console.log(`[handleImportDeck] Batch result: ${batchResult.cards.size} found, ${batchResult.notFound.length} not found`);
+			if (batchResult.notFound.length > 0) {
+				console.log('[handleImportDeck] Not found cards:', batchResult.notFound.map(c => c.name));
+			}
 
 			// Process found cards
 			for (const parsedCard of cardsToImport) {
@@ -302,7 +305,8 @@
 					finalCards.push(fullCard);
 					successCount++;
 				} else {
-					// Card not found
+					// Card not found - log for debugging
+					console.log(`[handleImportDeck] Card not found in batch result: "${parsedCard.name}" (lookup key: "${lookupKey}")`);
 					failedCards.push(parsedCard.name);
 				}
 			}
