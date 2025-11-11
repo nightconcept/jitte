@@ -190,9 +190,8 @@
 	.stacks-category {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.25rem;
 		min-width: 0;
-		margin-bottom: 3rem;
 	}
 
 	.stacks-category-header {
@@ -207,7 +206,6 @@
 
 	.stacks-container {
 		position: relative;
-		padding-bottom: 1rem;
 		overflow: hidden;
 	}
 

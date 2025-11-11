@@ -935,7 +935,7 @@
 	.stacks-view-container {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-		gap: 1rem 0.5rem;
+		gap: 0.5rem 0.5rem;
 		padding: 0;
 		margin-bottom: 3rem;
 		overflow: visible;
@@ -944,7 +944,7 @@
 	@media (min-width: 768px) {
 		.stacks-view-container {
 			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-			gap: 1.5rem 0.625rem;
+			gap: 0.5rem 0.625rem;
 		}
 	}
 
@@ -952,13 +952,13 @@
 	@media (min-width: 1024px) {
 		.stacks-view-container {
 			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-			gap: 2rem 0.75rem;
+			gap: 0.5rem 0.75rem;
 		}
 	}
 
 	@media (min-width: 1536px) {
 		.stacks-view-container {
-			gap: 2.5rem 1rem;
+			gap: 0.5rem 1rem;
 		}
 	}
 </style>
