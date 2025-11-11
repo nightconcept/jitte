@@ -370,36 +370,35 @@
 		animation: scale-in 150ms ease-out;
 	}
 
-	/* Card preview wrapper - fill vertical space */
+	/* Card preview wrapper - fill vertical space accounting for flip button */
 	.card-preview-wrapper {
-		height: calc(90vh - 16rem);
 		max-height: calc(90vh - 16rem);
 		display: flex;
 		flex-direction: column;
 		overflow: visible;
 	}
 
-	/* Scale the card preview to fill vertical space */
+	/* Scale the card preview to use available space without clipping */
 	.card-preview-wrapper :global(.scale-card-preview) {
-		height: 100% !important;
-		max-height: 100%;
+		height: auto !important;
+		max-height: calc(90vh - 16rem);
 		display: flex !important;
 		flex-direction: column !important;
 	}
 
+	/* Reserve space for the perspective container, leaving room for flip button (~4rem) */
 	.card-preview-wrapper :global(.perspective-container) {
-		flex: 1;
-		min-height: 0;
+		max-height: calc(90vh - 20rem);
 		display: flex;
 		flex-direction: column;
+		flex-shrink: 0;
 	}
 
 	.card-preview-wrapper :global(.flip-card) {
-		flex: 1;
-		min-height: 0;
-		height: 100%;
 		width: 100%;
-		aspect-ratio: auto !important;
+		height: auto;
+		aspect-ratio: 5 / 7;
+		max-height: calc(90vh - 20rem);
 	}
 
 	.card-preview-wrapper :global(.card-face) {
@@ -412,17 +411,17 @@
 	}
 
 	.card-preview-wrapper :global(.card-face img) {
-		height: 100%;
-		width: auto;
+		max-height: 100%;
+		height: auto;
+		width: 100%;
 		max-width: 100%;
 		object-fit: contain;
-		margin: 0 auto;
 	}
 
-	/* Ensure flip button is visible - it's a sibling after flip-card, not inside */
+	/* Ensure flip button is visible with proper spacing */
 	.card-preview-wrapper :global(aside > button) {
 		flex-shrink: 0;
-		margin-top: 0.5rem;
+		margin-top: 1rem;
 	}
 
 	/* Legend tooltip hover */
