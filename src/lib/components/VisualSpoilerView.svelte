@@ -4,6 +4,7 @@
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
 	import VendorIcon from './VendorIcon.svelte';
+	import CornerBadge from './CornerBadge.svelte';
 
 	let {
 		cards,
@@ -67,92 +68,88 @@
 			{@const isBanned = isCardBanned(card)}
 			{@const isGC = isGameChanger(card.name)}
 
-			<!-- Render card multiple times if quantity > 1 -->
-			{#each Array(card.quantity) as _, index}
-				<div
-					class="visual-spoiler-card-container group relative"
-					draggable={isEditing && category !== CardCategory.Commander}
-					ondragstart={(e) => handleCardDragStart(e, card)}
-					ondragend={handleCardDragEnd}
-					onmouseenter={() => onCardHover?.(card)}
-					onmouseleave={() => onCardHover?.(null)}
-					onclick={() => handleCardClick(card)}
-					role="button"
-					tabindex="0"
-				>
-					{#if imageUrl}
-						<img
-							src={imageUrl}
-							alt={card.name}
-							class="visual-spoiler-card-image {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
-							loading="lazy"
-						/>
-					{:else}
-						<!-- Fallback if no image -->
-						<div class="visual-spoiler-card-placeholder">
-							<span class="text-xs text-[var(--color-text-tertiary)] text-center p-2">
-								{card.name}
-							</span>
-						</div>
-					{/if}
-
-					<!-- Badges Overlay -->
-					<div class="absolute top-1 right-1 flex flex-col gap-1 items-end">
-						<!-- Banned Badge -->
-						{#if isBanned}
-							<span
-								class="badge badge-banned"
-								title="Banned in Commander"
-							>
-								<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
-									<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-									<path d="M11.854 4.146a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708-.708l7-7a.5.5 0 0 1 .708 0z"/>
-								</svg>
-							</span>
-						{/if}
-
-						<!-- Game Changer Badge -->
-						{#if isGC}
-							<span
-								class="badge badge-game-changer"
-								title="Game Changer - This card affects your deck's bracket level"
-							>
-								<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
-									<path d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
-								</svg>
-								GC
-							</span>
-						{/if}
+			<!-- Render one card per unique card (no copies) -->
+			<div
+				class="visual-spoiler-card-container group relative"
+				draggable={isEditing && category !== CardCategory.Commander}
+				ondragstart={(e) => handleCardDragStart(e, card)}
+				ondragend={handleCardDragEnd}
+				onmouseenter={() => onCardHover?.(card)}
+				onmouseleave={() => onCardHover?.(null)}
+				onclick={() => handleCardClick(card)}
+				role="button"
+				tabindex="0"
+			>
+				{#if imageUrl}
+					<img
+						src={imageUrl}
+						alt={card.name}
+						class="visual-spoiler-card-image {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+						loading="lazy"
+					/>
+				{:else}
+					<!-- Fallback if no image -->
+					<div class="visual-spoiler-card-placeholder">
+						<span class="text-xs text-[var(--color-text-tertiary)] text-center p-2">
+							{card.name}
+						</span>
 					</div>
+				{/if}
 
-					<!-- Quantity Badge (if quantity > 1, show on first instance) -->
-					{#if card.quantity > 1 && index === 0}
-						<div class="absolute bottom-1 left-1">
-							<span class="badge badge-quantity">
-								×{card.quantity}
-							</span>
-						</div>
-					{/if}
+				<!-- Corner Badge: Prioritize Quantity over GC -->
+				{#if card.quantity > 1}
+					<CornerBadge
+						text="{card.quantity}"
+						size="normal"
+						color="rgb(156, 163, 175)"
+						textColor="rgb(31, 41, 55)"
+						title="Quantity: {card.quantity}"
+					/>
+				{:else if isGC}
+					<CornerBadge
+						text="GC"
+						size="normal"
+						color="rgb(245, 158, 11)"
+						textColor="rgb(120, 53, 15)"
+						title="Game Changer - This card affects your deck's bracket level"
+					/>
+				{/if}
 
-					<!-- Pricing Display (show only once per card, not for each quantity) -->
-					{#if index === 0 && card.prices && (card.prices.cardkingdom !== undefined || card.prices.tcgplayer !== undefined)}
-						<div class="visual-spoiler-pricing">
-							{#if card.prices.cardkingdom !== undefined}
-								<div class="vendor-price">
-									<VendorIcon vendor="cardkingdom" size={11} />
-									<span>${card.prices.cardkingdom.toFixed(2)}</span>
-								</div>
-							{/if}
-							{#if card.prices.tcgplayer !== undefined}
-								<div class="vendor-price">
-									<VendorIcon vendor="tcgplayer" size={11} />
-									<span>${card.prices.tcgplayer.toFixed(2)}</span>
-								</div>
-							{/if}
-						</div>
+				<!-- Right-side Badges -->
+				<div class="absolute top-1 right-1 flex flex-col gap-1 items-end">
+					<!-- Banned Badge -->
+					{#if isBanned}
+						<span class="badge badge-banned" title="Banned in Commander">
+							<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+								<path
+									d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"
+								/>
+								<path
+									d="M11.854 4.146a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708-.708l7-7a.5.5 0 0 1 .708 0z"
+								/>
+							</svg>
+						</span>
 					{/if}
 				</div>
-			{/each}
+
+				<!-- Pricing Display -->
+				{#if card.prices && (card.prices.cardkingdom !== undefined || card.prices.tcgplayer !== undefined)}
+					<div class="visual-spoiler-pricing">
+						{#if card.prices.cardkingdom !== undefined}
+							<div class="vendor-price">
+								<VendorIcon vendor="cardkingdom" size={11} />
+								<span>${card.prices.cardkingdom.toFixed(2)}</span>
+							</div>
+						{/if}
+						{#if card.prices.tcgplayer !== undefined}
+							<div class="vendor-price">
+								<VendorIcon vendor="tcgplayer" size={11} />
+								<span>${card.prices.tcgplayer.toFixed(2)}</span>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/each}
 	</div>
 </div>
