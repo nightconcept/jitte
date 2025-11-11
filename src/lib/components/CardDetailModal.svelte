@@ -370,36 +370,44 @@
 		animation: scale-in 150ms ease-out;
 	}
 
-	/* Card preview wrapper - center and constrain by height */
+	/* Card preview wrapper - provide explicit dimensions for scaling */
 	.card-preview-wrapper {
-		max-height: calc(90vh - 16rem);
+		width: 100%;
+		height: calc(90vh - 16rem);
+		max-width: 24rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		overflow: visible;
+		position: relative;
 	}
 
-	/* Scale the card preview based on available vertical space */
+	/* Scale the card preview to fill available space */
 	.card-preview-wrapper :global(.scale-card-preview) {
-		height: auto !important;
-		width: auto !important;
-		max-width: 100% !important;
+		width: 100% !important;
+		height: 100% !important;
 		display: flex !important;
 		flex-direction: column !important;
+		align-items: center !important;
+		padding: 0 !important;
 	}
 
-	/* Perspective container: constrain height, width follows from flip-card */
+	/* Perspective container: provide explicit dimensions */
 	.card-preview-wrapper :global(.perspective-container) {
-		width: auto;
-		height: calc(90vh - 21rem);
-		max-width: 100%;
+		position: relative;
+		width: 100%;
+		height: calc(100% - 4rem); /* Reserve space for flip button */
+		flex-shrink: 0;
 	}
 
-	/* Flip card: set explicit height, let aspect ratio calculate width */
+	/* Flip card: use absolute positioning with max constraints + aspect-ratio */
 	.card-preview-wrapper :global(.flip-card) {
-		width: auto;
-		height: calc(90vh - 21rem);
+		position: absolute;
+		inset: 0;
+		margin: auto;
 		max-width: 100%;
+		max-height: 100%;
+		width: auto;
+		height: auto;
 		aspect-ratio: 5 / 7;
 	}
 
@@ -421,6 +429,7 @@
 	.card-preview-wrapper :global(aside > button) {
 		flex-shrink: 0;
 		margin-top: 1rem;
+		position: relative;
 	}
 
 	/* Legend tooltip hover */
