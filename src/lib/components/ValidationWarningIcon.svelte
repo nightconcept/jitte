@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { ValidationWarning } from '$lib/types/card';
-	import Tooltip from './Tooltip.svelte';
+	import BaseTooltip from './BaseTooltip.svelte';
 
 	let {
 		warning,
-		position = 'top'
+		position = 'above'
 	}: {
 		warning: ValidationWarning;
-		position?: 'top' | 'bottom' | 'left' | 'right';
+		position?: 'above' | 'below';
 	} = $props();
 
 	const severityStyles = {
@@ -23,8 +23,13 @@
 	};
 </script>
 
-<Tooltip message={warning.message} {position}>
-	<span class="inline-flex items-center justify-center w-4 h-4 text-xs {severityStyles[warning.severity]}" title={warning.message}>
-		{severityIcons[warning.severity]}
-	</span>
-</Tooltip>
+<BaseTooltip trigger="hover" {position} positioning="absolute" closeDelay={200}>
+	{#snippet children()}
+		<span class="inline-flex items-center justify-center w-4 h-4 text-xs {severityStyles[warning.severity]}" title={warning.message}>
+			{severityIcons[warning.severity]}
+		</span>
+	{/snippet}
+	{#snippet content()}
+		{warning.message}
+	{/snippet}
+</BaseTooltip>

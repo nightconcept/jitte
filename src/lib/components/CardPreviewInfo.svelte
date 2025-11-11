@@ -3,7 +3,7 @@
   import type { ScryfallCard, ScryfallSet } from "$lib/types/scryfall";
   import ManaSymbol from "./ManaSymbol.svelte";
   import OracleText from "./OracleText.svelte";
-  import Tooltip from "./Tooltip.svelte";
+  import BaseTooltip from "./BaseTooltip.svelte";
   import { cardService } from "$lib/api/card-service";
   import { formatSetReleaseDate } from "$lib/utils/date-format";
 
@@ -93,8 +93,13 @@
         title="{scryfallCard.set_name} - {scryfallCard.rarity}"
       ></i>
       <span>
-        <span class="border-b border-dashed border-current cursor-help" onmouseenter={loadSetData} role="button" tabindex="0">
-          <Tooltip position="bottom" hideDelay={200}>
+        <span onmouseenter={loadSetData}>
+          <BaseTooltip trigger="hover" position="below" positioning="absolute" closeDelay={200}>
+            {#snippet children()}
+              <span class="border-b border-dashed border-current cursor-help">
+                {scryfallCard.set_name}
+              </span>
+            {/snippet}
             {#snippet content()}
               {#if setData}
                 <div class="text-left">
@@ -105,8 +110,7 @@
                 <div>Loading...</div>
               {/if}
             {/snippet}
-            {scryfallCard.set_name}
-          </Tooltip>
+          </BaseTooltip>
         </span>
         ({scryfallCard.set.toUpperCase()}) #{scryfallCard.collector_number}
       </span>
@@ -135,8 +139,13 @@
         title="{scryfallCard.set_name} - {scryfallCard.rarity}"
       ></i>
       <span>
-        <span class="border-b border-dashed border-current cursor-help" onmouseenter={loadSetData} role="button" tabindex="0">
-          <Tooltip position="bottom" hideDelay={200}>
+        <span onmouseenter={loadSetData}>
+          <BaseTooltip trigger="hover" position="below" positioning="absolute" closeDelay={200}>
+            {#snippet children()}
+              <span class="border-b border-dashed border-current cursor-help">
+                {scryfallCard.set_name}
+              </span>
+            {/snippet}
             {#snippet content()}
               {#if setData}
                 <div class="text-left">
@@ -147,8 +156,7 @@
                 <div>Loading...</div>
               {/if}
             {/snippet}
-            {scryfallCard.set_name}
-          </Tooltip>
+          </BaseTooltip>
         </span>
         ({scryfallCard.set.toUpperCase()}) #{scryfallCard.collector_number}
       </span>

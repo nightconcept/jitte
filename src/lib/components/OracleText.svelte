@@ -6,50 +6,13 @@
 	 */
 
 	import { detectKeywords, type KeywordDefinition } from '$lib/utils/keyword-detection';
+	import BaseTooltip from './BaseTooltip.svelte';
 
 	let {
 		text
 	}: {
 		text: string;
 	} = $props();
-
-	// Track which keyword tooltip is currently open
-	let openKeywordIndex = $state<number | null>(null);
-	let closeTimeout: number | null = null;
-
-	function toggleKeyword(index: number) {
-		if (openKeywordIndex === index) {
-			// Close if clicking the same keyword
-			openKeywordIndex = null;
-		} else {
-			// Open new keyword tooltip
-			openKeywordIndex = index;
-		}
-		// Clear any pending close timeout
-		if (closeTimeout !== null) {
-			clearTimeout(closeTimeout);
-			closeTimeout = null;
-		}
-	}
-
-	function handleKeywordMouseLeave() {
-		// Close after 1 second delay on mouse leave
-		if (closeTimeout !== null) {
-			clearTimeout(closeTimeout);
-		}
-		closeTimeout = window.setTimeout(() => {
-			openKeywordIndex = null;
-			closeTimeout = null;
-		}, 1000);
-	}
-
-	function handleTooltipMouseEnter() {
-		// Cancel close timeout if mouse re-enters
-		if (closeTimeout !== null) {
-			clearTimeout(closeTimeout);
-			closeTimeout = null;
-		}
-	}
 
 	// Parse oracle text and split into text, symbol, and keyword parts
 	interface TextPart {
@@ -194,44 +157,23 @@
 			{@const symbolInfo = getSymbolInfo(part.content)}
 			<i class="ms {symbolInfo.isCost ? 'ms-cost ms-shadow' : 'ability-symbol'} {symbolInfo.class}" title={part.content}></i>
 		{:else if part.type === 'keyword' && part.keywordDef}
-			<span class="keyword-wrapper" onmouseleave={handleKeywordMouseLeave} role="group">
-				<span
-					class="keyword-text"
-					onclick={() => toggleKeyword(index)}
-					role="button"
-					tabindex="0"
-					aria-label="Show definition for {part.keywordDef.name}"
-					aria-expanded={openKeywordIndex === index}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							toggleKeyword(index);
-						}
-					}}
-				>
-					{part.content}
-				</span>
-				{#if openKeywordIndex === index}
-					<span
-						class="keyword-tooltip"
-						role="button"
-						tabindex="0"
-						aria-label="Close tooltip"
-						onmouseenter={handleTooltipMouseEnter}
-						onmouseleave={handleKeywordMouseLeave}
-						onclick={() => toggleKeyword(index)}
-						onkeydown={(e) => {
-							if (e.key === 'Escape' || e.key === 'Enter') {
-								e.preventDefault();
-								toggleKeyword(index);
-							}
-						}}
-					>
-						<strong>{part.keywordDef.name}</strong>: {part.keywordDef.definition}
-						<span class="tooltip-arrow"></span>
-					</span>
-				{/if}
-			</span>
+			{@const kw = part.keywordDef}
+			<BaseTooltip
+				trigger="click"
+				position="above"
+				positioning="absolute"
+				closeDelay={1000}
+				maxWidth="300px"
+				ariaLabel="Show definition for {kw.name}"
+			>
+				{#snippet children()}
+					<span class="keyword-text">{part.content}</span>
+				{/snippet}
+
+				{#snippet content()}
+					<strong>{kw.name}</strong>: {kw.definition}
+				{/snippet}
+			</BaseTooltip>
 		{/if}
 	{/each}
 </div>
@@ -270,12 +212,6 @@
 		font-size: 1em;
 	}
 
-	/* Keyword wrapper - relative positioning for tooltip */
-	.oracle-text :global(.keyword-wrapper) {
-		position: relative;
-		display: inline;
-	}
-
 	/* Keyword text styling - clickable with dashed underline */
 	.oracle-text :global(.keyword-text) {
 		cursor: pointer;
@@ -287,50 +223,5 @@
 	.oracle-text :global(.keyword-text:hover) {
 		color: var(--color-brand-primary);
 		border-bottom-color: var(--color-brand-primary);
-	}
-
-	/* Keyword tooltip */
-	.oracle-text :global(.keyword-tooltip) {
-		position: absolute;
-		bottom: calc(100% + 8px);
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 50;
-		padding: 8px 12px;
-		max-width: 300px;
-		width: max-content;
-		font-size: 0.875rem;
-		line-height: 1.4;
-		color: var(--color-text-primary);
-		background-color: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-		white-space: normal;
-		pointer-events: auto;
-		cursor: pointer;
-	}
-
-	/* Tooltip arrow */
-	.oracle-text :global(.tooltip-arrow) {
-		position: absolute;
-		top: 100%;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 0;
-		height: 0;
-		border-left: 6px solid transparent;
-		border-right: 6px solid transparent;
-		border-top: 6px solid var(--color-border);
-	}
-
-	.oracle-text :global(.tooltip-arrow::after) {
-		content: '';
-		position: absolute;
-		top: -7px;
-		left: -5px;
-		border-left: 5px solid transparent;
-		border-right: 5px solid transparent;
-		border-top: 5px solid var(--color-surface);
 	}
 </style>
