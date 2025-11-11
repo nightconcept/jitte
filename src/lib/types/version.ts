@@ -3,12 +3,27 @@
  */
 
 /**
+ * Version scheme type
+ */
+export type VersionScheme = 'semantic' | 'date';
+
+/**
  * Semantic version structure
  */
 export interface SemanticVersion {
 	major: number;
 	minor: number;
 	patch: number;
+}
+
+/**
+ * Date-based version structure (YY.MM.DD-rev.N)
+ */
+export interface DateVersion {
+	year: number; // 2-digit year (25 for 2025)
+	month: number; // 1-12
+	day: number; // 1-31
+	revision: number; // Incremental revision for same day
 }
 
 /**

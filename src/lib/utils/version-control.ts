@@ -3,9 +3,10 @@
  */
 
 import type { Deck, DeckManifest, CreateBranchOptions } from '$lib/types/deck';
-import type { BranchMetadata, VersionMetadata, Stash } from '$lib/types/version';
-import { applyBump, compareVersions } from './semver';
+import type { BranchMetadata, VersionMetadata, Stash, VersionScheme } from '$lib/types/version';
+import { applyBump, compareVersions as compareSemanticVersions } from './semver';
 import { calculateDiff } from './diff';
+import { getInitialVersion, getNextVersion, migrateVersionScheme } from './versioning';
 
 /**
  * Create a new version of the deck
@@ -20,7 +21,8 @@ export function createVersion(
 		currentVersion: manifest.currentVersion,
 		currentBranch: manifest.currentBranch,
 		commitMessage,
-		versionOverride
+		versionOverride,
+		versioningScheme: manifest.versioningScheme
 	});
 
 	const branch = manifest.branches.find((b) => b.name === manifest.currentBranch);
@@ -33,14 +35,29 @@ export function createVersion(
 		existingVersions: branch.versions
 	});
 
+	// Determine versioning scheme (default to semantic for backwards compatibility)
+	const scheme: VersionScheme = manifest.versioningScheme || 'semantic';
+
 	// Determine new version
-	// If currentVersion is "unsaved", this is the first commit, so use 0.0.1
 	let newVersion: string;
 	if (manifest.currentVersion === 'unsaved') {
-		newVersion = versionOverride || '0.0.1';
+		// First commit - use initial version for the scheme
+		newVersion = versionOverride || getInitialVersion(scheme);
 		console.log('[createVersion] First commit, using version:', newVersion);
 	} else {
-		newVersion = versionOverride || applyBump(manifest.currentVersion, 'patch');
+		if (versionOverride) {
+			newVersion = versionOverride;
+		} else {
+			// Auto-calculate next version based on scheme
+			if (scheme === 'semantic') {
+				// For semantic versioning, calculate diff to determine bump type
+				// Default to patch bump for backwards compatibility
+				newVersion = applyBump(manifest.currentVersion, 'patch');
+			} else {
+				// For date-based versioning, calculate next version
+				newVersion = getNextVersion(manifest.currentVersion, scheme);
+			}
+		}
 		console.log('[createVersion] Bumping version from', manifest.currentVersion, 'to', newVersion);
 	}
 
@@ -103,11 +120,12 @@ export function createBranch(
 	let newBranch: BranchMetadata;
 
 	if (options.fromScratch) {
-		// Create empty branch
+		// Create empty branch using current versioning scheme
+		const scheme: VersionScheme = manifest.versioningScheme || 'semantic';
 		newBranch = {
 			name: options.name,
 			versions: [],
-			currentVersion: '0.0.1',
+			currentVersion: getInitialVersion(scheme),
 			createdAt: now,
 			updatedAt: now
 		};
@@ -291,5 +309,38 @@ export function renameBranch(
 				key === oldName ? { ...value, branch: newName } : value
 			])
 		)
+	};
+}
+
+/**
+ * Change the versioning scheme for a deck
+ * Migrates the current version to the new scheme
+ */
+export function changeVersioningScheme(
+	manifest: DeckManifest,
+	newScheme: VersionScheme
+): DeckManifest {
+	const currentScheme = manifest.versioningScheme || 'semantic';
+
+	if (currentScheme === newScheme) {
+		return manifest; // No change needed
+	}
+
+	console.log('[changeVersioningScheme] Migrating from', currentScheme, 'to', newScheme);
+
+	// Migrate current version to new scheme
+	const migratedVersion = migrateVersionScheme(
+		manifest.currentVersion,
+		currentScheme,
+		newScheme
+	);
+
+	console.log('[changeVersioningScheme] Migrated version from', manifest.currentVersion, 'to', migratedVersion);
+
+	return {
+		...manifest,
+		versioningScheme: newScheme,
+		currentVersion: migratedVersion,
+		updatedAt: new Date().toISOString()
 	};
 }

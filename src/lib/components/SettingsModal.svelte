@@ -5,6 +5,11 @@
 	import { resetOnboarding } from '$lib/utils/onboarding';
 	import { generateDebugInfo } from '$lib/utils/debugInfo';
 	import { toastStore } from '$lib/stores/toast-store';
+	import { deckManager } from '$lib/stores/deck-manager';
+	import VersioningSettings from './VersioningSettings.svelte';
+	import BaseModal from './BaseModal.svelte';
+	import LicensingModal from './LicensingModal.svelte';
+	import type { VersionScheme } from '$lib/types/version';
 
 	interface Props {
 		isOpen?: boolean;
@@ -18,10 +23,26 @@
 	}>();
 
 	let showWipeConfirmation = $state(false);
+	let showLicensing = $state(false);
 
 	const themeState = $derived($themeStore);
 	const mode = $derived(themeState.mode);
 	const name = $derived(themeState.name);
+
+	// Deck manager state for versioning settings
+	let deckManagerState = $state($deckManager);
+
+	$effect(() => {
+		const unsubscribe = deckManager.subscribe((value) => {
+			deckManagerState = value;
+		});
+		return unsubscribe;
+	});
+
+	const currentVersioningScheme = $derived<VersionScheme>(
+		deckManagerState?.activeManifest?.versioningScheme || 'semantic'
+	);
+	const hasActiveDeck = $derived(!!deckManagerState?.activeManifest);
 
 	const themes: { value: ThemeName; label: string }[] = [
 		{ value: 'equilibrium-gray', label: 'Equilibrium Gray' },
@@ -31,7 +52,10 @@
 	];
 
 	function handleClose() {
-		showWipeConfirmation = false;
+		// Don't close settings modal if a child modal is open
+		if (showWipeConfirmation || showLicensing) {
+			return;
+		}
 		dispatch('close');
 	}
 
@@ -75,30 +99,29 @@
 			toastStore.error('Failed to copy to clipboard');
 		}
 	}
+
+	async function handleVersioningSchemeChange(newScheme: VersionScheme) {
+		const success = await deckManager.updateVersioningScheme(newScheme);
+		if (success) {
+			toastStore.success(`Versioning scheme changed to ${newScheme}`, 2000);
+		} else {
+			toastStore.error('Failed to change versioning scheme');
+		}
+	}
 </script>
 
-{#if isOpen}
-	<!-- Modal Backdrop -->
-	<div
-		class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
-		on:click={handleClose}
-		role="presentation"
-	>
-		<!-- Modal Content -->
-		<div
-			class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[var(--color-border)]"
-			on:click|stopPropagation
-			role="dialog"
-			aria-modal="true"
-			tabindex="-1"
-		>
-			<!-- Header -->
-			<div class="px-6 py-4 border-b border-[var(--color-border)]">
-				<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Settings</h2>
-			</div>
-
-			<!-- Body -->
-			<div class="px-6 py-4 space-y-4">
+<BaseModal
+	{isOpen}
+	onClose={handleClose}
+	title="Settings"
+	size="2xl"
+	height="max-h-[80vh]"
+	contentClass="flex flex-col"
+>
+	{#snippet children()}
+		<!-- Scrollable Body -->
+		<div class="flex-1 overflow-y-auto">
+			<div class="px-6 py-4 space-y-6">
 				<!-- Appearance Section -->
 				<div>
 					<h3 class="text-sm font-medium text-[var(--color-text-primary)] mb-3">
@@ -151,6 +174,16 @@
 					</div>
 				</div>
 
+				<!-- Versioning Section -->
+				{#if hasActiveDeck}
+					<div class="pt-4 border-t border-[var(--color-border)]">
+						<VersioningSettings
+							currentScheme={currentVersioningScheme}
+							onSchemeChange={handleVersioningSchemeChange}
+						/>
+					</div>
+				{/if}
+
 				<!-- Help & Tutorial Section -->
 				<div class="pt-4 border-t border-[var(--color-border)]">
 					<h3 class="text-sm font-medium text-[var(--color-text-primary)] mb-3">
@@ -191,86 +224,115 @@
 
 				<!-- App Info Section -->
 				<div class="pt-4 border-t border-[var(--color-border)]">
-					<h3 class="text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<h3 class="text-sm font-medium text-[var(--color-text-primary)] mb-3">
 						About
 					</h3>
-					<div class="text-sm text-[var(--color-text-secondary)] space-y-1">
-						<div>Jitte - MTG Commander Deck Manager</div>
-						<div class="flex items-center justify-between gap-2">
-							<span class="text-xs font-mono">Version {__APP_VERSION__}</span>
+					<div class="text-sm text-[var(--color-text-secondary)] space-y-2">
+						<div>
+							<div class="font-medium text-[var(--color-text-primary)]">
+								<a
+									href="https://github.com/nightconcept/jitte"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-[var(--color-accent-blue)] hover:underline"
+								>
+									Jitte
+								</a>
+								<span> - MTG Commander Deck Manager</span>
+							</div>
+							<div class="text-xs mt-1">Version {__APP_VERSION__}</div>
+						</div>
+
+						<div class="pt-2 text-xs space-y-1">
+							<div>
+								Licensed under the <a
+									href="https://opensource.org/licenses/MIT"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-[var(--color-accent-blue)] hover:underline"
+								>MIT License</a>
+							</div>
+							<div>
+								© 2025 Danny Solivan
+							</div>
+						</div>
+
+						<div class="pt-2 flex flex-col gap-2">
 							<button
 								type="button"
 								on:click={copyDebugInfo}
-								class="p-1 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-								title="Copy debug info to clipboard"
-								aria-label="Copy debug info to clipboard"
+								class="px-3 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors flex items-center gap-2"
 							>
 								<!-- Clipboard icon -->
-								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
 								</svg>
+								<span class="text-[var(--color-text-primary)]">Copy Debug Info</span>
+							</button>
+
+							<button
+								type="button"
+								on:click={() => showLicensing = true}
+								class="px-3 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors"
+							>
+								<span class="text-[var(--color-text-primary)]">Third-Party Licenses</span>
 							</button>
 						</div>
 					</div>
 				</div>
 			</div>
-
-			<!-- Footer -->
-			<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end">
-				<button
-					on:click={handleClose}
-					class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
-				>
-					Close
-				</button>
-			</div>
 		</div>
-	</div>
 
-	<!-- Wipe Confirmation Modal -->
-	{#if showWipeConfirmation}
-		<div
-			class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]"
-			on:click={cancelWipe}
-			role="presentation"
-		>
-			<div
-				class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[var(--color-border)]"
-				on:click|stopPropagation
-				role="dialog"
-				aria-modal="true"
-				tabindex="-1"
+		<!-- Footer (outside scrollable area) -->
+		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end">
+			<button
+				on:click={handleClose}
+				class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
 			>
-				<div class="px-6 py-4">
-					<h3 class="text-lg font-bold text-red-500">⚠️ Wipe All Data?</h3>
-					<p class="text-sm text-[var(--color-text-secondary)] mt-2">
-						This will permanently delete:
-					</p>
-					<ul class="text-sm text-[var(--color-text-secondary)] mt-2 space-y-1 list-disc list-inside">
-						<li>All saved decks</li>
-						<li>All deck versions and history</li>
-						<li>All settings and preferences</li>
-					</ul>
-					<p class="text-sm text-red-500 font-medium mt-3">
-						This action cannot be undone!
-					</p>
-				</div>
-
-				<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end gap-3">
-					<button
-						on:click={cancelWipe}
-						class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
-					>
-						Cancel
-					</button>
-					<button
-						on:click={handleWipeData}
-						class="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white font-medium"
-					>
-						Yes, Wipe Everything
-					</button>
-				</div>
-			</div>
+				Close
+			</button>
 		</div>
-	{/if}
-{/if}
+	{/snippet}
+</BaseModal>
+
+<!-- Wipe Confirmation Modal -->
+<BaseModal
+	isOpen={showWipeConfirmation}
+	onClose={cancelWipe}
+	title="⚠️ Wipe All Data?"
+	size="md"
+>
+	{#snippet children()}
+		<div class="px-6 py-4">
+			<p class="text-sm text-[var(--color-text-secondary)] mt-2">
+				This will permanently delete:
+			</p>
+			<ul class="text-sm text-[var(--color-text-secondary)] mt-2 space-y-1 list-disc list-inside">
+				<li>All saved decks</li>
+				<li>All deck versions and history</li>
+				<li>All settings and preferences</li>
+			</ul>
+			<p class="text-sm text-red-500 font-medium mt-3">
+				This action cannot be undone!
+			</p>
+		</div>
+
+		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end gap-3">
+			<button
+				on:click={cancelWipe}
+				class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
+			>
+				Cancel
+			</button>
+			<button
+				on:click={handleWipeData}
+				class="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white font-medium"
+			>
+				Yes, Wipe Everything
+			</button>
+		</div>
+	{/snippet}
+</BaseModal>
+
+<!-- Licensing Modal -->
+<LicensingModal isOpen={showLicensing} onClose={() => (showLicensing = false)} />

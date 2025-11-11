@@ -522,7 +522,7 @@
 					<!-- Category Header -->
 					<button
 						onclick={() => toggleCategory(category)}
-						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-surface-hover)] transition-colors rounded-t-lg"
+						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/5 transition-colors rounded-t-lg"
 					>
 						<div class="flex items-center gap-3">
 							<svg

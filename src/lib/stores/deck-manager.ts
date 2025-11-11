@@ -125,12 +125,23 @@ function createDeckManager() {
 				const archive = await decompressDeckArchive(result.data);
 				const { deck, manifest, maybeboard } = await extractDeckFromArchive(archive);
 
+				// Auto-migrate: Add versioningScheme if missing (defaults to semantic for backwards compatibility)
+				let migratedManifest = manifest;
+				if (!manifest.versioningScheme) {
+					console.log('[deckManager.loadDeck] Auto-migrating manifest to include versioningScheme');
+					migratedManifest = {
+						...manifest,
+						versioningScheme: 'semantic' as const
+					};
+					// Note: Migration will be persisted on next save
+				}
+
 				deckStore.load(deck, maybeboard);
 
 				update((state) => ({
 					...state,
 					activeDeckName: deckName,
-					activeManifest: manifest,
+					activeManifest: migratedManifest,
 					isLoading: false
 				}));
 
@@ -850,6 +861,65 @@ function createDeckManager() {
 	}
 
 	/**
+	 * Change the versioning scheme for the active deck
+	 */
+	async function updateVersioningScheme(newScheme: 'semantic' | 'date'): Promise<boolean> {
+		const appState = get({ subscribe });
+
+		if (!appState.activeManifest || !appState.activeDeckName) {
+			update((state) => ({ ...state, error: 'No active deck' }));
+			return false;
+		}
+
+		try {
+			const { changeVersioningScheme } = await import('$lib/utils/version-control');
+			const { compressDeckArchive, decompressDeckArchive } = await import('$lib/utils/zip');
+
+			// Load the current deck archive
+			const loadResult = await storage.loadDeck(appState.activeDeckName);
+			if (!loadResult.success || !loadResult.data) {
+				throw new Error('Failed to load deck for scheme change');
+			}
+
+			const archive = await decompressDeckArchive(loadResult.data);
+
+			// Update the manifest with new versioning scheme
+			const updatedManifest = changeVersioningScheme(archive.manifest, newScheme);
+
+			// Update the archive
+			const updatedArchive = {
+				...archive,
+				manifest: updatedManifest
+			};
+
+			// Save the updated archive
+			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+
+			if (!saveResult.success) {
+				throw new Error('Failed to save versioning scheme change');
+			}
+
+			// Update the active manifest and deck store
+			update((state) => ({
+				...state,
+				activeManifest: updatedManifest
+			}));
+
+			// Update the deck store's current version
+			deckStore.updateVersion(updatedManifest.currentVersion);
+
+			return true;
+		} catch (error) {
+			update((state) => ({
+				...state,
+				error: error instanceof Error ? error.message : 'Failed to update versioning scheme'
+			}));
+			return false;
+		}
+	}
+
+	/**
 	 * Clear error
 	 */
 	function clearError(): void {
@@ -870,6 +940,7 @@ function createDeckManager() {
 		createNewBranch,
 		switchToBranch,
 		deleteBranchFromDeck,
+		updateVersioningScheme,
 		clearError
 	};
 }

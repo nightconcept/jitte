@@ -60,6 +60,9 @@ export interface DeckManifest {
 
 	/** App version that created this deck */
 	appVersion: string;
+
+	/** Versioning scheme preference ('semantic' or 'date') */
+	versioningScheme?: 'semantic' | 'date';
 }
 
 /**
