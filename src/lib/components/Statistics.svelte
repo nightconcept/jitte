@@ -22,7 +22,7 @@
 	);
 </script>
 
-<section class="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]">
+<section class="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] relative z-10">
 	<div class="px-6 py-6 space-y-6">
 		<div>
 			<h2 class="text-lg font-bold text-[var(--color-text-primary)]">Statistics</h2>

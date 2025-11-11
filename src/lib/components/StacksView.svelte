@@ -52,6 +52,19 @@
 	// Each card adds 36px offset (increased for readability), plus the base card height
 	// Card width is ~200px at 1024px+, which gives ~280px height (5:7 aspect ratio)
 	const stackHeight = $derived(totalQuantity * 36 + 280);
+
+	// Track which card is being hovered (by stack index)
+	let hoveredStackIndex = $state<number | null>(null);
+
+	function handleCardMouseEnter(stackIndex: number, card: Card) {
+		hoveredStackIndex = stackIndex;
+		onCardHover?.(card);
+	}
+
+	function handleCardMouseLeave() {
+		hoveredStackIndex = null;
+		onCardHover?.(null);
+	}
 </script>
 
 <div class="stacks-category">
@@ -78,14 +91,16 @@
 			<!-- Render each copy of the card with offset -->
 			{#each Array(card.quantity) as _, copyIndex}
 				{@const stackIndex = cards.slice(0, cardIndex).reduce((sum, c) => sum + c.quantity, 0) + copyIndex}
+				{@const shouldMoveDown = hoveredStackIndex !== null && stackIndex > hoveredStackIndex}
 				<div
 					class="stacks-card"
+					class:stacks-card-pushed={shouldMoveDown}
 					style="--stack-index: {stackIndex}"
 					draggable={isEditing && category !== CardCategory.Commander}
 					ondragstart={(e) => handleCardDragStart(e, card)}
 					ondragend={handleCardDragEnd}
-					onmouseenter={() => onCardHover?.(card)}
-					onmouseleave={() => onCardHover?.(null)}
+					onmouseenter={() => handleCardMouseEnter(stackIndex, card)}
+					onmouseleave={handleCardMouseLeave}
 					onclick={() => handleCardClick(card)}
 					role="button"
 					tabindex="0"
@@ -192,6 +207,7 @@
 	.stacks-container {
 		position: relative;
 		padding-bottom: 1rem;
+		overflow: visible;
 	}
 
 	.stacks-card {
@@ -203,13 +219,13 @@
 		border-radius: 0.5rem;
 		overflow: hidden;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-		transition: transform 0.2s ease, z-index 0s;
+		transition: top 0.2s ease;
 		z-index: var(--stack-index);
 	}
 
-	.stacks-card:hover {
-		transform: translateX(12px) scale(1.03);
-		z-index: 1000;
+	/* Cards above the hovered card move down to fully reveal it including pricing */
+	.stacks-card-pushed {
+		top: calc(var(--stack-index) * 36px + 310px);
 	}
 
 	.stacks-card-image {
