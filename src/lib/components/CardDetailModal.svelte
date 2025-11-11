@@ -20,11 +20,60 @@
 	let loading = $state(true);
 	let rulings = $state<Array<{ published_at: string; comment: string }>>([]);
 
+	// Create a merged card with full face data for CardPreview
+	let cardWithFaces = $derived.by(() => {
+		if (!scryfallCard) return card;
+
+		// Merge the original card with cardFaces data from Scryfall
+		const merged: Card = { ...card };
+
+		// Add card faces if available
+		if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
+			merged.cardFaces = scryfallCard.card_faces.map(face => ({
+				name: face.name,
+				manaCost: face.mana_cost,
+				typeLine: face.type_line,
+				oracleText: face.oracle_text,
+				imageUrls: face.image_uris ? {
+					small: face.image_uris.small,
+					normal: face.image_uris.normal,
+					large: face.image_uris.large,
+					png: face.image_uris.png,
+					artCrop: face.image_uris.art_crop,
+					borderCrop: face.image_uris.border_crop
+				} : undefined,
+				colors: face.colors,
+				power: face.power,
+				toughness: face.toughness,
+				loyalty: face.loyalty
+			}));
+			merged.layout = scryfallCard.layout;
+		}
+
+		return merged;
+	});
+
 	// Fetch full Scryfall data when modal opens
 	$effect(() => {
 		if (isOpen && card) {
 			loadCardDetails();
 		}
+	});
+
+	// Handle Escape key to close modal
+	$effect(() => {
+		if (!isOpen) return;
+
+		function handleKeyDown(e: KeyboardEvent) {
+			if (e.key === 'Escape') {
+				onClose();
+			}
+		}
+
+		window.addEventListener('keydown', handleKeyDown);
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown);
+		};
 	});
 
 	async function loadCardDetails() {
@@ -160,9 +209,9 @@
 						<!-- Left Column: Card Image with Flip Functionality -->
 						<div class="flex flex-col items-center sticky top-0 self-start">
 							<CardPreview
-								hoveredCard={card}
+								hoveredCard={cardWithFaces}
 								showPricing={false}
-								className="w-full bg-transparent border-none p-0 flex flex-col static h-auto"
+								className="w-full bg-transparent border-none pb-4 flex flex-col static h-auto"
 							/>
 						</div>
 

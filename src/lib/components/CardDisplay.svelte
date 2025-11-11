@@ -40,8 +40,23 @@
 		style?: string;
 	} = $props();
 
-	// Get card image URL (prefer normal, fallback to small, then large)
+	// Track which face is currently displayed (0 = front, 1 = back)
+	let currentFaceIndex = $state(0);
+
+	// Check if card has multiple faces
+	const isDoubleFaced = $derived(
+		card?.cardFaces && card.cardFaces.length > 1
+	);
+
+	// Get card image URL based on current face
 	function getCardImageUrl(card: Card): string {
+		// If card has card faces, use the current face's image
+		if (isDoubleFaced && card.cardFaces) {
+			const face = card.cardFaces[currentFaceIndex];
+			return face?.imageUrls?.normal || face?.imageUrls?.large || face?.imageUrls?.small || '';
+		}
+
+		// Otherwise use the card's main image URLs
 		return card.imageUrls?.normal || card.imageUrls?.small || card.imageUrls?.large || '';
 	}
 
@@ -49,6 +64,21 @@
 	const isBanned = $derived(isCardBanned(card));
 	const isGC = $derived(isGameChanger(card.name));
 	const isDraggable = $derived(isEditing && category !== CardCategory.Commander);
+
+	// Reset to front face when card changes
+	$effect(() => {
+		if (card) {
+			currentFaceIndex = 0;
+		}
+	});
+
+	function toggleFace(event: MouseEvent) {
+		// Stop propagation to prevent triggering card click
+		event.stopPropagation();
+		if (isDoubleFaced) {
+			currentFaceIndex = currentFaceIndex === 0 ? 1 : 0;
+		}
+	}
 
 	function handleDragStart(event: DragEvent) {
 		if (!isDraggable) return;
@@ -88,22 +118,108 @@
 	tabindex="0"
 >
 	<!-- Card Image Container -->
-	<div class="card-image-container">
-		{#if imageUrl}
-			<img
-				src={imageUrl}
-				alt={card.name}
-				class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
-				loading="lazy"
-			/>
-		{:else}
-			<!-- Fallback if no image -->
-			<div class="card-placeholder">
-				<span class="text-xs text-[var(--color-text-tertiary)] text-center p-2">
-					{card.name}
-				</span>
+	<div class="card-image-container perspective-container">
+		<div class="flip-card" class:is-flipped={currentFaceIndex === 1}>
+			<!-- Front Face -->
+			<div class="card-face card-face--front">
+				{#if isDoubleFaced && card.cardFaces?.[0]?.imageUrls}
+					<img
+						src={card.cardFaces[0].imageUrls.normal || card.cardFaces[0].imageUrls.large || card.cardFaces[0].imageUrls.small || ''}
+						alt={card.cardFaces[0].name || card.name}
+						class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+						loading="lazy"
+					/>
+				{:else if imageUrl}
+					<img
+						src={imageUrl}
+						alt={card.name}
+						class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+						loading="lazy"
+					/>
+				{:else}
+					<!-- Fallback if no image -->
+					<div class="card-placeholder">
+						<span class="text-xs text-[var(--color-text-tertiary)] text-center p-2">
+							{card.name}
+						</span>
+					</div>
+				{/if}
+
+				<!-- Flip Button on Front Face -->
+				{#if isDoubleFaced}
+					<button
+						type="button"
+						onclick={toggleFace}
+						class="flip-button"
+						aria-label="Flip to back face"
+						title="Flip card"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M17 3l4 4-4 4" />
+							<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+							<path d="M7 21l-4-4 4-4" />
+							<path d="M21 13v1a4 4 0 0 1-4 4H3" />
+						</svg>
+					</button>
+				{/if}
 			</div>
-		{/if}
+
+			<!-- Back Face -->
+			<div class="card-face card-face--back">
+				{#if isDoubleFaced && card.cardFaces?.[1]?.imageUrls}
+					<img
+						src={card.cardFaces[1].imageUrls.normal || card.cardFaces[1].imageUrls.large || card.cardFaces[1].imageUrls.small || ''}
+						alt={card.cardFaces[1].name || 'Card back'}
+						class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+						loading="lazy"
+					/>
+				{:else}
+					<div class="card-placeholder">
+						<span class="text-xs text-[var(--color-text-tertiary)] text-center p-2">
+							No back face
+						</span>
+					</div>
+				{/if}
+
+				<!-- Flip Button on Back Face -->
+				{#if isDoubleFaced}
+					<button
+						type="button"
+						onclick={toggleFace}
+						class="flip-button"
+						aria-label="Flip to front face"
+						title="Flip card"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M17 3l4 4-4 4" />
+							<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+							<path d="M7 21l-4-4 4-4" />
+							<path d="M21 13v1a4 4 0 0 1-4 4H3" />
+						</svg>
+					</button>
+				{/if}
+			</div>
+		</div>
 
 		<!-- Corner Badge: Prioritize Quantity over GC -->
 		{#if card.quantity > 1}
@@ -187,8 +303,47 @@
 		width: 100%;
 		aspect-ratio: 5 / 7;
 		border-radius: 0.5rem;
-		overflow: hidden;
+		overflow: visible; /* Changed from hidden to allow flip button to be visible */
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	}
+
+	/* 3D Flip Animation Styles */
+	.perspective-container {
+		perspective: 1000px;
+	}
+
+	.flip-card {
+		width: 100%;
+		height: 100%;
+		transform-style: preserve-3d;
+		transition: transform 0.4s ease-in-out;
+		position: relative;
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.flip-card.is-flipped {
+		transform: rotateY(180deg);
+	}
+
+	.card-face {
+		width: 100%;
+		height: 100%;
+		backface-visibility: hidden;
+		position: absolute;
+		top: 0;
+		left: 0;
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.card-face--front {
+		/* Front face is at 0 degrees */
+	}
+
+	.card-face--back {
+		/* Back face is pre-rotated 180 degrees */
+		transform: rotateY(180deg);
 	}
 
 	.card-image {
@@ -196,6 +351,56 @@
 		height: 100%;
 		object-fit: cover;
 		border-radius: 0.5rem;
+	}
+
+	/* Flip Button - positioned on the card face */
+	.flip-button {
+		position: absolute;
+		bottom: 0.5rem;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 15;
+		background: rgba(0, 0, 0, 0.9);
+		backdrop-filter: blur(8px);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 0.5rem;
+		padding: 0.375rem 0.625rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		transition: all 0.2s ease;
+		cursor: pointer;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+	}
+
+	.flip-button:hover {
+		background: rgba(0, 0, 0, 1);
+		border-color: rgba(255, 255, 255, 0.5);
+		transform: translateX(-50%) scale(1.1);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+	}
+
+	.flip-button:active {
+		transform: translateX(-50%) scale(0.95);
+	}
+
+	.flip-button svg {
+		color: white;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+	}
+
+	/* Ensure flip button is visible on back face (undo the Y rotation) */
+	.card-face--back .flip-button {
+		transform: translateX(-50%) rotateY(180deg);
+	}
+
+	.card-face--back .flip-button:hover {
+		transform: translateX(-50%) rotateY(180deg) scale(1.1);
+	}
+
+	.card-face--back .flip-button:active {
+		transform: translateX(-50%) rotateY(180deg) scale(0.95);
 	}
 
 	.card-placeholder {
