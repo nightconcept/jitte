@@ -834,10 +834,8 @@
 				<!-- Deck List -->
 				<DeckList onCardHover={handleCardHover} onImport={handleImport} />
 
-				<!-- Statistics Panel (Bottom, Collapsible) -->
-				<div class="border-t border-[var(--color-border)]">
-					<Statistics />
-				</div>
+				<!-- Statistics Section -->
+				<Statistics />
 			</div>
 
 			<!-- Maybeboard Sidebar (Right, Sticky) -->

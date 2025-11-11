@@ -76,42 +76,44 @@
 	);
 </script>
 
-<div class="space-y-3">
+<div class="space-y-4 text-sm sm:text-base">
 	<!-- Calculator controls -->
-	<div class="bg-[var(--color-surface)] rounded p-3 space-y-2">
-		<div class="flex items-center justify-between">
-			<span class="text-xs font-medium text-[var(--color-text-primary)]">Probability of drawing</span>
-			<div class="flex items-center gap-2">
-				<label class="text-xs text-[var(--color-text-secondary)]">Cards drawn:</label>
+	<div class="bg-[var(--color-surface)] rounded-lg p-4 space-y-3 border border-[var(--color-border)]">
+		<div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+			<span class="font-semibold text-[var(--color-text-primary)]">Probability of drawing</span>
+			<div class="flex items-center gap-2 justify-between sm:justify-end text-sm sm:text-base">
+				<label class="text-[var(--color-text-secondary)]">Cards drawn:</label>
 				<input
 					type="number"
 					bind:value={cardsDrawn}
 					min="0"
 					max={adjustedTotalCards}
-					class="w-16 px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary)]"
+					class="w-20 px-2 py-1 text-sm sm:text-base bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary)]"
 				/>
 			</div>
 		</div>
-		<p class="text-xs text-[var(--color-text-tertiary)] italic">
+		<p class="text-[var(--color-text-tertiary)] italic text-xs sm:text-sm">
 			at least 1 card from each category
 		</p>
 	</div>
 
 	<!-- Probability table -->
-	<div class="space-y-1">
-		<div class="grid grid-cols-3 gap-2 text-xs font-semibold text-[var(--color-text-tertiary)] px-2">
+	<div class="rounded-lg border border-[var(--color-border)] overflow-hidden">
+		<div class="grid grid-cols-[1.2fr_0.55fr_0.55fr] gap-2 text-xs sm:text-sm font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wide bg-[var(--color-surface)] px-4 py-2">
 			<div>Category</div>
 			<div class="text-right">Qty</div>
 			<div class="text-right">Odds</div>
 		</div>
-		{#each probabilities as { type, count, probability }}
-			<div class="grid grid-cols-3 gap-2 text-xs px-2 py-1 hover:bg-[var(--color-surface)] rounded transition-colors">
-				<div class="text-[var(--color-text-secondary)] capitalize">{type}</div>
-				<div class="text-[var(--color-text-primary)] text-right font-medium">{count}</div>
-				<div class="text-[var(--color-text-primary)] text-right font-medium">
-					{probability.toFixed(1)}%
+		<div class="divide-y divide-[var(--color-border)] bg-[var(--color-bg-primary)]">
+			{#each probabilities as { type, count, probability }}
+				<div class="grid grid-cols-[1.2fr_0.55fr_0.55fr] gap-2 px-4 py-2 text-sm sm:text-base items-center hover:bg-[var(--color-surface)] transition-colors">
+					<div class="text-[var(--color-text-secondary)] capitalize font-medium">{type}</div>
+					<div class="text-[var(--color-text-primary)] text-right font-semibold">{count}</div>
+					<div class="text-[var(--color-text-primary)] text-right font-semibold">
+						{probability.toFixed(1)}%
+					</div>
 				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</div>
 </div>

@@ -166,11 +166,13 @@ function parseLine(line: string): Card | null {
 	for (const pattern of patterns) {
 		const match = cleanedLine.match(pattern);
 		if (match) {
+			const normalizeName = (value: string) => normalizeCardName(value.trim());
+
 			// Pattern 1: full format with set and collector number
 			if (match.length === 5) {
 				return {
 					quantity: parseInt(match[1], 10),
-					name: match[2].trim(),
+					name: normalizeName(match[2]),
 					setCode: match[3].toUpperCase(),
 					collectorNumber: match[4]
 				};
@@ -180,7 +182,7 @@ function parseLine(line: string): Card | null {
 			if (match.length === 4 && match[3]) {
 				return {
 					quantity: parseInt(match[1], 10),
-					name: match[2].trim(),
+					name: normalizeName(match[2]),
 					setCode: match[3].toUpperCase()
 				};
 			}
@@ -189,7 +191,7 @@ function parseLine(line: string): Card | null {
 			if (match.length === 3 && match[1].match(/^\d+$/)) {
 				return {
 					quantity: parseInt(match[1], 10),
-					name: match[2].trim()
+					name: normalizeName(match[2])
 				};
 			}
 
@@ -197,7 +199,7 @@ function parseLine(line: string): Card | null {
 			if (match.length === 2) {
 				return {
 					quantity: 1,
-					name: match[1].trim()
+					name: normalizeName(match[1])
 				};
 			}
 		}
@@ -273,4 +275,18 @@ export function mergeDuplicates(cards: Card[]): Card[] {
 	}
 
 	return Array.from(cardMap.values());
+}
+
+/**
+ * Normalizes card names to match Scryfall formatting quirks
+ */
+function normalizeCardName(name: string): string {
+	const trimmed = name.trim();
+
+	// Moxfield exports modal/split cards using " / " while Scryfall expects " // "
+	if (!trimmed.includes('//') && /\s\/\s/.test(trimmed)) {
+		return trimmed.replace(/\s\/\s/g, ' // ');
+	}
+
+	return trimmed;
 }

@@ -522,7 +522,7 @@
 					<!-- Category Header -->
 					<button
 						onclick={() => toggleCategory(category)}
-						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/5 transition-colors rounded-t-lg"
+						class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
 					>
 						<div class="flex items-center gap-3">
 							<svg
@@ -537,7 +537,7 @@
 							{#if categoryIcons[category]}
 								<i class="ms {categoryIcons[category]} text-base text-[var(--color-text-primary)]"></i>
 							{/if}
-							<span class="font-semibold text-[var(--color-text-primary)]">
+							<span class="font-semibold text-[var(--color-brand-primary)] transition-colors group-hover:text-[var(--color-brand-secondary)]">
 								{categoryLabels[category]}
 							</span>
 							<span class="text-sm text-[var(--color-text-tertiary)]">

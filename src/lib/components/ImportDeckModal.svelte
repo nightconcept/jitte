@@ -68,18 +68,13 @@
           }
         }
       } else {
-        // If no tags, try to detect from first 1-2 lines
-        const firstCards = result.cards.slice(0, 2);
-        for (const parsedCard of firstCards) {
-          const card = await fetchAndValidateCommander(parsedCard.name);
-          if (card) {
-            detectedCommanders.push(card);
-            // Stop after finding 2 valid commanders
-            if (detectedCommanders.length >= 2) break;
-          } else {
-            // If first card is not a valid commander, stop looking
-            break;
-          }
+        // If no tags, try first couple of entries
+        await tryCommanderCandidates(result.cards.slice(0, 2), detectedCommanders);
+
+        // Moxfield exports often place the commander last; try trailing entries if needed
+        if (detectedCommanders.length < 2) {
+          const trailingCards = getTrailingCards(result.cards, 2);
+          await tryCommanderCandidates(trailingCards, detectedCommanders);
         }
       }
 
@@ -92,6 +87,26 @@
     } finally {
       isDetectingCommanders = false;
     }
+  }
+
+  async function tryCommanderCandidates(
+    candidates: Card[],
+    detectedCommanders: Card[],
+  ): Promise<void> {
+    for (const parsedCard of candidates) {
+      if (!parsedCard || detectedCommanders.length >= 2) break;
+      if (detectedCommanders.some((card) => card.name === parsedCard.name)) continue;
+
+      const card = await fetchAndValidateCommander(parsedCard.name);
+      if (card && !detectedCommanders.some((c) => c.name === card.name)) {
+        detectedCommanders.push(card);
+      }
+    }
+  }
+
+  function getTrailingCards(cards: Card[], count: number): Card[] {
+    if (cards.length === 0) return [];
+    return cards.slice(Math.max(cards.length - count, 0));
   }
 
   async function fetchAndValidateCommander(cardName: string): Promise<Card | null> {
@@ -204,6 +219,9 @@
         >
           Commander(s) <span class="text-red-500">*</span>
         </label>
+        <p class="text-xs text-[var(--color-text-secondary)] mb-2">
+          We'll attempt to auto-detect commander names from decklist tags, early cards, or the final entries (Moxfield format) to speed things up.
+        </p>
         {#if isDetectingCommanders}
           <div class="px-4 py-3 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 flex items-center gap-2">
             <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
