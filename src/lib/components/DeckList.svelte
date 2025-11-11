@@ -932,6 +932,7 @@
 	}
 
 	/* Stacks View Layout - CSS Columns Masonry */
+	/* Using column-width instead of column-count allows unlimited responsive columns */
 	.stacks-view-container {
 		column-width: 165px;
 		column-gap: 0.5rem;
@@ -957,6 +958,30 @@
 
 	@media (min-width: 1536px) {
 		.stacks-view-container {
+			column-gap: 1rem;
+		}
+	}
+
+	/* 2400px - Ultrawides: start adding more columns */
+	@media (min-width: 2400px) {
+		.stacks-view-container {
+			column-width: 180px;
+			column-gap: 1rem;
+		}
+	}
+
+	/* 2800px - Wide ultrawides: ~12-14 columns */
+	@media (min-width: 2800px) {
+		.stacks-view-container {
+			column-width: 175px;
+			column-gap: 1rem;
+		}
+	}
+
+	/* 3200px - Very wide (3440x1440): ~14-16 columns */
+	@media (min-width: 3200px) {
+		.stacks-view-container {
+			column-width: 170px;
 			column-gap: 1rem;
 		}
 	}
