@@ -49,9 +49,10 @@
 	const totalQuantity = $derived(cards.reduce((sum, card) => sum + card.quantity, 0));
 
 	// Calculate minimum height needed for the stack based on number of cards
-	// Each card adds 36px offset (increased for readability), plus the base card height
+	// Each card adds 38px offset (increased for readability), plus the base card height
 	// Card width is ~200px at 1024px+, which gives ~280px height (5:7 aspect ratio)
-	const stackHeight = $derived(totalQuantity * 36 + 280);
+	// Add 40px buffer so pushed-down cards' title frames remain visible
+	const stackHeight = $derived(totalQuantity * 38 + 280 + 40);
 
 	// Track which card is being hovered (by stack index)
 	let hoveredStackIndex = $state<number | null>(null);
@@ -207,12 +208,12 @@
 	.stacks-container {
 		position: relative;
 		padding-bottom: 1rem;
-		overflow: visible;
+		overflow: hidden;
 	}
 
 	.stacks-card {
 		position: absolute;
-		top: calc(var(--stack-index) * 36px);
+		top: calc(var(--stack-index) * 38px);
 		left: 0;
 		width: 100%;
 		aspect-ratio: 5 / 7;
@@ -225,7 +226,7 @@
 
 	/* Cards above the hovered card move down to fully reveal it including pricing */
 	.stacks-card-pushed {
-		top: calc(var(--stack-index) * 36px + 310px);
+		top: calc(var(--stack-index) * 38px + 310px);
 	}
 
 	.stacks-card-image {
