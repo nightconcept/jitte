@@ -434,7 +434,7 @@
 	}
 </script>
 
-<div class="flex-1 p-6 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
+<div class="flex-1 px-6 pt-6 pb-2 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
 	<!-- Card Search (Edit Mode Only) -->
 	{#if isEditing}
 		<div class="mb-4">
@@ -937,7 +937,7 @@
 		column-width: 165px;
 		column-gap: 0.5rem;
 		padding: 0;
-		margin-bottom: 3rem;
+		margin-bottom: 0.5rem;
 		overflow: visible;
 	}
 
