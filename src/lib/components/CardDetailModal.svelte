@@ -205,9 +205,9 @@
 						<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-brand-primary)]"></div>
 					</div>
 				{:else if scryfallCard}
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start min-h-[calc(90vh-16rem)]">
 						<!-- Left Column: Card Image with Flip Functionality -->
-						<div class="flex flex-col items-center sticky top-0 self-start">
+						<div class="flex flex-col items-center sticky top-0 self-start h-[calc(90vh-16rem)]">
 							<div class="card-preview-wrapper w-full max-w-sm flex flex-col">
 								<CardPreview
 									hoveredCard={cardWithFaces}
@@ -370,10 +370,10 @@
 		animation: scale-in 150ms ease-out;
 	}
 
-	/* Card preview wrapper - provide explicit dimensions for scaling */
+	/* Card preview wrapper - fill parent height */
 	.card-preview-wrapper {
 		width: 100%;
-		height: calc(90vh - 16rem);
+		height: 100%;
 		max-width: 24rem;
 		display: flex;
 		flex-direction: column;
