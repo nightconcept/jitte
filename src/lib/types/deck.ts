@@ -158,6 +158,18 @@ export interface DeckStatistics {
 	/** Number of early-game (fast) combos detected */
 	earlyGameComboCount?: number;
 
+	/** Number of late-game combos detected */
+	lateGameComboCount?: number;
+
+	/** Whether deck has mass land denial cards */
+	hasMassLandDenial?: boolean;
+
+	/** Whether deck has extra turn cards */
+	hasExtraTurns?: boolean;
+
+	/** Whether deck has chaining extra turn cards */
+	hasChainingExtraTurns?: boolean;
+
 	/** Whether combo detection is in progress */
 	combosLoading?: boolean;
 

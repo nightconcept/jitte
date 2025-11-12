@@ -204,16 +204,12 @@ export class CommanderSpellbookClient {
 	 * @param maxResults - Maximum number of combos to return (default: 50)
 	 */
 	async findCombosInDeck(cardNames: string[], maxResults: number = 50): Promise<ComboVariant[]> {
-		console.log('[COMBO API DEBUG] findCombosInDeck called with', cardNames.length, 'cards');
-
 		if (cardNames.length === 0) {
 			return [];
 		}
 
 		// Create a Set for O(1) lookup
 		const cardSet = new Set(cardNames.map((name) => name.toLowerCase().trim()));
-		console.log('[COMBO API DEBUG] Card set created with', cardSet.size, 'unique cards');
-		console.log('[COMBO API DEBUG] Sample cards in set:', Array.from(cardSet).slice(0, 5));
 
 		// Track unique combos by ID
 		const comboMap = new Map<string, ComboVariant>();
@@ -222,22 +218,13 @@ export class CommanderSpellbookClient {
 		const basicLands = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Wastes']);
 		const searchableCards = cardNames.filter((name) => !basicLands.has(name));
 
-		// Search ALL non-basic cards
-		// With 100ms rate limiting, a 100-card deck takes ~10 seconds on first load
-		// But results are cached for 7 days, so subsequent loads are instant
+		// Search all non-basic cards
 		const cardsToSearch = searchableCards;
-		console.log('[COMBO API DEBUG] Searching', cardsToSearch.length, 'non-basic cards');
 
-		let searchCount = 0;
 		for (const cardName of cardsToSearch) {
 			try {
 				const query = `card:"${cardName}"`;
 				const response = await this.searchVariants(query, 50);
-				searchCount++;
-
-				if (response.results.length > 0) {
-					console.log(`[COMBO API DEBUG] Card "${cardName}" found ${response.results.length} combos`);
-				}
 
 				// Add combos to map (deduplicates automatically)
 				for (const variant of response.results) {
@@ -246,16 +233,13 @@ export class CommanderSpellbookClient {
 					}
 				}
 			} catch (error) {
-				console.error(`[COMBO API DEBUG] Error searching for combos with ${cardName}:`, error);
+				console.error(`Error searching for combos with ${cardName}:`, error);
 				// Continue with other cards
 			}
 		}
 
-		console.log(`[COMBO API DEBUG] Searched ${searchCount} cards, found ${comboMap.size} unique combos`);
-
 		// Filter to combos where ALL required cards are in the deck
 		const allCombos = Array.from(comboMap.values());
-		console.log('[COMBO API DEBUG] Filtering combos...');
 
 		const completeCombos = allCombos.filter((variant) => {
 			// Check if all required cards are present in the deck
@@ -270,38 +254,8 @@ export class CommanderSpellbookClient {
 			// If there are templates, we can't easily verify, so we exclude those combos
 			const hasTemplateRequirements = variant.requires.some((req) => req.template !== undefined);
 
-			const passes = allCardsPresent && !hasTemplateRequirements;
-
-			if (!passes && variant.uses.some(u => u.card.name.toLowerCase().includes('kenrith'))) {
-				console.log('[COMBO API DEBUG] Kenrith combo filtered out:', {
-					id: variant.id,
-					requiredCards,
-					allCardsPresent,
-					hasTemplateRequirements,
-					cardSetHas: requiredCards.map(rc => ({ card: rc, inDeck: cardSet.has(rc) }))
-				});
-			}
-
-			// Special debug for the specific combo we're looking for
-			if (variant.id === '1872-5140') {
-				console.log('[COMBO API DEBUG] ⭐ Found the Kenrith + Composite Golem combo!', {
-					id: variant.id,
-					requiredCards,
-					allCardsPresent,
-					hasTemplateRequirements,
-					cardSetHas: requiredCards.map(rc => ({
-						card: rc,
-						inDeck: cardSet.has(rc),
-						similarInDeck: Array.from(cardSet).filter(c => c.includes('kenrith') || c.includes('composite'))
-					})),
-					passes
-				});
-			}
-
-			return passes;
+			return allCardsPresent && !hasTemplateRequirements;
 		});
-
-		console.log('[COMBO API DEBUG] After filtering:', completeCombos.length, 'complete combos');
 
 		return completeCombos.slice(0, maxResults);
 	}
@@ -332,21 +286,35 @@ export class CommanderSpellbookClient {
 	}
 
 	/**
-	 * Categorize combo speed based on mana requirements and results
+	 * Categorize combo speed based on mana requirements
 	 *
-	 * - early: Low CMC (≤4), fast to execute
-	 * - mid: Medium CMC (5-7), moderate setup
-	 * - late: High CMC (8+), slow/expensive
+	 * For bracket purposes:
+	 * - early: Can win before turn 6-7 (total mana ≤6), pushes to Bracket 4
+	 * - mid: Wins turn 7-10 (total mana 7-9)
+	 * - late: Wins turn 10+ (total mana ≥10), Bracket 3 acceptable
+	 *
+	 * Uses manaValueNeeded if available, otherwise estimates from card types
 	 */
 	categorizeComboSpeed(variant: ComboVariant): 'early' | 'mid' | 'late' {
-		const totalCmc = variant.uses.reduce((sum, use) => {
-			// Estimate CMC from card type if not available
-			// This is a rough heuristic
-			return sum + (use.card.typeLine.includes('Land') ? 0 : 3);
-		}, 0);
+		let totalMana: number;
 
-		if (totalCmc <= 4) return 'early';
-		if (totalCmc <= 7) return 'mid';
+		// Use manaValueNeeded if available (most accurate)
+		if (variant.manaValueNeeded !== undefined && variant.manaValueNeeded > 0) {
+			totalMana = variant.manaValueNeeded;
+		} else {
+			// Estimate from card CMC (rough heuristic)
+			totalMana = variant.uses.reduce((sum, use) => {
+				if (use.card.typeLine.includes('Land')) return sum;
+				// Estimate 3 CMC for unknown cards
+				return sum + 3;
+			}, 0);
+		}
+
+		// Bracket-relevant thresholds
+		// Early: Can execute turns 4-6 → Bracket 4
+		// Late: Executes turn 7+ → Bracket 3
+		if (totalMana <= 6) return 'early';
+		if (totalMana <= 9) return 'mid';
 		return 'late';
 	}
 }

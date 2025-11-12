@@ -5,7 +5,13 @@
 import type { Deck, DeckStatistics } from '$lib/types/deck';
 import type { Card, CardCategory, ManaColor } from '$lib/types/card';
 import { validateDeck } from './deck-validation';
-import { countGameChangers, calculateBracketLevel } from './game-changers';
+import {
+	countGameChangers,
+	calculateBracketLevel,
+	hasMassLandDenial,
+	hasExtraTurns,
+	hasChainingExtraTurns
+} from './game-changers';
 
 /**
  * Calculate comprehensive deck statistics
@@ -367,13 +373,22 @@ export async function enrichStatisticsWithCombos(
 		// Detect combos
 		const comboResult = await detectCombos(deck, useCache);
 
-		// Recalculate bracket level with combo data
+		// Recalculate bracket level with combo data and all bracket criteria
 		const uniqueCardNames = getUniqueCardNames(deck);
 		const gameChangerCount = countGameChangers(uniqueCardNames);
 
+		// Calculate late-game combo count (mid + late speed combos)
+		const lateGameComboCount = comboResult.combos.filter(
+			(c) => c.speed === 'late' || c.speed === 'mid'
+		).length;
+
 		const bracketLevel = calculateBracketLevel(gameChangerCount, {
 			twoCardComboCount: comboResult.twoCardCombos.length,
-			earlyGameComboCount: comboResult.earlyGameCombos.length
+			earlyGameComboCount: comboResult.earlyGameCombos.length,
+			lateGameComboCount,
+			hasMassLandDestruction: hasMassLandDenial(uniqueCardNames),
+			hasExtraTurns: hasExtraTurns(uniqueCardNames),
+			hasChainingExtraTurns: hasChainingExtraTurns(uniqueCardNames)
 		});
 
 		// Return enriched statistics
@@ -382,6 +397,10 @@ export async function enrichStatisticsWithCombos(
 			combos: comboResult.combos,
 			twoCardComboCount: comboResult.twoCardCombos.length,
 			earlyGameComboCount: comboResult.earlyGameCombos.length,
+			lateGameComboCount,
+			hasMassLandDenial: hasMassLandDenial(uniqueCardNames),
+			hasExtraTurns: hasExtraTurns(uniqueCardNames),
+			hasChainingExtraTurns: hasChainingExtraTurns(uniqueCardNames),
 			bracketLevel, // Updated bracket with combo data
 			combosLoading: false,
 			combosError: undefined

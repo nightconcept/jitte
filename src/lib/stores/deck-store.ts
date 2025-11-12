@@ -587,6 +587,19 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Update statistics (e.g., after combo detection completes)
+		 */
+		updateStatistics(statistics: DeckStatistics): void {
+			update((state) => {
+				if (!state) return state;
+				return {
+					...state,
+					statistics
+				};
+			});
+		},
+
+		/**
 		 * Add a card to the maybeboard
 		 */
 		addCardToMaybeboard(card: Card, categoryId?: string): void {

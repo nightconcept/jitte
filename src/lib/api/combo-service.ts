@@ -77,13 +77,10 @@ export async function detectCombos(
 ): Promise<ComboDetectionResult> {
 	const startTime = performance.now();
 
-	console.log('[COMBO DEBUG] Starting combo detection for deck:', deck.name);
-
 	// Check cache first
 	if (useCache) {
 		const cached = getCachedCombos(deck);
 		if (cached) {
-			console.log('[COMBO DEBUG] Using cached results');
 			return {
 				...cached,
 				cached: true,
@@ -94,24 +91,10 @@ export async function detectCombos(
 
 	// Extract unique card names from deck
 	const cardNames = getUniqueCardNames(deck);
-	console.log('[COMBO DEBUG] Extracted card names:', {
-		total: cardNames.length,
-		first10: cardNames.slice(0, 10),
-		hasKenrith: cardNames.some(n => n.toLowerCase().includes('kenrith')),
-		hasCompositeGolem: cardNames.some(n => n.toLowerCase().includes('composite'))
-	});
 
 	// Query Commander Spellbook API
 	const client = getCommanderSpellbookClient();
-	console.log('[COMBO DEBUG] Calling findCombosInDeck...');
 	const variants = await client.findCombosInDeck(cardNames);
-	console.log('[COMBO DEBUG] Found variants:', {
-		count: variants.length,
-		variants: variants.map(v => ({
-			id: v.id,
-			cards: v.uses.map(u => u.card.name)
-		}))
-	});
 
 	// Convert variants to DetectedCombos
 	const combos: DetectedCombo[] = variants.map((variant) => {
@@ -123,13 +106,6 @@ export async function detectCombos(
 	const twoCardCombos = combos.filter((c) => c.isTwoCard);
 	const infiniteCombos = combos.filter((c) => c.isInfinite);
 	const earlyGameCombos = combos.filter((c) => c.speed === 'early');
-
-	console.log('[COMBO DEBUG] Final results:', {
-		totalCombos: combos.length,
-		twoCardCombos: twoCardCombos.length,
-		infiniteCombos: infiniteCombos.length,
-		earlyGameCombos: earlyGameCombos.length
-	});
 
 	const result: ComboDetectionResult = {
 		combos,

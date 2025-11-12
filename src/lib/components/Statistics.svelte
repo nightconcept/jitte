@@ -54,14 +54,12 @@
 
 			const enrichedStats = await enrichStatisticsWithCombos(deck, statistics);
 
-			// Store combos in local component state (don't update global store)
+			// Update global store with enriched statistics (includes updated bracket level)
+			deckStore.updateStatistics(enrichedStats);
+
+			// Store combos in local component state
 			detectedCombos = enrichedStats.combos ?? [];
 			combosError = enrichedStats.combosError;
-
-			console.log('[COMBO DEBUG] Combos loaded successfully:', {
-				totalCombos: detectedCombos.length,
-				twoCardCombos: twoCardComboCount
-			});
 		} catch (error) {
 			console.error('Failed to load combos:', error);
 			combosError = error instanceof Error ? error.message : 'Unknown error';
@@ -108,14 +106,12 @@
 			// Call enrichStatisticsWithCombos directly with useCache=false
 			const enrichedStats = await enrichStatisticsWithCombos(deck, statistics, false);
 
+			// Update global store with enriched statistics (includes updated bracket level)
+			deckStore.updateStatistics(enrichedStats);
+
 			// Store combos in local component state
 			detectedCombos = enrichedStats.combos ?? [];
 			combosError = enrichedStats.combosError;
-
-			console.log('[COMBO DEBUG] Combos reloaded successfully:', {
-				totalCombos: detectedCombos.length,
-				twoCardCombos: twoCardComboCount
-			});
 		} catch (error) {
 			console.error('Failed to reload combos:', error);
 			combosError = error instanceof Error ? error.message : 'Unknown error';
@@ -381,9 +377,6 @@
 								<p class="mt-2 text-xs text-[var(--color-text-tertiary)]">
 									Searching all non-basic cards in your deck. This may take 5-15 seconds.
 								</p>
-								<p class="mt-1 text-xs text-[var(--color-text-tertiary)]">
-									Results are cached for 7 days - subsequent loads will be instant.
-								</p>
 							</div>
 						{:else if combosError}
 							<div class="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4 text-sm">
@@ -401,9 +394,6 @@
 								<p>No combos detected in this deck.</p>
 								<p class="text-xs mt-2 text-[var(--color-text-tertiary)]">
 									Powered by <a href="https://commanderspellbook.com/" target="_blank" rel="noopener noreferrer" class="text-[var(--color-accent-blue)] hover:underline">Commander Spellbook</a>
-								</p>
-								<p class="text-xs mt-3 text-[var(--color-text-tertiary)] border-t border-[var(--color-border)] pt-3">
-									💡 <strong>Debug tip:</strong> Open browser console (F12) and click the "🔄 Reload" button to see detailed combo detection logs
 								</p>
 							</div>
 						{:else}

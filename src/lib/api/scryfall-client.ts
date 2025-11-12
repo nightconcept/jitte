@@ -16,10 +16,12 @@ import type {
 export interface ScryfallClientConfig {
 	/** Base API URL (default: https://api.scryfall.com) */
 	baseUrl?: string;
-	/** Rate limit delay in ms (default: 100ms) */
+	/** Rate limit delay in ms (default: 150ms for safety margin) */
 	rateLimitMs?: number;
 	/** User agent string for requests */
 	userAgent?: string;
+	/** Maximum retry attempts for rate limit errors (default: 3) */
+	maxRetries?: number;
 }
 
 export class ScryfallApiError extends Error {
@@ -41,28 +43,43 @@ export class ScryfallClient {
 	private baseUrl: string;
 	private rateLimiter: RateLimiter;
 	private userAgent: string;
+	private maxRetries: number;
 
 	constructor(config: ScryfallClientConfig = {}) {
 		this.baseUrl = config.baseUrl ?? 'https://api.scryfall.com';
 		this.userAgent = config.userAgent ?? 'Jitte-MTG-Deck-Manager/1.0';
+		this.maxRetries = config.maxRetries ?? 3;
 		this.rateLimiter = new RateLimiter({
-			minDelayMs: config.rateLimitMs ?? 100
+			minDelayMs: config.rateLimitMs ?? 150 // Increased from 100ms for safety margin
 		});
 	}
 
 	/**
-	 * Make a rate-limited GET request to the Scryfall API
+	 * Make a rate-limited GET request to the Scryfall API with retry logic
 	 */
 	private async request<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
 		return this.rateLimiter.execute(async () => {
-			const url = new URL(endpoint, this.baseUrl);
+			return this.requestWithRetry<T>(endpoint, params);
+		});
+	}
 
-			if (params) {
-				for (const [key, value] of Object.entries(params)) {
-					url.searchParams.append(key, value);
-				}
+	/**
+	 * Execute a request with exponential backoff retry for rate limit errors
+	 */
+	private async requestWithRetry<T>(
+		endpoint: string,
+		params?: Record<string, string>,
+		attempt: number = 0
+	): Promise<T> {
+		const url = new URL(endpoint, this.baseUrl);
+
+		if (params) {
+			for (const [key, value] of Object.entries(params)) {
+				url.searchParams.append(key, value);
 			}
+		}
 
+		try {
 			const response = await fetch(url.toString(), {
 				headers: {
 					'User-Agent': this.userAgent,
@@ -70,22 +87,72 @@ export class ScryfallClient {
 				}
 			});
 
+			// Handle rate limiting (429)
+			if (response.status === 429) {
+				if (attempt < this.maxRetries) {
+					const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+					console.warn(
+						`Rate limited by Scryfall (429). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					return this.requestWithRetry<T>(endpoint, params, attempt + 1);
+				}
+				throw new ScryfallApiError(
+					'Rate limit exceeded',
+					'rate_limit',
+					429,
+					'Too many requests to Scryfall API'
+				);
+			}
+
 			if (!response.ok) {
 				const error = (await response.json()) as ScryfallError;
 				throw new ScryfallApiError(error.details, error.code, error.status, error.details);
 			}
 
 			return response.json() as Promise<T>;
+		} catch (error) {
+			// Handle network errors (often caused by CORS issues from rate limiting)
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				if (attempt < this.maxRetries) {
+					const delay = Math.pow(2, attempt) * 1000;
+					console.warn(
+						`Network error (likely rate limit). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					return this.requestWithRetry<T>(endpoint, params, attempt + 1);
+				}
+				throw new ScryfallApiError(
+					'Network error fetching from Scryfall',
+					'network_error',
+					0,
+					'Failed to fetch card data. This may be due to rate limiting.'
+				);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Make a rate-limited POST request to the Scryfall API with retry logic
+	 */
+	private async postRequest<T>(endpoint: string, body: unknown): Promise<T> {
+		return this.rateLimiter.execute(async () => {
+			return this.postRequestWithRetry<T>(endpoint, body);
 		});
 	}
 
 	/**
-	 * Make a rate-limited POST request to the Scryfall API
+	 * Execute a POST request with exponential backoff retry for rate limit errors
 	 */
-	private async postRequest<T>(endpoint: string, body: unknown): Promise<T> {
-		return this.rateLimiter.execute(async () => {
-			const url = new URL(endpoint, this.baseUrl);
+	private async postRequestWithRetry<T>(
+		endpoint: string,
+		body: unknown,
+		attempt: number = 0
+	): Promise<T> {
+		const url = new URL(endpoint, this.baseUrl);
 
+		try {
 			const response = await fetch(url.toString(), {
 				method: 'POST',
 				headers: {
@@ -96,13 +163,50 @@ export class ScryfallClient {
 				body: JSON.stringify(body)
 			});
 
+			// Handle rate limiting (429)
+			if (response.status === 429) {
+				if (attempt < this.maxRetries) {
+					const delay = Math.pow(2, attempt) * 1000;
+					console.warn(
+						`Rate limited by Scryfall (429). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					return this.postRequestWithRetry<T>(endpoint, body, attempt + 1);
+				}
+				throw new ScryfallApiError(
+					'Rate limit exceeded',
+					'rate_limit',
+					429,
+					'Too many requests to Scryfall API'
+				);
+			}
+
 			if (!response.ok) {
 				const error = (await response.json()) as ScryfallError;
 				throw new ScryfallApiError(error.details, error.code, error.status, error.details);
 			}
 
 			return response.json() as Promise<T>;
-		});
+		} catch (error) {
+			// Handle network errors (often caused by CORS issues from rate limiting)
+			if (error instanceof TypeError && error.message.includes('fetch')) {
+				if (attempt < this.maxRetries) {
+					const delay = Math.pow(2, attempt) * 1000;
+					console.warn(
+						`Network error (likely rate limit). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					return this.postRequestWithRetry<T>(endpoint, body, attempt + 1);
+				}
+				throw new ScryfallApiError(
+					'Network error fetching from Scryfall',
+					'network_error',
+					0,
+					'Failed to fetch card data. This may be due to rate limiting.'
+				);
+			}
+			throw error;
+		}
 	}
 
 	/**

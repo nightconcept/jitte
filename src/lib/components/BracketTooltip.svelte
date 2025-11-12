@@ -4,17 +4,29 @@
 	import BaseTooltip from './BaseTooltip.svelte';
 	import { type Snippet } from 'svelte';
 
-	let { deck, bracketLevel, gameChangers, twoCardComboCount = 0, earlyGameComboCount = 0, children }: {
+	let {
+		deck,
+		bracketLevel,
+		gameChangers,
+		twoCardComboCount = 0,
+		earlyGameComboCount = 0,
+		lateGameComboCount = 0,
+		hasMassLandDenial = false,
+		hasExtraTurns = false,
+		hasChainingExtraTurns = false,
+		children
+	}: {
 		deck: Deck;
 		bracketLevel: BracketLevel;
 		gameChangers: string[];
 		twoCardComboCount?: number;
 		earlyGameComboCount?: number;
+		lateGameComboCount?: number;
+		hasMassLandDenial?: boolean;
+		hasExtraTurns?: boolean;
+		hasChainingExtraTurns?: boolean;
 		children?: Snippet;
 	} = $props();
-
-	// Determine if combos are pushing the bracket level
-	let hasBracket4Combos = $derived(twoCardComboCount > 0 || earlyGameComboCount >= 2);
 </script>
 
 <BaseTooltip
@@ -66,38 +78,66 @@
 		<div class="mt-2 pt-2 criteria-section text-xs">
 			<div class="font-semibold bracket-description mb-1">Bracket Criteria:</div>
 			{#if bracketLevel === 1}
-				<div class="text-green-400">✓ No Game Changers</div>
-				<div class="text-green-400">✓ No 2-card infinite combos</div>
-				<div class="text-green-400">✓ No extra turn cards</div>
-				<div class="text-green-400">✓ No mass land destruction</div>
-			{:else if bracketLevel === 2}
-				<div class="text-green-400">✓ No Game Changers</div>
-				<div class="bracket-secondary">• Precon-level power</div>
-				<div class="bracket-secondary">• Minimal optimization</div>
-			{:else if bracketLevel === 3}
-				<div class="text-amber-400">! 1-3 Game Changers</div>
-				<div class="bracket-secondary">• Upgraded precon or focused casual</div>
-				<div class="bracket-secondary">• Some tutors and fast mana</div>
-			{:else if bracketLevel === 4}
-				{#if hasBracket4Combos}
-				<div class="text-orange-400 font-semibold mb-1">
-					! {twoCardComboCount} 2-card infinite {twoCardComboCount === 1 ? 'combo' : 'combos'} detected
+				<!-- Exhibition: No MLD, no extra turns, no combos, no Game Changers -->
+				<div class="{hasMassLandDenial ? 'text-red-400' : 'text-green-400'}">
+					{hasMassLandDenial ? '✗' : '✓'} No mass land denial
 				</div>
-			{/if}
-			{#if gameChangers.length >= 4}
-				<div class="text-orange-400 font-semibold mb-1">! {gameChangers.length} Game Changers detected</div>
-			{/if}
-				<div class="bracket-secondary">• Multiple fast mana sources</div>
-				<div class="bracket-secondary">• Powerful tutors (Demonic, Vampiric, etc.)</div>
-				<div class="bracket-secondary">• Strong card advantage engines</div>
-				<div class="{hasBracket4Combos ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
-				• Efficient 2-card combos {hasBracket4Combos ? '✓ Detected' : ''}
-			</div>
-				<div class="bracket-secondary">• Free interaction (Force of Will, etc.)</div>
-				<div class="bracket-secondary">• Optimized mana base</div>
+				<div class="{hasExtraTurns ? 'text-red-400' : 'text-green-400'}">
+					{hasExtraTurns ? '✗' : '✓'} No extra turns
+				</div>
+				<div class="{twoCardComboCount > 0 ? 'text-red-400' : 'text-green-400'}">
+					{twoCardComboCount > 0 ? '✗' : '✓'} No 2-card infinite combos
+				</div>
+				<div class="{gameChangers.length > 0 ? 'text-red-400' : 'text-green-400'}">
+					{gameChangers.length > 0 ? '✗' : '✓'} No Game Changers
+				</div>
+			{:else if bracketLevel === 2}
+				<!-- Core: No MLD, no chaining extra turns, no combos, no Game Changers -->
+				<div class="{hasMassLandDenial ? 'text-red-400' : 'text-green-400'}">
+					{hasMassLandDenial ? '✗' : '✓'} No mass land denial
+				</div>
+				<div class="{hasChainingExtraTurns ? 'text-red-400' : 'text-green-400'}">
+					{hasChainingExtraTurns ? '✗' : '✓'} No chaining extra turns
+				</div>
+				<div class="{twoCardComboCount > 0 ? 'text-red-400' : 'text-green-400'}">
+					{twoCardComboCount > 0 ? '✗' : '✓'} No 2-card infinite combos
+				</div>
+				<div class="{gameChangers.length > 0 ? 'text-red-400' : 'text-green-400'}">
+					{gameChangers.length > 0 ? '✗' : '✓'} No Game Changers
+				</div>
+			{:else if bracketLevel === 3}
+				<!-- Upgraded: No MLD, no chaining turns, late-game combos OK, up to 3 Game Changers -->
+				<div class="{hasMassLandDenial ? 'text-red-400' : 'text-green-400'}">
+					{hasMassLandDenial ? '✗' : '✓'} No mass land denial
+				</div>
+				<div class="{hasChainingExtraTurns ? 'text-red-400' : 'text-green-400'}">
+					{hasChainingExtraTurns ? '✗' : '✓'} No chaining extra turns
+				</div>
+				<div class="{lateGameComboCount > 0 ? 'text-amber-400' : 'text-green-400'}">
+					{lateGameComboCount > 0 ? '✓' : '○'} Late-game combos OK {lateGameComboCount > 0 ? `(${lateGameComboCount})` : ''}
+				</div>
+				<div class="{gameChangers.length > 0 && gameChangers.length <= 3 ? 'text-amber-400' : gameChangers.length > 3 ? 'text-red-400' : 'text-green-400'}">
+					{gameChangers.length > 3 ? '✗' : gameChangers.length > 0 ? '✓' : '○'} Up to 3 Game Changers {gameChangers.length > 0 ? `(${gameChangers.length})` : ''}
+				</div>
+			{:else if bracketLevel === 4}
+				<!-- Optimized: Any of these push to Bracket 4 -->
+				<div class="font-semibold bracket-description mb-1">Triggers (any applies):</div>
+				<div class="{hasMassLandDenial ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
+					{hasMassLandDenial ? '! Mass land denial detected' : '○ Mass land denial'}
+				</div>
+				<div class="{hasChainingExtraTurns ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
+					{hasChainingExtraTurns ? '! Chaining extra turns detected' : '○ Chaining extra turns'}
+				</div>
+				<div class="{earlyGameComboCount > 0 ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
+					{earlyGameComboCount > 0 ? `! ${earlyGameComboCount} early-game ${earlyGameComboCount === 1 ? 'combo' : 'combos'} detected` : '○ Early-game 2-card combos'}
+				</div>
+				<div class="{gameChangers.length >= 4 ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
+					{gameChangers.length >= 4 ? `! ${gameChangers.length} Game Changers detected` : '○ 4+ Game Changers'}
+				</div>
 			{:else if bracketLevel === 5}
+				<!-- cEDH: No restrictions -->
 				<div class="text-red-400 font-semibold">! Competitive EDH (cEDH)</div>
-				<div class="bracket-secondary">• No restrictions on power level</div>
+				<div class="bracket-secondary">• No restrictions except banned list</div>
 				<div class="bracket-secondary">• Turn 3-4 wins expected</div>
 				<div class="bracket-secondary">• Maximum optimization</div>
 			{/if}
