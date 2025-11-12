@@ -22,7 +22,9 @@
 		pricingSize = 'xs',
 		badgeSize = 'normal',
 		showFlipButtonOnHover = false,
+		showInfoButton = false,
 		onClick = undefined,
+		onInfoClick = undefined,
 		onHover = undefined,
 		onDragStart = undefined,
 		onDragEnd = undefined,
@@ -37,7 +39,9 @@
 		pricingSize?: 'sm' | 'xs';
 		badgeSize?: 'small' | 'normal' | 'large';
 		showFlipButtonOnHover?: boolean;
+		showInfoButton?: boolean;
 		onClick?: (card: Card) => void;
+		onInfoClick?: (card: Card) => void;
 		onHover?: (card: Card | null) => void;
 		onDragStart?: (event: DragEvent, card: Card, category: CardCategory) => void;
 		onDragEnd?: () => void;
@@ -137,6 +141,12 @@
 		if (isDoubleFaced) {
 			currentFaceIndex = currentFaceIndex === 0 ? 1 : 0;
 		}
+	}
+
+	function handleInfoClick(event: MouseEvent) {
+		// Stop propagation to prevent triggering card click
+		event.stopPropagation();
+		onInfoClick?.(card);
 	}
 
 	function handleDragStart(event: DragEvent) {
@@ -249,6 +259,33 @@
 					<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
 					<path d="M7 21l-4-4 4-4" />
 					<path d="M21 13v1a4 4 0 0 1-4 4H3" />
+				</svg>
+			</button>
+		{/if}
+
+		<!-- Info Button - Top right, shows on hover -->
+		{#if showInfoButton}
+			<button
+				type="button"
+				onclick={handleInfoClick}
+				class="info-button"
+				aria-label="View card details"
+				title="View card details"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="12" r="10"></circle>
+					<line x1="12" y1="16" x2="12" y2="12"></line>
+					<line x1="12" y1="8" x2="12.01" y2="8"></line>
 				</svg>
 			</button>
 		{/if}
@@ -425,6 +462,49 @@
 	.card-display-container:hover .flip-button-hover-only {
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	/* Info Button - positioned on the card face, top-right below title */
+	.info-button {
+		position: absolute;
+		top: 3.5rem; /* Same as flip button for consistency */
+		right: 0.5rem; /* Right side instead of left */
+		z-index: 15;
+		background: rgba(0, 0, 0, 0.9);
+		backdrop-filter: blur(8px);
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-radius: 0.5rem;
+		padding: 0.375rem 0.625rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		transition: all 0.2s ease;
+		cursor: pointer;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.card-display-container:hover .info-button {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.info-button:hover {
+		background: rgba(0, 0, 0, 1);
+		border-color: rgba(255, 255, 255, 0.5);
+		transform: scale(1.1);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+	}
+
+	.info-button:active {
+		transform: scale(0.95);
+	}
+
+	.info-button svg {
+		color: white;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 	}
 
 	.card-placeholder {

@@ -53,7 +53,15 @@
 	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
 	let commanderToReplaceIndex = $state<number>(0);
 
-	function handleCardClick(card: Card) {
+	function handleCardClick(card: Card, stackIndex: number) {
+		// Hold this card (or switch to it if another was held)
+		heldStackIndex = stackIndex;
+		heldCard = card;
+		onCardHover?.(card); // Keep the preview stuck to this card
+	}
+
+	function handleInfoClick(card: Card) {
+		// Open the detail modal
 		onCardClick?.(card);
 	}
 
@@ -96,12 +104,29 @@
 	// Track which card is being hovered (by stack index)
 	let hoveredStackIndex = $state<number | null>(null);
 
+	// Track which card is being held (clicked and locked)
+	let heldStackIndex = $state<number | null>(null);
+	let heldCard = $state<Card | null>(null);
+
 	function handleCardMouseEnter(stackIndex: number, card: Card) {
-		hoveredStackIndex = stackIndex;
-		onCardHover?.(card);
+		// Only process hover if there's no held card
+		if (heldStackIndex === null) {
+			hoveredStackIndex = stackIndex;
+			onCardHover?.(card);
+		}
 	}
 
 	function handleCardMouseLeave() {
+		// Only process hover leave if there's no held card
+		if (heldStackIndex === null) {
+			hoveredStackIndex = null;
+			onCardHover?.(null);
+		}
+	}
+
+	function clearHeldCard() {
+		heldStackIndex = null;
+		heldCard = null;
 		hoveredStackIndex = null;
 		onCardHover?.(null);
 	}
@@ -209,6 +234,47 @@
 			};
 		}
 	});
+
+	// Click outside to clear held card
+	let stacksContainerRef = $state<HTMLDivElement>();
+
+	$effect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			const target = event.target as Node;
+			// Clear held card if clicking outside the stacks container
+			// (but clicking inside will be handled by handleCardClick)
+			if (heldStackIndex !== null && stacksContainerRef && !stacksContainerRef.contains(target)) {
+				// Also check if clicking the context menu - if so, don't clear
+				if (menuRef && menuRef.contains(target)) {
+					return;
+				}
+				clearHeldCard();
+			}
+		}
+
+		if (heldStackIndex !== null) {
+			document.addEventListener('mousedown', handleClickOutside);
+			return () => {
+				document.removeEventListener('mousedown', handleClickOutside);
+			};
+		}
+	});
+
+	// Clear held card on escape
+	$effect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key === 'Escape' && heldStackIndex !== null) {
+				clearHeldCard();
+			}
+		}
+
+		if (heldStackIndex !== null) {
+			document.addEventListener('keydown', handleKeyDown);
+			return () => {
+				document.removeEventListener('keydown', handleKeyDown);
+			};
+		}
+	});
 </script>
 
 <div class="stacks-category">
@@ -226,19 +292,22 @@
 	</div>
 
 	<!-- Card Stack -->
-	<div class="stacks-container" style="min-height: {stackHeight}px;">
+	<div bind:this={stacksContainerRef} class="stacks-container" style="min-height: {stackHeight}px;">
 		{#each cards as card, cardIndex}
 			{@const stackIndex = cardIndex}
-			{@const shouldMoveDown = hoveredStackIndex !== null && stackIndex > hoveredStackIndex}
+			{@const effectiveStackIndex = heldStackIndex !== null ? heldStackIndex : hoveredStackIndex}
+			{@const shouldMoveDown = effectiveStackIndex !== null && stackIndex > effectiveStackIndex}
+			{@const isHeld = heldStackIndex === stackIndex}
 
 			<!-- Render one card per unique card (no copies) -->
 			<div
 				class="stacks-card"
 				class:stacks-card-pushed={shouldMoveDown}
+				class:stacks-card-held={isHeld}
 				style="--stack-index: {stackIndex}"
 			>
 				<div
-					onclick={() => handleCardClick(card)}
+					onclick={() => handleCardClick(card, stackIndex)}
 					oncontextmenu={(e) => handleCardRightClick(e, card)}
 					role="button"
 					tabindex="0"
@@ -251,6 +320,8 @@
 						pricingSize="sm"
 						badgeSize="normal"
 						showFlipButtonOnHover={true}
+						showInfoButton={true}
+						onInfoClick={handleInfoClick}
 						onHover={(c) => c ? handleCardMouseEnter(stackIndex, c) : handleCardMouseLeave()}
 						onDragStart={handleCardDragStart}
 						onDragEnd={handleCardDragEnd}
@@ -445,6 +516,21 @@
 	.stacks-card-pushed {
 		top: calc(var(--stack-index) * 38px + 340px);
 		transition: top 0.35s ease 0.05s;
+	}
+
+	/* Held card gets a visual outline to indicate it's selected */
+	.stacks-card-held {
+		z-index: 40; /* Above other cards (which use var(--stack-index)) but below modals (z-50) */
+	}
+
+	/* Apply visible borders on all sides to the card image container, not the pricing */
+	.stacks-card-held :global(.card-image-container) {
+		border: 3px solid var(--color-accent-yellow);
+		box-shadow:
+			-4px 0 8px rgba(255, 204, 0, 0.4),
+			4px 0 8px rgba(255, 204, 0, 0.4),
+			0 -4px 8px rgba(255, 204, 0, 0.4),
+			0 4px 8px rgba(255, 204, 0, 0.4);
 	}
 
 	/* Context Menu */
