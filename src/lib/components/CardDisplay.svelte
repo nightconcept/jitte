@@ -69,26 +69,10 @@
 			!enrichedCardsCache.has(cacheKey);
 
 		if (needsEnrichment) {
-			console.log('[CardDisplay] ⚡ Enrichment triggered for:', card.name, {
-				reason: isMissingCardFaces ? 'missing cardFaces' : 'missing back face images',
-				hasCardFaces: !!card.cardFaces,
-				cardFacesLength: card.cardFaces?.length,
-				backFaceImageUrls: card.cardFaces?.[1]?.imageUrls
-			});
 			enrichedCardsCache.add(cacheKey);
 
 			cardService.getCardByName(card.name).then(scryfallCard => {
 				if (scryfallCard && scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
-					console.log('[CardDisplay] ✅ Received Scryfall data for:', card.name, {
-						facesCount: scryfallCard.card_faces.length,
-						frontFaceName: scryfallCard.card_faces[0].name,
-						backFaceName: scryfallCard.card_faces[1].name,
-						frontHasImages: !!scryfallCard.card_faces[0].image_uris,
-						backHasImages: !!scryfallCard.card_faces[1].image_uris,
-						frontNormal: scryfallCard.card_faces[0].image_uris?.normal,
-						backNormal: scryfallCard.card_faces[1].image_uris?.normal
-					});
-
 					const cardFaces = scryfallCard.card_faces.map(face => ({
 						name: face.name,
 						manaCost: face.mana_cost,
@@ -110,17 +94,9 @@
 
 					// Update the card in the deck store with the enriched data
 					deckStore.enrichCard(card.name, category, { cardFaces });
-					console.log('[CardDisplay] ✨ Card enriched and persisted to deck store:', card.name);
-				} else {
-					console.warn('[CardDisplay] ⚠️ Scryfall data incomplete:', {
-						name: card.name,
-						hasCard: !!scryfallCard,
-						hasCardFaces: !!scryfallCard?.card_faces,
-						facesLength: scryfallCard?.card_faces?.length
-					});
 				}
 			}).catch(error => {
-				console.error('[CardDisplay] ❌ Error enriching card:', card.name, error);
+				console.error('[CardDisplay] Error enriching card:', card.name, error);
 			});
 		}
 	});
@@ -129,38 +105,6 @@
 	const isDoubleFaced = $derived(
 		card?.cardFaces && card.cardFaces.length > 1
 	);
-
-	// Debug logging for double-faced cards
-	$effect(() => {
-		if (card && card.layout && (card.layout === 'modal_dfc' || card.layout === 'transform')) {
-			console.log('[CardDisplay] Double-faced card detected:', {
-				name: card.name,
-				layout: card.layout,
-				hasCardFaces: !!card.cardFaces,
-				cardFacesCount: card.cardFaces?.length || 0,
-				isDoubleFaced,
-				willShowFlipButton: isDoubleFaced,
-				frontFaceImages: card.cardFaces?.[0]?.imageUrls,
-				backFaceImages: card.cardFaces?.[1]?.imageUrls,
-				currentFaceIndex,
-				// Expanded debugging
-				frontFaceName: card.cardFaces?.[0]?.name,
-				backFaceName: card.cardFaces?.[1]?.name,
-				frontNormal: card.cardFaces?.[0]?.imageUrls?.normal,
-				backNormal: card.cardFaces?.[1]?.imageUrls?.normal,
-				frontLarge: card.cardFaces?.[0]?.imageUrls?.large,
-				backLarge: card.cardFaces?.[1]?.imageUrls?.large
-			});
-
-			if (!card.cardFaces || card.cardFaces.length < 2) {
-				console.warn('[CardDisplay] ⚠️ MISSING DATA: This card needs cardFaces data. Will enrich from Scryfall.');
-			} else if (!card.cardFaces[1]?.imageUrls) {
-				console.warn('[CardDisplay] ⚠️ MISSING BACK FACE IMAGES: cardFaces[1].imageUrls is missing!', card.cardFaces[1]);
-			} else if (!card.cardFaces[1].imageUrls.normal && !card.cardFaces[1].imageUrls.large) {
-				console.warn('[CardDisplay] ⚠️ MISSING BACK FACE IMAGE URLs: normal and large are both undefined!', card.cardFaces[1].imageUrls);
-			}
-		}
-	});
 
 	// Get card image URL based on current face
 	function getCardImageUrl(c: Card): string {
@@ -178,28 +122,6 @@
 	const isBanned = $derived(isCardBanned(card));
 	const isGC = $derived(isGameChanger(card.name));
 	const isDraggable = $derived(isEditing && category !== CardCategory.Commander);
-
-	// Debug back face rendering
-	$effect(() => {
-		if (isDoubleFaced && currentFaceIndex === 1) {
-			console.log('[CardDisplay] 🔄 Attempting to render BACK FACE:', {
-				cardName: card.name,
-				hasCardFaces: !!card.cardFaces,
-				cardFacesLength: card.cardFaces?.length,
-				hasBackFace: !!card.cardFaces?.[1],
-				backFaceName: card.cardFaces?.[1]?.name,
-				hasBackImageUrls: !!card.cardFaces?.[1]?.imageUrls,
-				backImageUrlsType: typeof card.cardFaces?.[1]?.imageUrls,
-				backImageUrlsRaw: card.cardFaces?.[1]?.imageUrls,
-				backNormal: card.cardFaces?.[1]?.imageUrls?.normal,
-				backLarge: card.cardFaces?.[1]?.imageUrls?.large,
-				backSmall: card.cardFaces?.[1]?.imageUrls?.small,
-				computedSrc: card.cardFaces?.[1]?.imageUrls?.normal ||
-				            card.cardFaces?.[1]?.imageUrls?.large ||
-				            card.cardFaces?.[1]?.imageUrls?.small || 'EMPTY'
-			});
-		}
-	});
 
 	// Reset to front face when card changes
 	$effect(() => {
@@ -285,14 +207,11 @@
 			<!-- Back Face -->
 			<div class="card-face card-face--back">
 				{#if isDoubleFaced && card.cardFaces?.[1]?.imageUrls}
-					{@const backImageSrc = card.cardFaces[1].imageUrls.normal || card.cardFaces[1].imageUrls.large || card.cardFaces[1].imageUrls.small || ''}
 					<img
-						src={backImageSrc}
+						src={card.cardFaces[1].imageUrls.normal || card.cardFaces[1].imageUrls.large || card.cardFaces[1].imageUrls.small || ''}
 						alt={card.cardFaces[1].name || 'Card back'}
 						class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
 						loading="lazy"
-						onload={() => console.log('[CardDisplay] ✅ Back face image loaded:', card.name, backImageSrc)}
-						onerror={(e) => console.error('[CardDisplay] ❌ Back face image FAILED to load:', card.name, backImageSrc, e)}
 					/>
 				{:else}
 					<div class="card-placeholder">
