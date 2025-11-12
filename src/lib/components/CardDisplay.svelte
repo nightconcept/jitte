@@ -8,7 +8,8 @@
 	import { isGameChanger } from '$lib/utils/game-changers';
 	import { isCardBanned } from '$lib/utils/deck-validation';
 	import VendorIcon from './VendorIcon.svelte';
-	import CornerBadge from './CornerBadge.svelte';
+	import GameChangerBadge from './GameChangerBadge.svelte';
+	import QuantityBadge from './QuantityBadge.svelte';
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
 
@@ -252,23 +253,19 @@
 			</button>
 		{/if}
 
-		<!-- Corner Badge: Prioritize Quantity over GC -->
-		{#if card.quantity > 1}
-			<CornerBadge
-				text={String(card.quantity)}
-				size={badgeSize}
-				color="rgb(156, 163, 175)"
-				textColor="rgb(31, 41, 55)"
-				title="Quantity: {card.quantity}"
-			/>
-		{:else if isGC}
-			<CornerBadge
-				text="GC"
-				size={badgeSize}
-				color="rgb(245, 158, 11)"
-				textColor="rgb(120, 53, 15)"
-				title="Game Changer - This card affects your deck's bracket level"
-			/>
+		<!-- Left-side Badges -->
+		{#if card.quantity > 1 || isGC}
+			<div class="left-badges">
+				<!-- Quantity Badge -->
+				{#if card.quantity > 1}
+					<QuantityBadge quantity={card.quantity} position="inline" />
+				{/if}
+
+				<!-- Game Changer Badge -->
+				{#if isGC}
+					<GameChangerBadge position="inline" />
+				{/if}
+			</div>
 		{/if}
 
 		<!-- Right-side Badges -->
@@ -441,6 +438,17 @@
 		justify-content: center;
 	}
 
+	.left-badges {
+		position: absolute;
+		top: 0.25rem;
+		left: 0.25rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		align-items: flex-start;
+		z-index: 10;
+	}
+
 	.right-badges {
 		position: absolute;
 		top: 0.25rem;
@@ -459,7 +467,7 @@
 		padding: 0.25rem 0.5rem;
 		border-radius: 0.25rem;
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 700;
 		backdrop-filter: blur(4px);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	}

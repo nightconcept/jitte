@@ -2,7 +2,7 @@
 	import type { Card } from '$lib/types/card';
 	import { deckStore } from '$lib/stores/deck-store';
 	import VendorIcon from './VendorIcon.svelte';
-	import CornerBadge from './CornerBadge.svelte';
+	import GameChangerBadge from './GameChangerBadge.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
 
 	let {
@@ -103,13 +103,7 @@
 							class="w-full rounded-lg shadow-lg"
 						/>
 						{#if displayCard && isGameChanger(displayCard.name)}
-							<CornerBadge
-								text="GC"
-								size="normal"
-								color="rgb(245, 158, 11)"
-								textColor="rgb(120, 53, 15)"
-								title="Game Changer - This card affects your deck's bracket level"
-							/>
+							<GameChangerBadge position="left" />
 						{/if}
 					</div>
 				{:else if imageUrl}
@@ -120,13 +114,7 @@
 							class="w-full rounded-lg shadow-lg"
 						/>
 						{#if displayCard && isGameChanger(displayCard.name)}
-							<CornerBadge
-								text="GC"
-								size="normal"
-								color="rgb(245, 158, 11)"
-								textColor="rgb(120, 53, 15)"
-								title="Game Changer - This card affects your deck's bracket level"
-							/>
+							<GameChangerBadge position="left" />
 						{/if}
 					</div>
 				{:else if displayCard}
@@ -153,13 +141,7 @@
 							class="w-full rounded-lg shadow-lg"
 						/>
 						{#if displayCard && isGameChanger(displayCard.name)}
-							<CornerBadge
-								text="GC"
-								size="normal"
-								color="rgb(245, 158, 11)"
-								textColor="rgb(120, 53, 15)"
-								title="Game Changer - This card affects your deck's bracket level"
-							/>
+							<GameChangerBadge position="left" />
 						{/if}
 					</div>
 				{:else}

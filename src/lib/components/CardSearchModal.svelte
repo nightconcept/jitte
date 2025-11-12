@@ -8,7 +8,7 @@
   import type { ScryfallCard } from "$lib/types/scryfall";
   import CardPreviewInfo from "./CardPreviewInfo.svelte";
   import ManaSymbol from "./ManaSymbol.svelte";
-  import CornerBadge from "./CornerBadge.svelte";
+  import GameChangerBadge from "./GameChangerBadge.svelte";
   import { MIN_SEARCH_CHARACTERS } from "$lib/constants/search";
   import { scryfallToCard } from "$lib/utils/card-converter";
   import { isGameChanger } from "$lib/utils/game-changers";
@@ -591,13 +591,7 @@
                           class="w-full h-full object-cover rounded-lg shadow-2xl"
                         />
                         {#if isGameChanger(selectedCardFull.name)}
-                          <CornerBadge
-                            text="GC"
-                            size="large"
-                            color="rgb(245, 158, 11)"
-                            textColor="rgb(120, 53, 15)"
-                            title="Game Changer - This card affects your deck's bracket level"
-                          />
+                          <GameChangerBadge position="left" />
                         {/if}
                       </div>
                     {:else if selectedCardFull.imageUrls}
@@ -608,13 +602,7 @@
                           class="w-full h-full object-cover rounded-lg shadow-2xl"
                         />
                         {#if isGameChanger(selectedCardFull.name)}
-                          <CornerBadge
-                            text="GC"
-                            size="large"
-                            color="rgb(245, 158, 11)"
-                            textColor="rgb(120, 53, 15)"
-                            title="Game Changer - This card affects your deck's bracket level"
-                          />
+                          <GameChangerBadge position="left" />
                         {/if}
                       </div>
                     {/if}
@@ -630,13 +618,7 @@
                           class="w-full h-full object-cover rounded-lg shadow-2xl"
                         />
                         {#if isGameChanger(selectedCardFull.name)}
-                          <CornerBadge
-                            text="GC"
-                            size="large"
-                            color="rgb(245, 158, 11)"
-                            textColor="rgb(120, 53, 15)"
-                            title="Game Changer - This card affects your deck's bracket level"
-                          />
+                          <GameChangerBadge position="left" />
                         {/if}
                       </div>
                     {/if}
