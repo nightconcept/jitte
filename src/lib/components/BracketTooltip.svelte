@@ -4,12 +4,17 @@
 	import BaseTooltip from './BaseTooltip.svelte';
 	import { type Snippet } from 'svelte';
 
-	let { deck, bracketLevel, gameChangers, children }: {
+	let { deck, bracketLevel, gameChangers, twoCardComboCount = 0, earlyGameComboCount = 0, children }: {
 		deck: Deck;
 		bracketLevel: BracketLevel;
 		gameChangers: string[];
+		twoCardComboCount?: number;
+		earlyGameComboCount?: number;
 		children?: Snippet;
 	} = $props();
+
+	// Determine if combos are pushing the bracket level
+	let hasBracket4Combos = $derived(twoCardComboCount > 0 || earlyGameComboCount >= 2);
 </script>
 
 <BaseTooltip
@@ -74,11 +79,20 @@
 				<div class="bracket-secondary">• Upgraded precon or focused casual</div>
 				<div class="bracket-secondary">• Some tutors and fast mana</div>
 			{:else if bracketLevel === 4}
-				<div class="text-orange-400 font-semibold mb-1">! 4+ Game Changers detected</div>
+				{#if hasBracket4Combos}
+				<div class="text-orange-400 font-semibold mb-1">
+					! {twoCardComboCount} 2-card infinite {twoCardComboCount === 1 ? 'combo' : 'combos'} detected
+				</div>
+			{/if}
+			{#if gameChangers.length >= 4}
+				<div class="text-orange-400 font-semibold mb-1">! {gameChangers.length} Game Changers detected</div>
+			{/if}
 				<div class="bracket-secondary">• Multiple fast mana sources</div>
 				<div class="bracket-secondary">• Powerful tutors (Demonic, Vampiric, etc.)</div>
 				<div class="bracket-secondary">• Strong card advantage engines</div>
-				<div class="bracket-secondary">• Efficient 2-card combos</div>
+				<div class="{hasBracket4Combos ? 'text-orange-400 font-semibold' : 'bracket-secondary'}">
+				• Efficient 2-card combos {hasBracket4Combos ? '✓ Detected' : ''}
+			</div>
 				<div class="bracket-secondary">• Free interaction (Force of Will, etc.)</div>
 				<div class="bracket-secondary">• Optimized mana base</div>
 			{:else if bracketLevel === 5}

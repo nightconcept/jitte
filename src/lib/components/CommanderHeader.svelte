@@ -164,6 +164,8 @@
 								deck={deck}
 								bracketLevel={statistics.bracketLevel}
 								gameChangers={gameChangersInDeck}
+							twoCardComboCount={statistics?.twoCardComboCount ?? 0}
+							earlyGameComboCount={statistics?.earlyGameComboCount ?? 0}
 							>
 								<span
 									class="font-semibold px-2 py-0.5 rounded text-xs cursor-help {statistics.bracketLevel === 1 ? 'bg-green-500/20 text-green-400' : statistics.bracketLevel === 2 ? 'bg-blue-500/20 text-blue-400' : statistics.bracketLevel === 3 ? 'bg-yellow-500/20 text-yellow-400' : statistics.bracketLevel === 4 ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'}"

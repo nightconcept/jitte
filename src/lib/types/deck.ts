@@ -66,6 +66,38 @@ export interface DeckManifest {
 }
 
 /**
+ * Detected combo information (from Commander Spellbook API)
+ */
+export interface DetectedCombo {
+	/** Combo ID from Commander Spellbook */
+	id: string;
+
+	/** Names of cards involved in the combo */
+	cardNames: string[];
+
+	/** What the combo produces (e.g., "Infinite mana", "Win the game") */
+	results: string[];
+
+	/** Description of how to execute the combo */
+	description?: string;
+
+	/** Combo speed classification */
+	speed: 'early' | 'mid' | 'late';
+
+	/** Whether this creates an infinite loop */
+	isInfinite: boolean;
+
+	/** Whether this is a 2-card combo */
+	isTwoCard: boolean;
+
+	/** EDHREC popularity (deck count) */
+	popularity?: number;
+
+	/** Combined price of combo pieces */
+	totalPrice?: number;
+}
+
+/**
  * Deck statistics
  */
 export interface DeckStatistics {
@@ -116,6 +148,21 @@ export interface DeckStatistics {
 
 	/** Commander bracket level (1-5) */
 	bracketLevel: number;
+
+	/** Detected combos (optional, loaded asynchronously) */
+	combos?: DetectedCombo[];
+
+	/** Number of 2-card infinite combos detected */
+	twoCardComboCount?: number;
+
+	/** Number of early-game (fast) combos detected */
+	earlyGameComboCount?: number;
+
+	/** Whether combo detection is in progress */
+	combosLoading?: boolean;
+
+	/** Error message if combo detection failed */
+	combosError?: string;
 }
 
 /**

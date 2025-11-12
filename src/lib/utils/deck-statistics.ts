@@ -335,3 +335,65 @@ export function suggestLandCount(averageCmc: number, nonLandCount: number): numb
 	const cmcAdjustment = Math.floor((averageCmc - 3) * 2);
 	return Math.max(30, Math.min(40, baselands + cmcAdjustment));
 }
+
+/**
+ * Enrich statistics with combo detection data (async)
+ *
+ * This function:
+ * 1. Detects combos using Commander Spellbook API
+ * 2. Updates bracket level based on combo count
+ * 3. Returns enriched statistics
+ *
+ * @param deck - The deck to analyze
+ * @param baseStats - Base statistics (from calculateStatistics)
+ * @param useCache - Whether to use cached combo results
+ */
+export async function enrichStatisticsWithCombos(
+	deck: Deck,
+	baseStats: DeckStatistics,
+	useCache: boolean = true
+): Promise<DeckStatistics> {
+	try {
+		// Dynamically import combo service (browser-only)
+		const { detectCombos } = await import('$lib/api/combo-service');
+
+		// Mark as loading
+		const loadingStats: DeckStatistics = {
+			...baseStats,
+			combosLoading: true,
+			combosError: undefined
+		};
+
+		// Detect combos
+		const comboResult = await detectCombos(deck, useCache);
+
+		// Recalculate bracket level with combo data
+		const uniqueCardNames = getUniqueCardNames(deck);
+		const gameChangerCount = countGameChangers(uniqueCardNames);
+
+		const bracketLevel = calculateBracketLevel(gameChangerCount, {
+			twoCardComboCount: comboResult.twoCardCombos.length,
+			earlyGameComboCount: comboResult.earlyGameCombos.length
+		});
+
+		// Return enriched statistics
+		return {
+			...baseStats,
+			combos: comboResult.combos,
+			twoCardComboCount: comboResult.twoCardCombos.length,
+			earlyGameComboCount: comboResult.earlyGameCombos.length,
+			bracketLevel, // Updated bracket with combo data
+			combosLoading: false,
+			combosError: undefined
+		};
+	} catch (error) {
+		console.error('Failed to detect combos:', error);
+
+		// Return stats with error state
+		return {
+			...baseStats,
+			combosLoading: false,
+			combosError: error instanceof Error ? error.message : 'Unknown error detecting combos'
+		};
+	}
+}

@@ -107,50 +107,73 @@ export function countGameChangers(cardNames: string[]): number {
 /**
  * Calculate the bracket level based on Game Changer count and other factors
  *
- * Bracket guidelines:
- * - Bracket 1 (Exhibition): Casual, theme-focused, NO Game Changers
+ * Bracket guidelines (WotC Commander Brackets Beta, April 2025):
+ * - Bracket 1 (Exhibition): Casual, theme-focused, NO Game Changers, NO fast combos
  * - Bracket 2 (Core): Precon-level, NO Game Changers
- * - Bracket 3 (Upgraded): 1-3 Game Changers
- * - Bracket 4 (Optimized): 4+ Game Changers, highly tuned
- * - Bracket 5 (cEDH): Competitive, no restrictions
+ * - Bracket 3 (Upgraded): 1-3 Game Changers OR some combo potential
+ * - Bracket 4 (Optimized): 4+ Game Changers OR 2-card infinite combos OR explosive fast mana
+ * - Bracket 5 (cEDH): Competitive, self-identified
+ *
+ * Key factors:
+ * - Game Changers (most objective)
+ * - 2-card infinite combos (pushes to Bracket 4)
+ * - Fast mana (covered by Game Changers)
+ * - Mass land destruction (Bracket 3-4 indicator)
+ * - Extra turns (Bracket 3-4 indicator)
  *
  * @param gameChangerCount - Number of Game Changers in the deck
- * @param hasInfiniteCombo - Whether deck has 2-card infinite combos (optional)
- * @param hasExtraTurns - Whether deck has extra turn cards (optional)
- * @param hasMassLandDestruction - Whether deck has mass land destruction (optional)
+ * @param options - Additional factors for bracket calculation
+ * @param options.twoCardComboCount - Number of 2-card infinite combos (from Commander Spellbook)
+ * @param options.earlyGameComboCount - Number of fast/early-game combos
+ * @param options.hasExtraTurns - Whether deck has extra turn cards
+ * @param options.hasMassLandDestruction - Whether deck has mass land destruction
  * @returns Bracket level (1-5)
  */
 export function calculateBracketLevel(
 	gameChangerCount: number,
 	options?: {
-		hasInfiniteCombo?: boolean;
+		twoCardComboCount?: number;
+		earlyGameComboCount?: number;
 		hasExtraTurns?: boolean;
 		hasMassLandDestruction?: boolean;
 	}
 ): BracketLevel {
-	// Bracket 1/2: No Game Changers
+	const twoCardCombos = options?.twoCardComboCount ?? 0;
+	const earlyGameCombos = options?.earlyGameComboCount ?? 0;
+
+	// Bracket 4 criteria: 2-card infinite combos that can win early
+	// According to WotC guidance, 2-card combos push a deck to Bracket 4
+	if (twoCardCombos > 0 || earlyGameCombos >= 2) {
+		return BracketLevel.Optimized;
+	}
+
+	// Bracket 4: 4+ Game Changers
+	if (gameChangerCount >= 4) {
+		return BracketLevel.Optimized;
+	}
+
+	// Bracket 3: 1-3 Game Changers OR some combo potential
+	if (gameChangerCount >= 1 && gameChangerCount <= 3) {
+		return BracketLevel.Upgraded;
+	}
+
+	// Bracket 1/2: No Game Changers, no fast combos
 	if (gameChangerCount === 0) {
-		// Bracket 1 criteria: No infinite combos, no extra turns, no MLD
+		// Bracket 1 criteria: No combos, no extra turns, no MLD
+		// Pure casual, theme-focused play
 		if (
-			!options?.hasInfiniteCombo &&
+			earlyGameCombos === 0 &&
 			!options?.hasExtraTurns &&
 			!options?.hasMassLandDestruction
 		) {
 			return BracketLevel.Exhibition;
 		}
-		// Otherwise Bracket 2 (precon-level)
+		// Bracket 2: Precon-level, may have some of the above
 		return BracketLevel.Core;
 	}
 
-	// Bracket 3: 1-3 Game Changers
-	if (gameChangerCount <= 3) {
-		return BracketLevel.Upgraded;
-	}
-
-	// Bracket 4+: 4+ Game Changers
-	// Note: Bracket 5 (cEDH) is typically self-identified by players
-	// For now, we'll mark 4+ as Optimized (Bracket 4)
-	return BracketLevel.Optimized;
+	// Default to Bracket 2 (Core)
+	return BracketLevel.Core;
 }
 
 /**
