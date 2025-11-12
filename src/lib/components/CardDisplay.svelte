@@ -280,35 +280,6 @@
 						</span>
 					</div>
 				{/if}
-
-				<!-- Flip Button on Front Face -->
-				{#if isDoubleFaced}
-					<button
-						type="button"
-						onclick={toggleFace}
-						class="flip-button"
-						class:flip-button-hover-only={showFlipButtonOnHover}
-						aria-label="Flip to back face"
-						title="Flip card"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M17 3l4 4-4 4" />
-							<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-							<path d="M7 21l-4-4 4-4" />
-							<path d="M21 13v1a4 4 0 0 1-4 4H3" />
-						</svg>
-					</button>
-				{/if}
 			</div>
 
 			<!-- Back Face -->
@@ -330,37 +301,37 @@
 						</span>
 					</div>
 				{/if}
-
-				<!-- Flip Button on Back Face -->
-				{#if isDoubleFaced}
-					<button
-						type="button"
-						onclick={toggleFace}
-						class="flip-button"
-						class:flip-button-hover-only={showFlipButtonOnHover}
-						aria-label="Flip to front face"
-						title="Flip card"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M17 3l4 4-4 4" />
-							<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-							<path d="M7 21l-4-4 4-4" />
-							<path d="M21 13v1a4 4 0 0 1-4 4H3" />
-						</svg>
-					</button>
-				{/if}
 			</div>
 		</div>
+
+		<!-- Flip Button - Outside flip-card container to avoid duplication -->
+		{#if isDoubleFaced}
+			<button
+				type="button"
+				onclick={toggleFace}
+				class="flip-button"
+				class:flip-button-hover-only={showFlipButtonOnHover}
+				aria-label="Flip to {currentFaceIndex === 0 ? 'back' : 'front'} face"
+				title="Flip card"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M17 3l4 4-4 4" />
+					<path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+					<path d="M7 21l-4-4 4-4" />
+					<path d="M21 13v1a4 4 0 0 1-4 4H3" />
+				</svg>
+			</button>
+		{/if}
 
 		<!-- Corner Badge: Prioritize Quantity over GC -->
 		{#if card.quantity > 1}
@@ -538,19 +509,6 @@
 	.card-display-container:hover .flip-button-hover-only {
 		opacity: 1;
 		pointer-events: auto;
-	}
-
-	/* Ensure flip button is visible on back face (undo the Y rotation) */
-	.card-face--back .flip-button {
-		transform: rotateY(180deg);
-	}
-
-	.card-face--back .flip-button:hover {
-		transform: rotateY(180deg) scale(1.1);
-	}
-
-	.card-face--back .flip-button:active {
-		transform: rotateY(180deg) scale(0.95);
 	}
 
 	.card-placeholder {
