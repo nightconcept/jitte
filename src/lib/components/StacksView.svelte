@@ -250,6 +250,7 @@
 						pricingPosition="below"
 						pricingSize="sm"
 						badgeSize="normal"
+						showFlipButtonOnHover={true}
 						onHover={(c) => c ? handleCardMouseEnter(stackIndex, c) : handleCardMouseLeave()}
 						onDragStart={handleCardDragStart}
 						onDragEnd={handleCardDragEnd}

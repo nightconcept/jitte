@@ -9,6 +9,8 @@
 	import { isCardBanned } from '$lib/utils/deck-validation';
 	import VendorIcon from './VendorIcon.svelte';
 	import CornerBadge from './CornerBadge.svelte';
+	import { cardService } from '$lib/api/card-service';
+	import { deckStore } from '$lib/stores/deck-store';
 
 	let {
 		card,
@@ -18,6 +20,7 @@
 		pricingPosition = 'overlay',
 		pricingSize = 'xs',
 		badgeSize = 'normal',
+		showFlipButtonOnHover = false,
 		onClick = undefined,
 		onHover = undefined,
 		onDragStart = undefined,
@@ -32,6 +35,7 @@
 		pricingPosition?: 'below' | 'overlay';
 		pricingSize?: 'sm' | 'xs';
 		badgeSize?: 'small' | 'normal' | 'large';
+		showFlipButtonOnHover?: boolean;
 		onClick?: (card: Card) => void;
 		onHover?: (card: Card | null) => void;
 		onDragStart?: (event: DragEvent, card: Card, category: CardCategory) => void;
@@ -43,27 +47,159 @@
 	// Track which face is currently displayed (0 = front, 1 = back)
 	let currentFaceIndex = $state(0);
 
+	// Track if we've already enriched this card (by name+category)
+	const enrichedCardsCache = new Set<string>();
+
+	// Enrich card with Scryfall data if it's a double-faced card missing cardFaces or missing back face images
+	$effect(() => {
+		const cacheKey = `${card.name}|${category}`;
+		const isMissingCardFaces = !card.cardFaces || card.cardFaces.length < 2;
+		const isMissingBackFaceImages = card.cardFaces &&
+			card.cardFaces.length >= 2 &&
+			card.cardFaces[1] &&
+			(!card.cardFaces[1].imageUrls ||
+			 (!card.cardFaces[1].imageUrls.normal &&
+			  !card.cardFaces[1].imageUrls.large &&
+			  !card.cardFaces[1].imageUrls.small));
+
+		const needsEnrichment = card &&
+			card.layout &&
+			(card.layout === 'modal_dfc' || card.layout === 'transform') &&
+			(isMissingCardFaces || isMissingBackFaceImages) &&
+			!enrichedCardsCache.has(cacheKey);
+
+		if (needsEnrichment) {
+			console.log('[CardDisplay] ⚡ Enrichment triggered for:', card.name, {
+				reason: isMissingCardFaces ? 'missing cardFaces' : 'missing back face images',
+				hasCardFaces: !!card.cardFaces,
+				cardFacesLength: card.cardFaces?.length,
+				backFaceImageUrls: card.cardFaces?.[1]?.imageUrls
+			});
+			enrichedCardsCache.add(cacheKey);
+
+			cardService.getCardByName(card.name).then(scryfallCard => {
+				if (scryfallCard && scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
+					console.log('[CardDisplay] ✅ Received Scryfall data for:', card.name, {
+						facesCount: scryfallCard.card_faces.length,
+						frontFaceName: scryfallCard.card_faces[0].name,
+						backFaceName: scryfallCard.card_faces[1].name,
+						frontHasImages: !!scryfallCard.card_faces[0].image_uris,
+						backHasImages: !!scryfallCard.card_faces[1].image_uris,
+						frontNormal: scryfallCard.card_faces[0].image_uris?.normal,
+						backNormal: scryfallCard.card_faces[1].image_uris?.normal
+					});
+
+					const cardFaces = scryfallCard.card_faces.map(face => ({
+						name: face.name,
+						manaCost: face.mana_cost,
+						typeLine: face.type_line,
+						oracleText: face.oracle_text,
+						imageUrls: {
+							small: face.image_uris?.small,
+							normal: face.image_uris?.normal,
+							large: face.image_uris?.large,
+							png: face.image_uris?.png,
+							artCrop: face.image_uris?.art_crop,
+							borderCrop: face.image_uris?.border_crop
+						},
+						colors: face.colors,
+						power: face.power,
+						toughness: face.toughness,
+						loyalty: face.loyalty
+					}));
+
+					// Update the card in the deck store with the enriched data
+					deckStore.enrichCard(card.name, category, { cardFaces });
+					console.log('[CardDisplay] ✨ Card enriched and persisted to deck store:', card.name);
+				} else {
+					console.warn('[CardDisplay] ⚠️ Scryfall data incomplete:', {
+						name: card.name,
+						hasCard: !!scryfallCard,
+						hasCardFaces: !!scryfallCard?.card_faces,
+						facesLength: scryfallCard?.card_faces?.length
+					});
+				}
+			}).catch(error => {
+				console.error('[CardDisplay] ❌ Error enriching card:', card.name, error);
+			});
+		}
+	});
+
 	// Check if card has multiple faces
 	const isDoubleFaced = $derived(
 		card?.cardFaces && card.cardFaces.length > 1
 	);
 
+	// Debug logging for double-faced cards
+	$effect(() => {
+		if (card && card.layout && (card.layout === 'modal_dfc' || card.layout === 'transform')) {
+			console.log('[CardDisplay] Double-faced card detected:', {
+				name: card.name,
+				layout: card.layout,
+				hasCardFaces: !!card.cardFaces,
+				cardFacesCount: card.cardFaces?.length || 0,
+				isDoubleFaced,
+				willShowFlipButton: isDoubleFaced,
+				frontFaceImages: card.cardFaces?.[0]?.imageUrls,
+				backFaceImages: card.cardFaces?.[1]?.imageUrls,
+				currentFaceIndex,
+				// Expanded debugging
+				frontFaceName: card.cardFaces?.[0]?.name,
+				backFaceName: card.cardFaces?.[1]?.name,
+				frontNormal: card.cardFaces?.[0]?.imageUrls?.normal,
+				backNormal: card.cardFaces?.[1]?.imageUrls?.normal,
+				frontLarge: card.cardFaces?.[0]?.imageUrls?.large,
+				backLarge: card.cardFaces?.[1]?.imageUrls?.large
+			});
+
+			if (!card.cardFaces || card.cardFaces.length < 2) {
+				console.warn('[CardDisplay] ⚠️ MISSING DATA: This card needs cardFaces data. Will enrich from Scryfall.');
+			} else if (!card.cardFaces[1]?.imageUrls) {
+				console.warn('[CardDisplay] ⚠️ MISSING BACK FACE IMAGES: cardFaces[1].imageUrls is missing!', card.cardFaces[1]);
+			} else if (!card.cardFaces[1].imageUrls.normal && !card.cardFaces[1].imageUrls.large) {
+				console.warn('[CardDisplay] ⚠️ MISSING BACK FACE IMAGE URLs: normal and large are both undefined!', card.cardFaces[1].imageUrls);
+			}
+		}
+	});
+
 	// Get card image URL based on current face
-	function getCardImageUrl(card: Card): string {
+	function getCardImageUrl(c: Card): string {
 		// If card has card faces, use the current face's image
-		if (isDoubleFaced && card.cardFaces) {
-			const face = card.cardFaces[currentFaceIndex];
+		if (isDoubleFaced && c.cardFaces) {
+			const face = c.cardFaces[currentFaceIndex];
 			return face?.imageUrls?.normal || face?.imageUrls?.large || face?.imageUrls?.small || '';
 		}
 
 		// Otherwise use the card's main image URLs
-		return card.imageUrls?.normal || card.imageUrls?.small || card.imageUrls?.large || '';
+		return c.imageUrls?.normal || c.imageUrls?.small || c.imageUrls?.large || '';
 	}
 
 	const imageUrl = $derived(getCardImageUrl(card));
 	const isBanned = $derived(isCardBanned(card));
 	const isGC = $derived(isGameChanger(card.name));
 	const isDraggable = $derived(isEditing && category !== CardCategory.Commander);
+
+	// Debug back face rendering
+	$effect(() => {
+		if (isDoubleFaced && currentFaceIndex === 1) {
+			console.log('[CardDisplay] 🔄 Attempting to render BACK FACE:', {
+				cardName: card.name,
+				hasCardFaces: !!card.cardFaces,
+				cardFacesLength: card.cardFaces?.length,
+				hasBackFace: !!card.cardFaces?.[1],
+				backFaceName: card.cardFaces?.[1]?.name,
+				hasBackImageUrls: !!card.cardFaces?.[1]?.imageUrls,
+				backImageUrlsType: typeof card.cardFaces?.[1]?.imageUrls,
+				backImageUrlsRaw: card.cardFaces?.[1]?.imageUrls,
+				backNormal: card.cardFaces?.[1]?.imageUrls?.normal,
+				backLarge: card.cardFaces?.[1]?.imageUrls?.large,
+				backSmall: card.cardFaces?.[1]?.imageUrls?.small,
+				computedSrc: card.cardFaces?.[1]?.imageUrls?.normal ||
+				            card.cardFaces?.[1]?.imageUrls?.large ||
+				            card.cardFaces?.[1]?.imageUrls?.small || 'EMPTY'
+			});
+		}
+	});
 
 	// Reset to front face when card changes
 	$effect(() => {
@@ -151,6 +287,7 @@
 						type="button"
 						onclick={toggleFace}
 						class="flip-button"
+						class:flip-button-hover-only={showFlipButtonOnHover}
 						aria-label="Flip to back face"
 						title="Flip card"
 					>
@@ -177,11 +314,14 @@
 			<!-- Back Face -->
 			<div class="card-face card-face--back">
 				{#if isDoubleFaced && card.cardFaces?.[1]?.imageUrls}
+					{@const backImageSrc = card.cardFaces[1].imageUrls.normal || card.cardFaces[1].imageUrls.large || card.cardFaces[1].imageUrls.small || ''}
 					<img
-						src={card.cardFaces[1].imageUrls.normal || card.cardFaces[1].imageUrls.large || card.cardFaces[1].imageUrls.small || ''}
+						src={backImageSrc}
 						alt={card.cardFaces[1].name || 'Card back'}
 						class="card-image {isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
 						loading="lazy"
+						onload={() => console.log('[CardDisplay] ✅ Back face image loaded:', card.name, backImageSrc)}
+						onerror={(e) => console.error('[CardDisplay] ❌ Back face image FAILED to load:', card.name, backImageSrc, e)}
 					/>
 				{:else}
 					<div class="card-placeholder">
@@ -197,6 +337,7 @@
 						type="button"
 						onclick={toggleFace}
 						class="flip-button"
+						class:flip-button-hover-only={showFlipButtonOnHover}
 						aria-label="Flip to front face"
 						title="Flip card"
 					>
@@ -318,8 +459,6 @@
 		transform-style: preserve-3d;
 		transition: transform 0.4s ease-in-out;
 		position: relative;
-		border-radius: 0.5rem;
-		overflow: hidden;
 	}
 
 	.flip-card.is-flipped {
@@ -330,11 +469,10 @@
 		width: 100%;
 		height: 100%;
 		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
 		position: absolute;
 		top: 0;
 		left: 0;
-		border-radius: 0.5rem;
-		overflow: hidden;
 	}
 
 	.card-face--front {
@@ -353,12 +491,11 @@
 		border-radius: 0.5rem;
 	}
 
-	/* Flip Button - positioned on the card face */
+	/* Flip Button - positioned on the card face, top-left below title */
 	.flip-button {
 		position: absolute;
-		bottom: 0.5rem;
-		left: 50%;
-		transform: translateX(-50%);
+		top: 3.5rem; /* Below the card title area (~15% from top for standard MTG card) */
+		left: 0.5rem;
 		z-index: 15;
 		background: rgba(0, 0, 0, 0.9);
 		backdrop-filter: blur(8px);
@@ -377,12 +514,12 @@
 	.flip-button:hover {
 		background: rgba(0, 0, 0, 1);
 		border-color: rgba(255, 255, 255, 0.5);
-		transform: translateX(-50%) scale(1.1);
+		transform: scale(1.1);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
 	}
 
 	.flip-button:active {
-		transform: translateX(-50%) scale(0.95);
+		transform: scale(0.95);
 	}
 
 	.flip-button svg {
@@ -390,17 +527,30 @@
 		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 	}
 
+	/* Hide flip button by default when hover-only mode is enabled */
+	.flip-button-hover-only {
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s ease;
+	}
+
+	/* Show flip button on hover when hover-only mode is enabled */
+	.card-display-container:hover .flip-button-hover-only {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
 	/* Ensure flip button is visible on back face (undo the Y rotation) */
 	.card-face--back .flip-button {
-		transform: translateX(-50%) rotateY(180deg);
+		transform: rotateY(180deg);
 	}
 
 	.card-face--back .flip-button:hover {
-		transform: translateX(-50%) rotateY(180deg) scale(1.1);
+		transform: rotateY(180deg) scale(1.1);
 	}
 
 	.card-face--back .flip-button:active {
-		transform: translateX(-50%) rotateY(180deg) scale(0.95);
+		transform: rotateY(180deg) scale(0.95);
 	}
 
 	.card-placeholder {

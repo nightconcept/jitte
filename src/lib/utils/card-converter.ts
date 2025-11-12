@@ -20,7 +20,17 @@ export function scryfallToCard(
 		collectorNumber?: string;
 	}
 ): Card {
-	return {
+	// Debug logging for double-faced cards
+	if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
+		console.log('[scryfallToCard] Converting double-faced card:', {
+			name: scryfallCard.name,
+			layout: scryfallCard.layout,
+			hasScryfallCardFaces: !!scryfallCard.card_faces,
+			scryfallCardFacesCount: scryfallCard.card_faces?.length || 0
+		});
+	}
+
+	const card: Card = {
 		name: scryfallCard.name,
 		quantity,
 		setCode: overrides?.setCode || scryfallCard.set.toUpperCase(),
@@ -77,4 +87,17 @@ export function scryfallToCard(
 		priceUpdatedAt: Date.now(),
 		legalities: scryfallCard.legalities as unknown as Card['legalities']
 	};
+
+	// Verify cardFaces was mapped correctly
+	if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
+		console.log('[scryfallToCard] Converted card:', {
+			name: card.name,
+			layout: card.layout,
+			hasCardFaces: !!card.cardFaces,
+			cardFacesCount: card.cardFaces?.length || 0,
+			convertedCardFaces: card.cardFaces
+		});
+	}
+
+	return card;
 }

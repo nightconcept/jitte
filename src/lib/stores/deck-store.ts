@@ -486,6 +486,51 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Enrich a card with additional data (e.g., cardFaces for double-faced cards)
+		 * This merges the enrichment data into the existing card without replacing it
+		 */
+		enrichCard(cardName: string, category: CardCategory, enrichmentData: Partial<Card>): void {
+			update((state) => {
+				if (!state) return state;
+
+				const categoryCards = state.deck.cards[category];
+				const cardIndex = categoryCards.findIndex((c) => c.name === cardName);
+
+				if (cardIndex === -1) return state;
+
+				// Merge enrichment data into existing card
+				const oldCard = categoryCards[cardIndex];
+				const enrichedCard = { ...oldCard, ...enrichmentData };
+
+				const updatedCategoryCards = [
+					...categoryCards.slice(0, cardIndex),
+					enrichedCard,
+					...categoryCards.slice(cardIndex + 1)
+				];
+
+				// Create new cards object with updated category
+				const updatedCards = {
+					...state.deck.cards,
+					[category]: updatedCategoryCards
+				};
+
+				// Create new deck object with all updates
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
 		 * Toggle edit mode
 		 */
 		setEditMode(isEditing: boolean): void {
