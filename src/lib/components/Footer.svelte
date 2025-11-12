@@ -29,7 +29,7 @@
 				>.
 			</p>
 			<p>
-				Additional data from <a
+				Card data from <a
 					href="https://scryfall.com/"
 					target="_blank"
 					rel="noopener noreferrer"
@@ -40,7 +40,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-[var(--color-accent-blue)] hover:underline">Commander's Spellbook</a
-				>. Card prices provided by <a
+				>. Prices from <a
 					href="https://www.tcgplayer.com/"
 					target="_blank"
 					rel="noopener noreferrer"
@@ -55,7 +55,8 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-[var(--color-accent-blue)] hover:underline">Mana Pool</a
-				>.
+				>
+				obtained through Scryfall.
 			</p>
 		</div>
 
