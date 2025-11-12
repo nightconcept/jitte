@@ -375,6 +375,62 @@
 	let draggedCard = $state<{ card: Card; category: CardCategory } | null>(null);
 	let isDragging = $state(false);
 
+	// Dynamic layout mode for stacks view
+	let useMasonryLayout = $state(false);
+	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
+
+	// Calculate card width based on viewport breakpoints
+	function getCardWidth(width: number): number {
+		if (width >= 2560) return 220;
+		if (width >= 1024) return 200;
+		if (width >= 768) return 180;
+		return 165;
+	}
+
+	// Calculate gap size based on viewport breakpoints
+	function getGapSize(width: number): number {
+		if (width >= 2560) return 20; // 1.25rem
+		if (width >= 1536) return 16; // 1rem
+		if (width >= 1024) return 12; // 0.75rem
+		if (width >= 768) return 10; // 0.625rem
+		return 8; // 0.5rem
+	}
+
+	// Dynamically determine if we should use grid or masonry based on available space
+	$effect(() => {
+		if (viewMode !== 'stacks') return;
+
+		const nonEmptyCategories = categoryOrder.filter(cat => {
+			const cards = deck?.cards[cat] || [];
+			return cards.length > 0;
+		});
+		const stackCount = nonEmptyCategories.length;
+
+		const cardWidth = getCardWidth(viewportWidth);
+		const gap = getGapSize(viewportWidth);
+		const padding = 48; // Account for page padding (24px on each side)
+		const availableWidth = viewportWidth - padding;
+
+		// Calculate how many columns can fit
+		// Formula: (availableWidth + gap) / (cardWidth + gap)
+		const columnsFit = Math.floor((availableWidth + gap) / (cardWidth + gap));
+
+		// Use grid if all stacks fit in available columns, otherwise use masonry
+		useMasonryLayout = stackCount > columnsFit;
+	});
+
+	// Update viewport width on resize
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		function handleResize() {
+			viewportWidth = window.innerWidth;
+		}
+
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	});
+
 	function handleDragStart(event: DragEvent, card: Card, category: CardCategory) {
 		if (!isEditing || category === CardCategory.Commander) return;
 
@@ -581,8 +637,12 @@
 			{/each}
 		</div>
 	{:else if viewMode === 'stacks'}
-		<!-- Stacks View -->
-		<div class="stacks-view-container" ondragover={handleDragOver} ondrop={handleDrop}>
+		<!-- Stacks View - Dynamic Grid/Masonry based on available space -->
+		<div
+			class="stacks-view-container {useMasonryLayout ? 'stacks-view-masonry' : 'stacks-view-grid'}"
+			ondragover={handleDragOver}
+			ondrop={handleDrop}
+		>
 			{#each categoryOrder as category}
 				{@const cards = getCategoryCards(category)}
 				{#if cards.length > 0}
@@ -931,58 +991,77 @@
 		}
 	}
 
-	/* Stacks View Layout - CSS Columns Masonry */
-	/* Using column-width instead of column-count allows unlimited responsive columns */
+	/* Stacks View Layout - Base Container */
 	.stacks-view-container {
-		column-width: 165px;
-		column-gap: 0.5rem;
 		padding: 0;
 		margin-bottom: 0.5rem;
 		overflow: visible;
 	}
 
+	/* Grid Mode: Clean columns for 8 or fewer stacks (no masonry breaking) */
+	.stacks-view-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+		gap: 0.5rem;
+	}
+
 	@media (min-width: 768px) {
-		.stacks-view-container {
+		.stacks-view-grid {
+			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+			gap: 0.625rem;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.stacks-view-grid {
+			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			gap: 0.75rem;
+		}
+	}
+
+	@media (min-width: 1536px) {
+		.stacks-view-grid {
+			gap: 1rem;
+		}
+	}
+
+	@media (min-width: 2560px) {
+		.stacks-view-grid {
+			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+			gap: 1.25rem;
+		}
+	}
+
+	/* Masonry Mode: Efficient packing for 9+ stacks (allows column breaking) */
+	.stacks-view-masonry {
+		column-width: 165px;
+		column-gap: 0.5rem;
+	}
+
+	@media (min-width: 768px) {
+		.stacks-view-masonry {
 			column-width: 180px;
 			column-gap: 0.625rem;
 		}
 	}
 
-	/* At 1024px+, aim for ~5 columns at 1080p (1920px) */
 	@media (min-width: 1024px) {
-		.stacks-view-container {
+		.stacks-view-masonry {
 			column-width: 200px;
 			column-gap: 0.75rem;
 		}
 	}
 
 	@media (min-width: 1536px) {
-		.stacks-view-container {
+		.stacks-view-masonry {
 			column-gap: 1rem;
 		}
 	}
 
-	/* 2400px - Ultrawides: start adding more columns */
-	@media (min-width: 2400px) {
-		.stacks-view-container {
-			column-width: 180px;
-			column-gap: 1rem;
-		}
-	}
-
-	/* 2800px - Wide ultrawides: ~12-14 columns */
-	@media (min-width: 2800px) {
-		.stacks-view-container {
-			column-width: 175px;
-			column-gap: 1rem;
-		}
-	}
-
-	/* 3200px - Very wide (3440x1440): ~14-16 columns */
-	@media (min-width: 3200px) {
-		.stacks-view-container {
-			column-width: 170px;
-			column-gap: 1rem;
+	@media (min-width: 2560px) {
+		.stacks-view-masonry {
+			column-width: 220px;
+			column-gap: 1.25rem;
 		}
 	}
 </style>
