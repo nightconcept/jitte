@@ -9,14 +9,20 @@ import type { Card } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { Deck } from '$lib/types/deck';
 import { scryfallToCard } from './card-converter';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Load a deck from plaintext content
  * @param text - Plaintext decklist content
  * @param deckName - Name for the deck
+ * @param format - Deck format (defaults to Commander)
  * @returns Deck object with enriched card data
  */
-export async function loadDeckFromPlaintext(text: string, deckName: string): Promise<Deck> {
+export async function loadDeckFromPlaintext(
+	text: string,
+	deckName: string,
+	format: DeckFormat = DeckFormat.Commander
+): Promise<Deck> {
 	const parseResult = parsePlaintext(text);
 
 	// Log any parse errors
@@ -66,7 +72,7 @@ export async function loadDeckFromPlaintext(text: string, deckName: string): Pro
 		name: deckName,
 		cards: categorizedCards,
 		cardCount: enrichedCards.reduce((sum, c) => sum + c.quantity, 0),
-		format: 'commander',
+		format,
 		colorIdentity: Array.from(commanderColors),
 		currentBranch: 'main',
 		currentVersion: '1.0.0',

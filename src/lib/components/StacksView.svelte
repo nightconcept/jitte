@@ -348,11 +348,11 @@
 		{#if category === CardCategory.Commander}
 			{@const hasPartner = deck && deck.cards.commander.length === 2}
 			{@const canHavePartner = deck && deck.cards.commander.length === 1 && canAddPartner(deck.cards.commander[0])}
-			{@const commanderIndex = getCommanderIndex(openCardMenu.card.name)}
+			{@const commanderIndex = getCommanderIndex(openCardMenu!.card.name)}
 
 			<!-- Commander-specific menu -->
 			<button
-				onclick={(e) => { e.stopPropagation(); showChangePrintingModal(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); showChangePrintingModal(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,7 +373,7 @@
 					Replace this partner
 				</button>
 				<button
-					onclick={(e) => { e.stopPropagation(); handleRemovePartner(openCardMenu.card.name); }}
+					onclick={(e) => { e.stopPropagation(); handleRemovePartner(openCardMenu!.card.name); }}
 					class="menu-item menu-item-danger"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,7 +407,7 @@
 		{:else}
 			<!-- Regular card menu -->
 			<button
-				onclick={(e) => { e.stopPropagation(); handleAddOne(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); handleAddOne(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,7 +416,7 @@
 				Add one
 			</button>
 			<button
-				onclick={(e) => { e.stopPropagation(); showAddMoreModal(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); showAddMoreModal(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,7 +425,7 @@
 				Add more...
 			</button>
 			<button
-				onclick={(e) => { e.stopPropagation(); handleRemove(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); handleRemove(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -435,7 +435,7 @@
 			</button>
 			<div class="menu-divider"></div>
 			<button
-				onclick={(e) => { e.stopPropagation(); showChangePrintingModal(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); showChangePrintingModal(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,7 +444,7 @@
 				Change printing
 			</button>
 			<button
-				onclick={(e) => { e.stopPropagation(); handleMoveToMaybeboard(openCardMenu.card); }}
+				onclick={(e) => { e.stopPropagation(); handleMoveToMaybeboard(openCardMenu!.card); }}
 				class="menu-item"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -460,7 +460,6 @@
 {#if addMoreCard}
 	<AddQuantityModal
 		card={addMoreCard.card}
-		category={addMoreCard.category}
 		onConfirm={handleAddQuantity}
 		onClose={() => addMoreCard = null}
 	/>
@@ -469,7 +468,6 @@
 {#if changePrintingCard}
 	<ChangePrintingModal
 		card={changePrintingCard.card}
-		category={changePrintingCard.category}
 		onConfirm={handleChangePrinting}
 		onClose={() => changePrintingCard = null}
 	/>

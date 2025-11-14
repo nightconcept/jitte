@@ -5,6 +5,7 @@
 import type { CategorizedCards, ValidationWarning } from './card';
 import type { Maybeboard } from './maybeboard';
 import type { BranchMetadata, Stash } from './version';
+import type { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Main deck structure
@@ -19,8 +20,8 @@ export interface Deck {
 	/** Total card count (should be 100 for Commander) */
 	cardCount: number;
 
-	/** Format (always "commander" for this app) */
-	format: 'commander';
+	/** Format (Commander, Standard, Modern, etc.) */
+	format: DeckFormat;
 
 	/** Color identity of the deck */
 	colorIdentity: string[];
@@ -44,7 +45,7 @@ export interface Deck {
 export interface DeckManifest {
 	/** Deck metadata */
 	name: string;
-	format: 'commander';
+	format: DeckFormat;
 	createdAt: string;
 	updatedAt: string;
 

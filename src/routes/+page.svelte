@@ -4,7 +4,7 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
-	import CommanderHeader from '$lib/components/CommanderHeader.svelte';
+	import DeckHeader from '$lib/components/DeckHeader.svelte';
 	import DeckEditNav from '$lib/components/DeckEditNav.svelte';
 	import CardPreview from '$lib/components/CardPreview.svelte';
 	import DeckList from '$lib/components/DeckList.svelte';
@@ -25,6 +25,7 @@
 	import { parsePlaintext } from '$lib/utils/decklist-parser';
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 	import { scryfallToCard } from '$lib/utils/card-converter';
+	import { DeckFormat } from '$lib/formats/format-registry';
 
 	// 🚨 CRITICAL: Use $state() for all reactive variables in runes mode!
 	// Regular `let` variables are NOT reactive in Svelte 5 runes mode
@@ -183,19 +184,19 @@
 		}
 	}
 
-	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderNames: string[]; decklist?: string }>) {
-		const { name, commanderNames, decklist } = event.detail;
+	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderNames: string[]; decklist?: string; format: DeckFormat }>) {
+		const { name, commanderNames, decklist, format } = event.detail;
 
 		// Check if this is an import or empty deck creation
 		if (decklist) {
 			// Import mode: use the import handler logic
-			await handleImportDeck({ deckName: name, commanderNames, decklist });
+			await handleImportDeck({ deckName: name, commanderNames, decklist, format });
 		} else {
 			// Empty deck mode: create empty deck with commanders
 			try {
 				console.log('[handleCreateDeck] Starting deck creation:', { name, commanderNames });
 
-				await deckManager.createDeck(name, commanderNames);
+				await deckManager.createDeck(name, format, commanderNames);
 
 				console.log('[handleCreateDeck] Deck created, closing modal');
 
@@ -216,8 +217,13 @@
 		}
 	}
 
-	async function handleImportDeck(data: { deckName: string; commanderNames: string[]; decklist: string }) {
-		const { deckName, commanderNames, decklist } = data;
+	async function handleImportDeck(data: {
+		deckName: string;
+		commanderNames: string[];
+		decklist: string;
+		format: DeckFormat;
+	}) {
+		const { deckName, commanderNames, decklist, format } = data;
 
 		// Close modal immediately and show loading
 		showNewDeckModal = false;
@@ -229,7 +235,7 @@
 			console.log('[handleImportDeck] Starting deck import:', { deckName, commanderNames });
 
 			// Create the deck with the detected commander(s)
-			await deckManager.createDeck(deckName, commanderNames);
+			await deckManager.createDeck(deckName, format, commanderNames);
 
 			console.log('[handleImportDeck] Deck created, now importing cards');
 
@@ -837,8 +843,8 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Commander Header with Gradient -->
-		<CommanderHeader />
+		<!-- Deck Header with Gradient -->
+		<DeckHeader />
 
 		<!-- Deck Edit Navigation (Sticky) -->
 		<DeckEditNav

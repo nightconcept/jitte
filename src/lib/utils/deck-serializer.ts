@@ -10,6 +10,7 @@ import { serializePlaintext, parsePlaintext } from './decklist-parser';
 import { CardCategory } from '$lib/types/card';
 import type { DeckArchive } from './zip';
 import { scryfallToCard } from './card-converter';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Deck version file format (JSON)
@@ -284,7 +285,7 @@ export async function extractDeckFromArchive(archive: DeckArchive): Promise<{
 	// Create Deck object
 	const deck: Deck = {
 		name: manifest.name,
-		format: 'commander',
+		format: manifest.format || DeckFormat.Commander, // Default to Commander for old decks
 		cards,
 		cardCount,
 		colorIdentity: [], // TODO: Calculate from cards

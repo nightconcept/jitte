@@ -2,6 +2,7 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { calculateDiff, calculatePriceDiff, formatDiffSummary } from '$lib/utils/diff';
 	import type { Deck } from '$lib/types/deck';
+	import type { Card } from '$lib/types/card';
 	import type { VersionDiff, DiffCard } from '$lib/types/version';
 	import { toastStore } from '$lib/stores/toast-store';
 	import BaseModal from './BaseModal.svelte';
@@ -390,7 +391,10 @@
 							{currentDeck.name} - {currentDeck.currentVersion}
 						</div>
 						<div class="text-lg font-semibold text-[var(--color-text-primary)]">
-							{Object.values(currentDeck.cards).reduce((sum, cat) => sum + cat.reduce((s, c) => s + c.quantity, 0), 0)} cards
+							{Object.values(currentDeck.cards).reduce(
+								(sum, cat) => sum + cat.reduce((s: number, c: Card) => s + c.quantity, 0),
+								0
+							)} cards
 						</div>
 					</div>
 				</div>
@@ -400,7 +404,7 @@
 					{#if categoryCards.length > 0}
 						<div class="mb-6">
 							<h3 class="text-lg font-semibold text-[var(--color-brand-primary)] mb-3 capitalize">
-								{categoryName} ({categoryCards.reduce((sum, c) => sum + c.quantity, 0)})
+								{categoryName} ({categoryCards.reduce((sum: number, c: Card) => sum + c.quantity, 0)})
 							</h3>
 							<div class="space-y-2">
 								{#each categoryCards as card}

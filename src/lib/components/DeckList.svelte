@@ -777,7 +777,7 @@
 
 													<!-- Validation Warnings -->
 													{#each getCardWarnings(card.name) as warning}
-														<ValidationWarningIcon {warning} position="right" />
+														<ValidationWarningIcon {warning} position="below" />
 													{/each}
 												</div>
 
@@ -932,7 +932,6 @@
 {#if addMoreCard}
 	<AddQuantityModal
 		card={addMoreCard.card}
-		category={addMoreCard.category}
 		onConfirm={handleAddQuantity}
 		onClose={() => addMoreCard = null}
 	/>
@@ -941,7 +940,6 @@
 {#if changePrintingCard}
 	<ChangePrintingModal
 		card={changePrintingCard.card}
-		category={changePrintingCard.category}
 		onConfirm={handleChangePrinting}
 		onClose={() => changePrintingCard = null}
 	/>

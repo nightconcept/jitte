@@ -14,6 +14,7 @@ import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CategorizedCards } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
+import { DeckFormat } from '$lib/formats/format-registry';
 import { createEmptyDeck, calculateColorIdentity } from '$lib/utils/deck-factory';
 import { calculateStatistics } from '$lib/utils/deck-statistics';
 import { validateDeck } from '$lib/utils/deck-validation';
@@ -33,8 +34,8 @@ function createDeckStore() {
 		/**
 		 * Initialize a new deck
 		 */
-		createNew(name: string, commanders?: Card | Card[]): void {
-			const deck = createEmptyDeck(name, commanders);
+		createNew(name: string, format: DeckFormat, commanders?: Card | Card[]): void {
+			const deck = createEmptyDeck(name, format, commanders);
 			const maybeboard: Maybeboard = {
 				categories: [
 					{

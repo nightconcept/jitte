@@ -5,6 +5,7 @@
 import type { Deck, DeckManifest } from '$lib/types/deck';
 import type { Card, CardCategory, CategorizedCards, ManaColor } from '$lib/types/card';
 import type { BranchMetadata } from '$lib/types/version';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Calculate the combined color identity from multiple commanders
@@ -46,14 +47,18 @@ export function createEmptyCategorizedCards(): CategorizedCards {
 /**
  * Create a new empty deck
  */
-export function createEmptyDeck(name: string, commanders?: Card | Card[]): Deck {
+export function createEmptyDeck(
+	name: string,
+	format: DeckFormat = DeckFormat.Commander,
+	commanders?: Card | Card[]
+): Deck {
 	const now = new Date().toISOString();
 	const cards = createEmptyCategorizedCards();
 
 	// Add commanders if provided
 	if (commanders) {
 		const commanderArray = Array.isArray(commanders) ? commanders : [commanders];
-		cards.commander = commanderArray.map(c => ({ ...c, quantity: 1 }));
+		cards.commander = commanderArray.map((c) => ({ ...c, quantity: 1 }));
 	}
 
 	const commanderCount = cards.commander.length;
@@ -62,7 +67,7 @@ export function createEmptyDeck(name: string, commanders?: Card | Card[]): Deck 
 		name,
 		cards,
 		cardCount: commanderCount,
-		format: 'commander',
+		format,
 		colorIdentity: calculateColorIdentity(cards.commander),
 		currentBranch: 'main',
 		currentVersion: 'unsaved',
@@ -87,7 +92,7 @@ export function createDeckManifest(deck: Deck): DeckManifest {
 
 	return {
 		name: deck.name,
-		format: 'commander',
+		format: deck.format,
 		createdAt: deck.createdAt,
 		updatedAt: deck.updatedAt,
 		currentBranch: 'main',

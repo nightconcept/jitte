@@ -69,6 +69,7 @@
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-4xl mx-4 border border-[var(--color-border)] h-[85vh] flex flex-col"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"

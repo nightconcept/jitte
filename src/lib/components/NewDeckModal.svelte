@@ -10,16 +10,25 @@
   import { scryfallToCard } from "$lib/utils/card-converter";
   import { detectPartnerType } from "$lib/utils/partner-detection";
   import { parsePlaintext, type ParseResult } from "$lib/utils/decklist-parser";
+  import { DeckFormat, FORMAT_METADATA } from "$lib/formats/format-registry";
 
   export let isOpen = false;
 
   const dispatch = createEventDispatcher<{
     close: void;
-    create: { name: string; commanderNames: string[]; decklist?: string };
+    create: {
+      name: string;
+      commanderNames: string[];
+      decklist?: string;
+      format: DeckFormat;
+    };
   }>();
 
   // Mode selection: 'empty' or 'import'
   let mode: "empty" | "import" = "empty";
+
+  // Format selection
+  let selectedFormat: DeckFormat = DeckFormat.Commander;
 
   let deckName = "";
   let commanderSearchQuery = "";
@@ -39,6 +48,9 @@
   let isDetectingCommanders = false;
 
   const cardServiceInstance = new CardService();
+
+  // Check if selected format requires commanders
+  $: needsCommander = selectedFormat === DeckFormat.Commander;
 
   // Check if selected commander has partner ability
   $: hasPartnerAbility = selectedCommander
@@ -289,19 +301,28 @@
 
   function handleCreate() {
     if (mode === "empty") {
-      // Empty deck mode: use old commander search
-      if (!deckName.trim() || !selectedCommander) {
+      // Empty deck mode
+      if (!deckName.trim()) {
         return;
       }
 
-      const commanderNames = [selectedCommander.name];
-      if (selectedPartner) {
-        commanderNames.push(selectedPartner.name);
+      // For Commander format, require commander selection
+      if (needsCommander && !selectedCommander) {
+        return;
+      }
+
+      const commanderNames = [];
+      if (selectedCommander) {
+        commanderNames.push(selectedCommander.name);
+        if (selectedPartner) {
+          commanderNames.push(selectedPartner.name);
+        }
       }
 
       dispatch("create", {
         name: deckName.trim(),
         commanderNames,
+        format: selectedFormat,
       });
     } else {
       // Import mode: validate and dispatch with decklist
@@ -310,7 +331,8 @@
         return;
       }
 
-      if (selectedCommanders.length === 0) {
+      // For Commander format, require commander selection
+      if (needsCommander && selectedCommanders.length === 0) {
         showErrors = true;
         return;
       }
@@ -328,8 +350,9 @@
 
       dispatch("create", {
         name: deckName.trim(),
-        commanderNames: selectedCommanders.map((c) => c.name),
+        commanderNames: needsCommander ? selectedCommanders.map((c) => c.name) : [],
         decklist: decklistInput,
+        format: selectedFormat,
       });
     }
 
@@ -344,6 +367,7 @@
 
   function resetForm() {
     mode = "empty";
+    selectedFormat = DeckFormat.Commander;
     deckName = "";
     commanderSearchQuery = "";
     selectedCommander = null;
@@ -400,6 +424,30 @@
         </div>
       </div>
 
+      <!-- Format Selector -->
+      <div class="mb-4">
+        <label
+          for="format-select"
+          class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
+        >
+          Format <span class="text-red-500">*</span>
+        </label>
+        <select
+          id="format-select"
+          bind:value={selectedFormat}
+          class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+        >
+          {#each Object.values(DeckFormat) as format}
+            <option value={format}>
+              {FORMAT_METADATA[format].displayName}
+            </option>
+          {/each}
+        </select>
+        <p class="mt-1 text-sm text-[var(--color-text-secondary)]">
+          {FORMAT_METADATA[selectedFormat].description}
+        </p>
+      </div>
+
       <!-- Deck Name -->
       <div class={mode === "import" ? "mb-4" : ""}>
         <label
@@ -418,9 +466,10 @@
       </div>
 
       {#if mode === "empty"}
-        <!-- Empty Deck Mode: Original Commander Search -->
+        <!-- Empty Deck Mode: Commander Search (if needed for format) -->
 
-        <!-- Commander Search -->
+        {#if needsCommander}
+          <!-- Commander Search -->
         <div class="relative">
           <label
             for="commander-search-input"
@@ -568,11 +617,21 @@
             </div>
           </div>
         {/if}
+        {:else}
+          <!-- Non-Commander Format -->
+          <div class="p-4 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded">
+            <p class="text-sm text-[var(--color-text-secondary)]">
+              {FORMAT_METADATA[selectedFormat].displayName} decks don't require commanders.
+              Create your deck and start adding cards!
+            </p>
+          </div>
+        {/if}
       {:else}
         <!-- Import Mode: Commander Search + Decklist -->
 
-        <!-- Commander Search -->
-        <div class="mb-4">
+        {#if needsCommander}
+          <!-- Commander Search -->
+          <div class="mb-4">
           <label
             for="import-commander-input"
             class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
@@ -634,6 +693,7 @@
             </div>
           {/if}
         </div>
+        {/if}
 
         <!-- Decklist Textarea -->
         <div class="flex-1 flex flex-col">

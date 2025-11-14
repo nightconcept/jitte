@@ -12,6 +12,7 @@ import type { DeckListEntry } from '$lib/storage/types';
 import { deckStore } from './deck-store';
 import { createVersion } from '$lib/utils/version-control';
 import { createDeckManifest } from '$lib/utils/deck-factory';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Deck list item for display
@@ -439,9 +440,17 @@ function createDeckManager() {
 	/**
 	 * Create a new deck
 	 */
-	async function createDeck(name: string, commanderNames?: string | string[]): Promise<void> {
-		const namesArray = commanderNames ? (Array.isArray(commanderNames) ? commanderNames : [commanderNames]) : [];
-		console.log('[deckManager.createDeck] Starting:', { name, commanderNames: namesArray });
+	async function createDeck(
+		name: string,
+		format: DeckFormat,
+		commanderNames?: string | string[]
+	): Promise<void> {
+		const namesArray = commanderNames
+			? Array.isArray(commanderNames)
+				? commanderNames
+				: [commanderNames]
+			: [];
+		console.log('[deckManager.createDeck] Starting:', { name, format, commanderNames: namesArray });
 		update((state) => ({ ...state, isLoading: true, error: null }));
 
 		const commanders: Card[] = [];
@@ -502,7 +511,7 @@ function createDeckManager() {
 		}
 
 		console.log('[deckManager.createDeck] Creating deck in store with', commanders.length, 'commanders');
-		deckStore.createNew(name, commanders.length > 0 ? commanders : undefined);
+		deckStore.createNew(name, format, commanders.length > 0 ? commanders : undefined);
 
 		console.log('[deckManager.createDeck] Updating manager state...');
 		// The deck will be saved when the user first commits

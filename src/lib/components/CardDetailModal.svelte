@@ -286,9 +286,9 @@
 								</div>
 
 								<div class="grid grid-cols-3 gap-1 text-sm">
-									{#each formatOrder.filter(format => scryfallCard.legalities[format]) as format}
-										{@const legality = scryfallCard.legalities[format]}
-										{@const legalityInfo = getLegalityIcon(legality)}
+									{#each formatOrder.filter((format) => scryfallCard?.legalities?.[format as keyof typeof scryfallCard.legalities]) as format}
+										{@const legality = scryfallCard?.legalities?.[format as keyof typeof scryfallCard.legalities]}
+										{@const legalityInfo = legality ? getLegalityIcon(legality) : { icon: '?', color: 'text-gray-500', title: 'Unknown' }}
 										<div class="flex items-center gap-1.5 px-2 py-1 bg-[var(--color-bg-secondary)] rounded" title={legalityInfo.title}>
 											<span class="flex-shrink-0 {legalityInfo.color}">
 												{legalityInfo.icon}

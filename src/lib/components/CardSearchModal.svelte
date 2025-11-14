@@ -747,9 +747,7 @@
     left: 0;
   }
 
-  .card-face--front {
-    /* Front face is at 0 degrees */
-  }
+  /* Front face is at 0 degrees - no rotation needed */
 
   .card-face--back {
     /* Back face is pre-rotated 180 degrees */
