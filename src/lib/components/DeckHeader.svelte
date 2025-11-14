@@ -4,23 +4,85 @@
 	import { toastStore } from '$lib/stores/toast-store';
 	import { CardCategory } from '$lib/types/card';
 	import type { Deck } from '$lib/types/deck';
+	import type { DeckSaltScore } from '$lib/types/edhrec';
 	import { DeckFormat } from '$lib/formats/format-registry';
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import { getBracketLabel, isGameChanger } from '$lib/utils/game-changers';
 	import BracketTooltip from './BracketTooltip.svelte';
+	import SaltTooltip from './SaltTooltip.svelte';
+	import { calculateDeckSaltScore } from '$lib/utils/salt-calculator';
 
-	$: deck = $deckStore?.deck;
-	$: statistics = $deckStore?.statistics;
-	$: commander = deck?.cards.commander?.[0];
-	$: commanderImageUrl = commander?.imageUrls?.artCrop || commander?.imageUrls?.large;
-	$: bracketLabel = statistics?.bracketLevel ? getBracketLabel(statistics.bracketLevel) : 'Unknown';
+	// Store subscriptions using Svelte 5 runes
+	let deckStoreState = $state($deckStore);
+	let validationWarningsState = $state($validationWarnings);
+	let deckManagerState = $state($deckManager);
 
-	// Only show bracket for Commander format
-	$: isCommanderFormat = deck?.format === DeckFormat.Commander;
+	$effect(() => {
+		const unsubscribeDeckStore = deckStore.subscribe((value) => {
+			deckStoreState = value;
+		});
+		const unsubscribeValidations = validationWarnings.subscribe((value) => {
+			validationWarningsState = value;
+		});
+		const unsubscribeDeckManager = deckManager.subscribe((value) => {
+			deckManagerState = value;
+		});
+		return () => {
+			unsubscribeDeckStore();
+			unsubscribeValidations();
+			unsubscribeDeckManager();
+		};
+	});
 
-	// Get list of Game Changers in the deck (Commander only)
-	$: gameChangersInDeck = isCommanderFormat && deck ? getAllGameChangers(deck) : [];
+	// Derived values
+	let deck = $derived(deckStoreState?.deck);
+	let statistics = $derived(deckStoreState?.statistics);
+	let commander = $derived(deck?.cards.commander?.[0]);
+	let commanderImageUrl = $derived(commander?.imageUrls?.artCrop || commander?.imageUrls?.large);
+	let bracketLabel = $derived(
+		statistics?.bracketLevel ? getBracketLabel(statistics.bracketLevel) : 'Unknown'
+	);
+	let isCommanderFormat = $derived(deck?.format === DeckFormat.Commander);
+	let gameChangersInDeck = $derived(isCommanderFormat && deck ? getAllGameChangers(deck) : []);
+	let deckWideWarnings = $derived(validationWarningsState.filter((w) => !w.cardName));
+	let typeDistribution = $derived({
+		planeswalker:
+			deck?.cards[CardCategory.Planeswalker]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		creature: deck?.cards[CardCategory.Creature]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		instant: deck?.cards[CardCategory.Instant]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		sorcery: deck?.cards[CardCategory.Sorcery]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		artifact: deck?.cards[CardCategory.Artifact]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		enchantment:
+			deck?.cards[CardCategory.Enchantment]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		land: deck?.cards[CardCategory.Land]?.reduce((sum, c) => sum + c.quantity, 0) || 0
+	});
+	let mainDeckCount = $derived(statistics?.totalCards || 0);
+
+	// Salt score state
+	let saltScore = $state<DeckSaltScore | null>(null);
+	let saltLoading = $state(false);
+
+	// Fetch salt score when deck changes (Commander format only)
+	$effect(() => {
+		if (isCommanderFormat && deck) {
+			loadSaltScore(deck);
+		} else {
+			saltScore = null;
+		}
+	});
+
+	async function loadSaltScore(currentDeck: Deck) {
+		saltLoading = true;
+		try {
+			saltScore = await calculateDeckSaltScore(currentDeck);
+		} catch (error) {
+			console.warn('Failed to load salt score:', error);
+			saltScore = null;
+		} finally {
+			saltLoading = false;
+		}
+	}
 
 	function getAllGameChangers(deck: Deck | undefined): string[] {
 		if (!deck) return [];
@@ -35,28 +97,10 @@
 		return gameChangers.sort();
 	}
 
-	// Get deck-wide warnings (not specific to a card)
-	$: deckWideWarnings = $validationWarnings.filter((w) => !w.cardName);
-
-	// Calculate type distribution
-	$: typeDistribution = {
-		planeswalker:
-			deck?.cards[CardCategory.Planeswalker]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		creature: deck?.cards[CardCategory.Creature]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		instant: deck?.cards[CardCategory.Instant]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		sorcery: deck?.cards[CardCategory.Sorcery]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		artifact: deck?.cards[CardCategory.Artifact]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		enchantment:
-			deck?.cards[CardCategory.Enchantment]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		land: deck?.cards[CardCategory.Land]?.reduce((sum, c) => sum + c.quantity, 0) || 0
-	};
-
-	$: mainDeckCount = statistics?.totalCards || 0;
-
 	// Inline editing state
-	let isEditingName = false;
-	let editedName = '';
-	let nameInputElement: HTMLInputElement;
+	let isEditingName = $state(false);
+	let editedName = $state('');
+	let nameInputElement = $state<HTMLInputElement | undefined>(undefined);
 
 	function startEditingName() {
 		if (!deck) return;
@@ -79,7 +123,7 @@
 		const newName = editedName.trim();
 
 		// Check for name collision
-		const existingDecks = $deckManager.decks;
+		const existingDecks = deckManagerState.decks;
 		if (existingDecks.some((d) => d.name === newName)) {
 			toastStore.error(
 				'A deck with this name already exists. Please choose a different name.'
@@ -205,6 +249,78 @@
 									{statistics.bracketLevel} - {bracketLabel}
 								</span>
 							</BracketTooltip>
+						</div>
+					{/if}
+					<!-- Salt Score - Only for Commander -->
+					{#if isCommanderFormat && deck}
+						<div class="flex items-center gap-2">
+							<span class="text-[var(--color-text-tertiary)]">Salt:</span>
+							<SaltTooltip {saltScore} loading={saltLoading}>
+								{#if saltScore && saltScore.totalCardsWithScores > 0}
+									<div class="flex items-center gap-1.5">
+										<span
+											class="font-semibold px-2 py-0.5 rounded text-xs cursor-help {saltScore.averageSalt >=
+											2.5
+												? 'bg-red-500/20 text-red-400'
+												: saltScore.averageSalt >= 2.0
+													? 'bg-orange-500/20 text-orange-400'
+													: saltScore.averageSalt >= 1.5
+														? 'bg-yellow-500/20 text-yellow-400'
+														: 'bg-green-500/20 text-green-400'}"
+										>
+											{saltScore.totalSalt.toFixed(1)}
+										</span>
+										{#if saltLoading}
+											<svg
+												class="animate-spin h-3 w-3 text-[var(--color-text-tertiary)]"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												></circle>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												></path>
+											</svg>
+										{/if}
+									</div>
+								{:else if saltLoading}
+									<div class="flex items-center gap-1.5">
+										<span class="text-xs text-[var(--color-text-secondary)]">Calculating...</span>
+										<svg
+											class="animate-spin h-3 w-3 text-[var(--color-text-tertiary)]"
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+										>
+											<circle
+												class="opacity-25"
+												cx="12"
+												cy="12"
+												r="10"
+												stroke="currentColor"
+												stroke-width="4"
+											></circle>
+											<path
+												class="opacity-75"
+												fill="currentColor"
+												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+											></path>
+										</svg>
+									</div>
+								{:else}
+									<span class="text-xs text-[var(--color-text-secondary)]">N/A</span>
+								{/if}
+							</SaltTooltip>
 						</div>
 					{/if}
 				</div>

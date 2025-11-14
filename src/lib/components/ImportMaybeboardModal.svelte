@@ -85,15 +85,18 @@
 			<!-- Body - Full height textarea -->
 			<div class="px-6 py-4 flex-1 flex flex-col min-h-0">
 				<div class="flex-1 flex flex-col">
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<label
+						for="import-decklist-input"
+						class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
+					>
 						Card List
 					</label>
 					<textarea
+						id="import-decklist-input"
 						bind:value={decklistInput}
 						placeholder={'1 Lightning Bolt\n1 Sol Ring (2XM) 97\n2x Counterspell\n1 Command Tower'}
 						class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"
-						autofocus
-					/>
+					></textarea>
 
 					<!-- Status Bar -->
 					<div class="flex justify-between items-center mt-2">
