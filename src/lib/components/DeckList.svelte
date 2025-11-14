@@ -610,7 +610,7 @@
 	<!-- Card List -->
 	{#if viewMode === 'visual'}
 		<!-- Visual Spoiler View -->
-		<div class="space-y-6 overflow-visible" ondragover={handleDragOver} ondrop={handleDrop}>
+		<div class="space-y-6 overflow-visible" ondragover={handleDragOver} ondrop={handleDrop} role="region" aria-label="Visual deck view">
 			{#each categoryOrder as category}
 				{@const cards = getCategoryCards(category)}
 				{#if cards.length > 0}
@@ -634,6 +634,8 @@
 			class="stacks-view-container {useMasonryLayout ? 'stacks-view-masonry' : 'stacks-view-grid'}"
 			ondragover={handleDragOver}
 			ondrop={handleDrop}
+			role="region"
+			aria-label="Stacks deck view"
 		>
 			{#each categoryOrder as category}
 				{@const cards = getCategoryCards(category)}
@@ -694,6 +696,8 @@
 								class="px-4 pb-2 rounded-b-lg overflow-visible"
 								ondragover={handleDragOver}
 								ondrop={handleDrop}
+								role="region"
+								aria-label={`${categoryLabels[category]} cards`}
 							>
 								<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
@@ -704,6 +708,7 @@
 												ondragend={handleDragEnd}
 												onmouseenter={() => onCardHover?.(card)}
 												onclick={() => { detailModalCard = card; }}
+												onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = card; } }}
 												role="button"
 												tabindex="0"
 											>

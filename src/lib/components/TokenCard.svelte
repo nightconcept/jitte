@@ -20,6 +20,7 @@
 	class="relative flex items-center justify-between hover:bg-gray-800/30 rounded transition-colors py-1.5 px-2 cursor-pointer"
 	onmouseenter={() => onCardHover?.(token)}
 	onclick={() => { detailModalCard = token; }}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = token; } }}
 	role="button"
 	tabindex="0"
 >

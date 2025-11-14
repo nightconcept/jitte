@@ -926,6 +926,13 @@ function createDeckManager() {
 		update((state) => ({ ...state, error: null }));
 	}
 
+	/**
+	 * Get storage instance
+	 */
+	function getStorage() {
+		return storage;
+	}
+
 	return {
 		subscribe,
 		initializeStorage,
@@ -941,7 +948,8 @@ function createDeckManager() {
 		switchToBranch,
 		deleteBranchFromDeck,
 		updateVersioningScheme,
-		clearError
+		clearError,
+		getStorage
 	};
 }
 

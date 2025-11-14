@@ -347,7 +347,6 @@
               oninput={handleInput}
               placeholder="Search for cards (min {MIN_SEARCH_CHARACTERS} characters)..."
               class="w-full px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-              autofocus
             />
 
             {#if isLoading}

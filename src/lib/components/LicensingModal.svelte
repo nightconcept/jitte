@@ -197,7 +197,7 @@
 		<!-- Footer (outside scrollable area) -->
 		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end">
 			<button
-				on:click={onClose}
+				onclick={onClose}
 				class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
 			>
 				Close

@@ -137,9 +137,10 @@
 					<span>Mana Cost & Production</span>
 					<button
 						class="p-1 rounded hover:bg-[var(--color-surface)] transition-colors"
-						on:click={() => (showManaCharts = !showManaCharts)}
+						onclick={() => (showManaCharts = !showManaCharts)}
 						aria-expanded={showManaCharts}
 						aria-controls="mana-charts"
+						aria-label="Toggle mana charts"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -167,9 +168,10 @@
 					<span>Mana Curve</span>
 					<button
 						class="p-1 rounded hover:bg-[var(--color-surface)] transition-colors"
-						on:click={() => (showManaCurve = !showManaCurve)}
+						onclick={() => (showManaCurve = !showManaCurve)}
 						aria-expanded={showManaCurve}
 						aria-controls="mana-curve"
+						aria-label="Toggle mana curve"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -302,9 +304,10 @@
 					<span>Draw Probability</span>
 					<button
 						class="p-1 rounded hover:bg-[var(--color-surface)] transition-colors"
-						on:click={() => (showTypeBreakdown = !showTypeBreakdown)}
+						onclick={() => (showTypeBreakdown = !showTypeBreakdown)}
 						aria-expanded={showTypeBreakdown}
 						aria-controls="draw-probability"
+						aria-label="Toggle draw probability"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -343,7 +346,7 @@
 						{#if showCombos && (detectedCombos.length > 0 || combosError)}
 							<button
 								class="px-2 py-1 text-xs rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-								on:click={reloadCombos}
+								onclick={reloadCombos}
 								title="Clear cache and reload combos (check console for debug logs)"
 							>
 								🔄 Reload
@@ -351,9 +354,10 @@
 						{/if}
 						<button
 							class="p-1 rounded hover:bg-[var(--color-surface)] transition-colors"
-							on:click={toggleCombos}
+							onclick={toggleCombos}
 							aria-expanded={showCombos}
 							aria-controls="detected-combos"
+							aria-label="Toggle combos"
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -383,7 +387,7 @@
 								<p class="text-[var(--color-accent-red)] font-semibold">Error detecting combos</p>
 								<p class="text-[var(--color-text-secondary)] mt-1">{combosError}</p>
 								<button
-									on:click={loadCombos}
+									onclick={loadCombos}
 									class="mt-3 px-3 py-1.5 bg-[var(--color-accent-blue)] text-white rounded text-xs hover:opacity-90 transition-opacity"
 								>
 									Retry

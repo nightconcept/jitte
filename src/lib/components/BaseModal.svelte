@@ -65,6 +65,12 @@
 		class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
 		role="presentation"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleBackdropClick();
+			}
+		}}
 		transition:fade={{ duration: 50 }}
 	>
 		<!-- Modal Content -->

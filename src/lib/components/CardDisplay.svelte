@@ -183,6 +183,7 @@
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
 	onclick={handleClick}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
 	role="button"
 	tabindex="0"
 >

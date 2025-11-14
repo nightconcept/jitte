@@ -127,9 +127,10 @@ For example, on your "stax" branch, you might:
 						</p>
 					</div>
 					<button
-						on:click={handleSkip}
+						onclick={handleSkip}
 						class="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors ml-2"
 						title="Skip onboarding (or press Esc)"
+						aria-label="Skip onboarding"
 					>
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -167,7 +168,7 @@ For example, on your "stax" branch, you might:
 			<!-- Footer -->
 			<div class="px-4 py-3 border-t border-[var(--color-border)] flex justify-between flex-shrink-0">
 				<button
-					on:click={handlePrevious}
+					onclick={handlePrevious}
 					disabled={currentStep === 0}
 					class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
@@ -176,14 +177,14 @@ For example, on your "stax" branch, you might:
 
 				<div class="flex gap-2">
 					<button
-						on:click={handleSkip}
+						onclick={handleSkip}
 						class="px-3 py-1.5 text-sm rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
 					>
 						Skip Tutorial
 					</button>
 
 					<button
-						on:click={handleNext}
+						onclick={handleNext}
 						class="px-4 py-1.5 text-sm rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white font-medium transition-colors"
 					>
 						{currentStep === totalSteps - 1 ? "Let's Go!" : 'Next'}

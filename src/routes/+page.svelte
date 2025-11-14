@@ -364,8 +364,7 @@
 		}
 	}
 
-	async function handleLoadDeckFromPicker(event: CustomEvent<string>) {
-		const deckName = event.detail;
+	async function handleLoadDeckFromPicker(deckName: string) {
 		await deckManager.loadDeck(deckName);
 		showDeckPickerModal = false;
 	}
@@ -390,8 +389,7 @@
 		pendingLoadAction = null;
 	}
 
-	async function handleDeleteDeck(event: CustomEvent<string>) {
-		const deckName = event.detail;
+	async function handleDeleteDeck(deckName: string) {
 		await deckManager.deleteDeck(deckName);
 		// Deck picker stays open to allow selecting another deck
 	}
@@ -874,9 +872,10 @@
 <DeckPickerModal
 	isOpen={showDeckPickerModal}
 	decks={$deckManager.decks}
-	on:load={handleLoadDeckFromPicker}
-	on:delete={handleDeleteDeck}
-	on:close={() => showDeckPickerModal = false}
+	storage={deckManager.getStorage()}
+	onload={handleLoadDeckFromPicker}
+	ondelete={handleDeleteDeck}
+	onclose={() => (showDeckPickerModal = false)}
 />
 
 <!-- Unsaved Changes Warning Modal -->

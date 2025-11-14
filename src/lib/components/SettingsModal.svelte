@@ -139,7 +139,7 @@
               <select
                 id="theme-select"
                 value={name}
-                on:change={(e) =>
+                onchange={(e) =>
                   selectTheme(e.currentTarget.value as ThemeName)}
                 class="w-full px-4 py-2 text-sm rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-brand-primary)]/50 focus:border-[var(--color-brand-primary)] focus:outline-none transition-colors"
               >
@@ -154,13 +154,15 @@
             <!-- Light/Dark Mode Toggle -->
             <div>
               <label
+                for="mode-toggle-button"
                 class="block text-sm text-[var(--color-text-secondary)] mb-2"
               >
                 Mode
               </label>
               <button
+                id="mode-toggle-button"
                 type="button"
-                on:click={toggleMode}
+                onclick={toggleMode}
                 class="w-full px-4 py-2 text-sm rounded border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 text-[var(--color-text-primary)] transition-colors flex items-center justify-between"
               >
                 <span>{mode === "dark" ? "Dark Mode" : "Light Mode"}</span>
@@ -220,7 +222,7 @@
           <div class="space-y-2">
             <button
               type="button"
-              on:click={handleRedoOnboarding}
+              onclick={handleRedoOnboarding}
               class="w-full px-4 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors"
             >
               <div class="font-medium">Redo Onboarding Tutorial</div>
@@ -239,7 +241,7 @@
           <div class="space-y-2">
             <button
               type="button"
-              on:click={confirmWipe}
+              onclick={confirmWipe}
               class="w-full px-4 py-2 text-sm text-left rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50 hover:border-red-500 transition-colors"
             >
               <div class="font-medium">Wipe All Data</div>
@@ -281,7 +283,7 @@
             <div class="pt-2 flex flex-col gap-2">
               <button
                 type="button"
-                on:click={copyDebugInfo}
+                onclick={copyDebugInfo}
                 class="px-3 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors flex items-center gap-2"
               >
                 <!-- Clipboard icon -->
@@ -306,7 +308,7 @@
 
               <button
                 type="button"
-                on:click={() => (showLicensing = true)}
+                onclick={() => (showLicensing = true)}
                 class="px-3 py-2 text-sm text-left rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/50 transition-colors"
               >
                 <span class="text-[var(--color-text-primary)]"
@@ -324,7 +326,7 @@
       class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end"
     >
       <button
-        on:click={handleClose}
+        onclick={handleClose}
         class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
       >
         Close
@@ -361,13 +363,13 @@
       class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end gap-3"
     >
       <button
-        on:click={cancelWipe}
+        onclick={cancelWipe}
         class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
       >
         Cancel
       </button>
       <button
-        on:click={handleWipeData}
+        onclick={handleWipeData}
         class="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white font-medium"
       >
         Yes, Wipe Everything

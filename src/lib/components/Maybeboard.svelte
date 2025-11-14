@@ -414,9 +414,11 @@
         <div
           class="space-y-1 flex-1 overflow-y-auto"
           onclick={closeCardMenu}
+          onkeydown={(e) => { if (e.key === 'Escape') closeCardMenu(); }}
           ondragover={handleDragOver}
           ondrop={handleDrop}
-          role="presentation"
+          role="region"
+          aria-label="Maybeboard cards"
         >
           {#if cards.length > 0}
             {#each cards as card}
@@ -595,6 +597,9 @@
     <div
       class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[var(--color-border)]"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
     >
       <!-- Header -->
       <div class="px-6 py-4 border-b border-[var(--color-border)]">
@@ -609,17 +614,18 @@
       <!-- Body -->
       <div class="px-6 py-4">
         <label
+          for="maybeboard-quantity-input"
           class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
         >
           Quantity
         </label>
         <input
+          id="maybeboard-quantity-input"
           type="number"
           bind:value={editQuantityAmount}
           min="1"
           max="100"
           class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-          autofocus
         />
       </div>
 

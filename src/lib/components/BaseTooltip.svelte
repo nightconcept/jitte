@@ -112,8 +112,8 @@
 <span
 	bind:this={triggerElement}
 	class="tooltip-trigger {positioning === 'absolute' ? 'tooltip-trigger--relative' : ''}"
-	role={trigger === 'click' ? 'button' : 'group'}
-	tabindex={trigger === 'click' ? 0 : undefined}
+	role={trigger === 'click' ? 'button' : undefined}
+	{...(trigger === 'click' ? { tabindex: 0 } : {})}
 	aria-label={ariaLabel}
 	aria-expanded={trigger === 'click' ? isVisible : undefined}
 	onmouseenter={handleTriggerMouseEnter}
@@ -136,9 +136,8 @@
 			style={positioning === 'fixed'
 				? `top: ${tooltipPosition.top}px; left: ${tooltipPosition.left}px; max-width: ${maxWidth};`
 				: `max-width: ${maxWidth};`}
-			role={trigger === 'click' ? 'button' : 'tooltip'}
-			tabindex={trigger === 'click' ? 0 : undefined}
-			aria-label={trigger === 'click' ? 'Close tooltip' : undefined}
+			role="tooltip"
+			{...(trigger === 'click' ? { tabindex: 0, 'aria-label': 'Close tooltip' } : {})}
 			onmouseenter={handleTooltipMouseEnter}
 			onmouseleave={handleTooltipMouseLeave}
 			onclick={trigger === 'click' ? toggle : undefined}
