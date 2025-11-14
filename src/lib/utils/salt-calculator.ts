@@ -42,9 +42,28 @@ export async function calculateDeckSaltScore(deck: Deck): Promise<DeckSaltScore>
 		...deck.cards[CardCategory.Other]
 	];
 
-	const uniqueCardNames = [...new Set(allCards.map((card) => card.name))];
+	// Filter out basic lands (they won't have salt scores)
+	const basicLands = [
+		'Plains',
+		'Island',
+		'Swamp',
+		'Mountain',
+		'Forest',
+		'Wastes',
+		'Snow-Covered Plains',
+		'Snow-Covered Island',
+		'Snow-Covered Swamp',
+		'Snow-Covered Mountain',
+		'Snow-Covered Forest'
+	];
+	const uniqueCardNames = [
+		...new Set(
+			allCards.map((card) => card.name).filter((name) => !basicLands.includes(name))
+		)
+	];
 
 	// Batch fetch salt scores (uses hybrid approach: local data first, API fallback)
+	// Note: This may take several minutes if many cards need API fetching (5s delay per card)
 	const saltScoresMap = await edhrecService.getSaltScoresForCards(uniqueCardNames);
 
 	// Convert to array of cards with scores

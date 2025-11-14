@@ -204,7 +204,10 @@ export class EDHRECService {
 	 * HYBRID APPROACH with aggressive local-first strategy:
 	 * 1. Check local data for all cards (instant)
 	 * 2. Check cache for remaining cards
-	 * 3. Only fetch from API for cards not in local top 100 or cache
+	 * 3. Fetch from API for cards not in local top 100 or cache (5 second delay between requests)
+	 *
+	 * Note: API fetching is slow by design (5s between requests) to avoid overwhelming EDHREC.
+	 * For a deck with many rare cards not in top 100, this can take several minutes.
 	 */
 	async getSaltScoresForCards(cardNames: string[]): Promise<Map<string, EDHRECSaltScore>> {
 		const results = new Map<string, EDHRECSaltScore>();
@@ -263,12 +266,44 @@ export class EDHRECService {
 			return results; // All remaining cards in cache!
 		}
 
-		// 3. Only fetch from API for cards not in local or cache
-		// Note: We don't fetch these in batch to avoid excessive API calls
-		// Users can manually trigger getSaltScore() for specific rare cards if needed
-		console.log(
-			`[EDHREC] ${notInCache.length} cards not in local top ${SALT_SCORES_COUNT} or cache (skipping API fetch in batch mode)`
-		);
+		// 3. Fetch from API for cards not in local or cache
+		// Use a very conservative delay (5 seconds) to avoid hammering EDHREC
+		if (notInCache.length > 0) {
+			console.log(
+				`[EDHREC] ${notInCache.length} cards need API fetch (5 second delay between requests)`
+			);
+
+			for (let i = 0; i < notInCache.length; i++) {
+				const name = notInCache[i];
+
+				// Add 5 second delay before each request (except the first)
+				if (i > 0) {
+					console.log(`[EDHREC] Waiting 5 seconds before fetching "${name}"...`);
+					await new Promise((resolve) => setTimeout(resolve, 5000));
+				}
+
+				try {
+					console.log(
+						`[EDHREC] Fetching salt score for "${name}" (${i + 1}/${notInCache.length})...`
+					);
+					const saltScore = await this.getSaltScore(name);
+
+					if (saltScore) {
+						results.set(name, saltScore);
+						console.log(`[EDHREC] ✓ Found salt score for "${name}": ${saltScore.saltScore}`);
+					} else {
+						console.log(`[EDHREC] ✗ No salt score found for "${name}"`);
+					}
+				} catch (error) {
+					console.warn(`[EDHREC] Failed to fetch salt score for "${name}":`, error);
+					// Continue with next card even if one fails
+				}
+			}
+
+			console.log(
+				`[EDHREC] Batch complete: ${results.size}/${cardNames.length} cards have salt scores`
+			);
+		}
 
 		return results;
 	}
