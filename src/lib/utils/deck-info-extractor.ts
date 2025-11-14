@@ -12,6 +12,7 @@ import { CardCategory } from '$lib/types/card';
 export interface CommanderInfo {
 	name: string;
 	colorIdentity: ManaColor[];
+	bracketLevel?: number;
 }
 
 /**
@@ -23,6 +24,7 @@ export async function extractCommanderInfo(zipBlob: Blob): Promise<CommanderInfo
 	try {
 		const { decompressDeckArchive } = await import('./zip');
 		const { deserializeDeck } = await import('./deck-serializer');
+		const { countGameChangers, calculateBracketLevel } = await import('./game-changers');
 
 		// Decompress the archive
 		const archive = await decompressDeckArchive(zipBlob);
@@ -64,11 +66,27 @@ export async function extractCommanderInfo(zipBlob: Blob): Promise<CommanderInfo
 			categorizedCards = await deserializeDeck(versionFileTxt);
 		}
 
+		// Extract all unique card names for bracket calculation
+		const uniqueCardNames: string[] = [];
+		for (const category in categorizedCards) {
+			const cards = categorizedCards[category];
+			for (const card of cards) {
+				if (!uniqueCardNames.includes(card.name)) {
+					uniqueCardNames.push(card.name);
+				}
+			}
+		}
+
+		// Calculate bracket level
+		const gameChangerCount = countGameChangers(uniqueCardNames);
+		const bracketLevel = calculateBracketLevel(gameChangerCount);
+
 		// Extract commander info
 		const commanders = categorizedCards[CardCategory.Commander] || [];
 		return commanders.map((card) => ({
 			name: card.name,
-			colorIdentity: card.colorIdentity || []
+			colorIdentity: card.colorIdentity || [],
+			bracketLevel
 		}));
 	} catch (error) {
 		console.error('[extractCommanderInfo] Error:', error);

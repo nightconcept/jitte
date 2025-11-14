@@ -56,7 +56,6 @@
 	let commanderLoadHandle: ReturnType<typeof setTimeout> | null = null;
 	let openMenuDeckName = $state<string | null>(null);
 	let openMenuFolderId = $state<string | null>(null);
-	let selectedDeckName = $state<string | null>(null);
 
 	// Drag and drop state
 	let draggedDeckName = $state<string | null>(null);
@@ -263,23 +262,11 @@
 		currentFolderId = null;
 		openMenuDeckName = null;
 		openMenuFolderId = null;
-		selectedDeckName = null;
-	}
-
-	function handleDeckRowClick(deckName: string) {
-		if (selectedDeckName === deckName) {
-			// Second click - load the deck
-			handleLoad(deckName);
-		} else {
-			// First click - select the deck
-			selectedDeckName = deckName;
-		}
 	}
 
 	// Folder navigation
 	function navigateToFolder(folderId: string | null) {
 		currentFolderId = folderId;
-		selectedDeckName = null;
 		buildBrowserItems();
 	}
 
@@ -288,7 +275,6 @@
 		const currentFolder = getFolderById(folderStructure, currentFolderId);
 		if (currentFolder) {
 			currentFolderId = currentFolder.parentId;
-			selectedDeckName = null;
 			buildBrowserItems();
 		}
 	}
@@ -511,6 +497,14 @@
 		const colorLower = color.toLowerCase();
 		return `ms ms-${colorLower} ms-cost ms-shadow`;
 	}
+
+	// Helper to count decks in a folder
+	function getDeckCountInFolder(folderId: string): number {
+		return decks.filter(deck => {
+			const deckFolderId = folderStructure.deckFolderMap[deck.name] || null;
+			return deckFolderId === folderId;
+		}).length;
+	}
 </script>
 
 <BaseModal
@@ -564,10 +558,11 @@
 			{:else}
 				<!-- Column Headers -->
 				<div class="sticky top-0 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] z-10">
-					<div class="px-6 py-3 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+					<div class="px-6 py-3 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto_auto] gap-6 items-center text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
 						<div>Deck Name</div>
 						<div>Commander</div>
 						<div>Colors</div>
+						<div>Format</div>
 						<div class="text-right">Modified</div>
 						<div class="text-right w-20">Size</div>
 						<div class="w-10"></div>
@@ -580,7 +575,7 @@
 							class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-pointer"
 							ondragover={handleDragOver}
 							ondrop={() => {
-								const currentFolder = getFolderById(folderStructure, currentFolderId);
+								const currentFolder = getFolderById(folderStructure, currentFolderId!);
 								if (currentFolder) {
 									handleDrop(currentFolder.parentId);
 								}
@@ -605,6 +600,7 @@
 								<div></div>
 								<div></div>
 								<div></div>
+								<div></div>
 								<div class="w-20"></div>
 								<div class="w-10"></div>
 							</button>
@@ -625,7 +621,7 @@
 									<!-- Main content area - single-click to open folder -->
 									<button
 										type="button"
-										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto] gap-6 items-center"
+										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center"
 										onclick={() => navigateToFolder(item.folder.id)}
 									>
 										<!-- Folder Name with Icon -->
@@ -633,10 +629,14 @@
 											<span class="text-lg">📁</span>
 											<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
 												{item.folder.name}
+												<span class="text-[var(--color-text-tertiary)] ml-1">
+													({getDeckCountInFolder(item.folder.id)})
+												</span>
 											</div>
 										</div>
 
 										<!-- Empty columns to match deck layout -->
+										<div></div>
 										<div></div>
 										<div></div>
 										<div></div>
@@ -700,7 +700,7 @@
 						{:else}
 							<!-- Deck Item -->
 							<div
-								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 {selectedDeckName === item.deckName ? 'bg-[var(--color-accent-blue)]/20' : ''} transition-colors cursor-move relative group"
+								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-move relative group"
 								draggable="true"
 								ondragstart={() => handleDragStart(item.deckName)}
 								ondragend={handleDragEnd}
@@ -720,28 +720,20 @@
 								<div class="flex items-center gap-6">
 									<!-- Deck content grid -->
 									<div
-										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto] gap-6 items-center"
-										onclick={() => handleDeckRowClick(item.deckName)}
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												handleDeckRowClick(item.deckName);
-											}
-										}}
-										role="button"
-										tabindex="-1"
+										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center"
 									>
 										<!-- Deck Name - single click to load -->
 										<button
 											type="button"
-											class="min-w-0 text-left"
+											class="min-w-0 text-left group/deckname"
 											onclick={(e) => {
 												e.stopPropagation();
 												handleLoad(item.deckName);
 											}}
 										>
-											<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
+											<div class="font-medium text-[var(--color-text-primary)] group-hover/deckname:text-[var(--color-accent-blue)] text-sm truncate transition-colors relative">
 												{item.deckName}
+												<span class="absolute bottom-0 left-0 w-0 h-[1.5px] bg-[var(--color-accent-blue)] group-hover/deckname:w-full transition-all duration-200"></span>
 											</div>
 										</button>
 
@@ -752,7 +744,7 @@
 												{#if commanders.length > 0}
 													<div class="flex flex-col gap-0.5">
 														{#each commanders as commander}
-															<span class="text-sm text-[var(--color-text-primary)] truncate">
+															<span class="text-sm text-[var(--color-text-secondary)] truncate">
 																{commander.name}
 															</span>
 														{/each}
@@ -781,6 +773,20 @@
 														<i class="ms ms-c ms-cost ms-shadow"></i>
 													{/if}
 												{/if}
+											{/if}
+										</div>
+
+										<!-- Format with Bracket -->
+										<div class="text-sm text-[var(--color-text-secondary)]">
+											{#if commanderCache.has(item.deckName)}
+												{@const commanders = commanderCache.get(item.deckName)!}
+												{#if commanders.length > 0 && commanders[0].bracketLevel !== undefined}
+													Commander (Bracket {commanders[0].bracketLevel})
+												{:else}
+													Commander
+												{/if}
+											{:else}
+												Commander
 											{/if}
 										</div>
 

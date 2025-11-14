@@ -414,12 +414,8 @@
         <div
           class="space-y-1 flex-1 overflow-y-auto"
           onclick={closeCardMenu}
-          onkeydown={(e) => { if (e.key === 'Escape') closeCardMenu(); }}
           ondragover={handleDragOver}
           ondrop={handleDrop}
-          role="application"
-          aria-label="Maybeboard cards"
-          tabindex="0"
         >
           {#if cards.length > 0}
             {#each cards as card}
