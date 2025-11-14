@@ -190,11 +190,14 @@ export class EDHRECParser {
 
 	/**
 	 * Sanitize card name to URL slug (matches EDHREC's format)
+	 * EDHREC handles possessives by removing apostrophes but keeping the 's' attached
+	 * Example: "Sevinne's Reclamation" → "sevinnes-reclamation" not "sevinne-s-reclamation"
 	 */
 	static sanitizeName(name: string): string {
 		return name
 			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-|-$/g, '');
+			.replace(/'/g, '') // Remove apostrophes first (keeps possessive 's' attached)
+			.replace(/[^a-z0-9]+/g, '-') // Then replace other non-alphanumeric with hyphens
+			.replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 	}
 }

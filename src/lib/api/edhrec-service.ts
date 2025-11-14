@@ -43,7 +43,7 @@ export class EDHRECService {
 		this.client = new EDHRECClient({
 			minDelayMs: 2000, // 30 requests per minute
 			useCorsProxy: true, // Required for browser access
-			corsProxyUrl: 'https://api.allorigins.win/raw?url=' // Different CORS proxy
+			corsProxyUrl: 'https://corsproxy.io/?' // Back to corsproxy.io - most reliable
 		});
 		this.parser = new EDHRECParser();
 		this.cache = new EDHRECCache();
@@ -216,8 +216,8 @@ export class EDHRECService {
 	/**
 	 * Get salt scores for multiple cards (batch operation)
 	 * HYBRID APPROACH with aggressive local-first strategy:
-	 * 1. Check local data for all cards (instant)
-	 * 2. Check cache for remaining cards
+	 * 1. Check local data for all cards (instant, top 100 saltiest cards)
+	 * 2. Check cache for previously fetched cards
 	 * 3. Fetch from API for cards not in local top 100 or cache (5 second delay between requests)
 	 *
 	 * Note: API fetching is slow by design (5s between requests) to avoid overwhelming EDHREC.

@@ -22,7 +22,7 @@ import { edhrecService } from '$lib/api/edhrec-service';
 
 /**
  * Calculate overall salt score for a deck
- * Returns average salt score and top 3 saltiest cards
+ * Returns total and average salt score based on EDHREC data
  *
  * Performance: ~99% of cards are found in local data (instant),
  * only rare cards outside top 100 may trigger API calls

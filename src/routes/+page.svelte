@@ -873,7 +873,7 @@
 				<DeckList onCardHover={handleCardHover} onImport={handleImport} />
 
 				<!-- Statistics Section -->
-				<Statistics />
+				<Statistics onCardHover={handleCardHover} />
 			</div>
 
 			<!-- Maybeboard Sidebar (Right, Sticky) -->
