@@ -88,6 +88,7 @@
       onkeydown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
+      tabindex="0"
     >
       <!-- Header -->
       <div class="px-6 py-4 border-b border-[var(--color-border)]">

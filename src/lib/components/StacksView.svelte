@@ -308,6 +308,12 @@
 			>
 				<div
 					onclick={() => handleCardClick(card, stackIndex)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							handleCardClick(card, stackIndex);
+						}
+					}}
 					oncontextmenu={(e) => handleCardRightClick(e, card)}
 					role="button"
 					tabindex="0"

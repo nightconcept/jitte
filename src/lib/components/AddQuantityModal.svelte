@@ -1,9 +1,7 @@
 <script lang="ts">
   import type { Card } from "$lib/types/card";
-  import { CardCategory } from "$lib/types/card";
 
   export let card: Card;
-  export let category: CardCategory;
   export let onConfirm: (quantity: number) => void;
   export let onClose: () => void;
 
@@ -28,16 +26,23 @@
 <div
   class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
   onclick={onClose}
-  onkeydown={handleKeydown}
-  role="button"
+  onkeydown={(e) => {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClose();
+    }
+  }}
+  role="presentation"
   tabindex="-1"
 >
   <!-- Modal Content -->
   <div
     class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[var(--color-border)]"
     onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
     role="dialog"
     aria-modal="true"
+    tabindex="0"
   >
     <!-- Header -->
     <div class="px-6 py-4 border-b border-[var(--color-border)]">
@@ -50,17 +55,18 @@
     <!-- Body -->
     <div class="px-6 py-4">
       <label
+        for="quantity-input"
         class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
       >
         Quantity to add
       </label>
       <input
+        id="quantity-input"
         type="number"
         bind:value={quantity}
         min="1"
         max="100"
         class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-        autofocus
       />
     </div>
 

@@ -16,6 +16,7 @@ export function loadFolderStructure(): FolderStructure {
 		return {
 			folders: [],
 			deckFolderMap: {},
+			deckOrder: {},
 			version: FOLDER_STRUCTURE_VERSION
 		};
 	}
@@ -26,17 +27,23 @@ export function loadFolderStructure(): FolderStructure {
 			return {
 				folders: [],
 				deckFolderMap: {},
+				deckOrder: {},
 				version: FOLDER_STRUCTURE_VERSION
 			};
 		}
 
 		const parsed = JSON.parse(stored) as FolderStructure;
+		// Ensure deckOrder exists (for backward compatibility)
+		if (!parsed.deckOrder) {
+			parsed.deckOrder = {};
+		}
 		return parsed;
 	} catch (error) {
 		console.error('[FolderManager] Error loading folder structure:', error);
 		return {
 			folders: [],
 			deckFolderMap: {},
+			deckOrder: {},
 			version: FOLDER_STRUCTURE_VERSION
 		};
 	}
@@ -120,17 +127,35 @@ export function deleteFolder(structure: FolderStructure, folderId: string): Fold
 
 	// Move decks to root (remove their folder assignments)
 	const newDeckFolderMap: Record<string, string> = {};
+	const decksMovedToRoot: string[] = [];
 	for (const [deckName, deckFolderId] of Object.entries(structure.deckFolderMap)) {
 		if (!toDelete.has(deckFolderId)) {
 			newDeckFolderMap[deckName] = deckFolderId;
+		} else {
+			// Track decks being moved to root
+			decksMovedToRoot.push(deckName);
 		}
-		// Decks in deleted folders are simply not added to the map (they become root-level)
+	}
+
+	// Clean up deckOrder - remove deleted folders and move their decks to root
+	const newDeckOrder = { ...structure.deckOrder };
+	for (const id of toDelete) {
+		delete newDeckOrder[id];
+	}
+
+	// Add moved decks to root order
+	if (decksMovedToRoot.length > 0) {
+		if (!newDeckOrder['root']) {
+			newDeckOrder['root'] = [];
+		}
+		newDeckOrder['root'].push(...decksMovedToRoot);
 	}
 
 	return {
 		...structure,
 		folders: newFolders,
-		deckFolderMap: newDeckFolderMap
+		deckFolderMap: newDeckFolderMap,
+		deckOrder: newDeckOrder
 	};
 }
 
@@ -143,6 +168,25 @@ export function moveDeckToFolder(
 	folderId: string | null
 ): FolderStructure {
 	const newDeckFolderMap = { ...structure.deckFolderMap };
+	const newDeckOrder = { ...structure.deckOrder };
+
+	// Get the old folder ID
+	const oldFolderId = structure.deckFolderMap[deckName] || null;
+	const oldKey = oldFolderId || 'root';
+	const newKey = folderId || 'root';
+
+	// Remove from old folder's order
+	if (newDeckOrder[oldKey]) {
+		newDeckOrder[oldKey] = newDeckOrder[oldKey].filter(name => name !== deckName);
+	}
+
+	// Add to new folder's order
+	if (!newDeckOrder[newKey]) {
+		newDeckOrder[newKey] = [];
+	}
+	if (!newDeckOrder[newKey].includes(deckName)) {
+		newDeckOrder[newKey].push(deckName);
+	}
 
 	if (folderId === null) {
 		// Move to root by removing from map
@@ -154,7 +198,8 @@ export function moveDeckToFolder(
 
 	return {
 		...structure,
-		deckFolderMap: newDeckFolderMap
+		deckFolderMap: newDeckFolderMap,
+		deckOrder: newDeckOrder
 	};
 }
 
@@ -212,4 +257,49 @@ export function folderNameExists(
 	parentId: string | null
 ): boolean {
 	return structure.folders.some((f) => f.parentId === parentId && f.name.toLowerCase() === name.toLowerCase());
+}
+
+/**
+ * Reorder decks within a folder
+ * @param structure - Current folder structure
+ * @param folderId - Folder ID (null for root)
+ * @param deckOrder - New order of deck names
+ */
+export function reorderDecks(
+	structure: FolderStructure,
+	folderId: string | null,
+	deckOrder: string[]
+): FolderStructure {
+	const newDeckOrder = { ...structure.deckOrder };
+	const key = folderId || 'root';
+	newDeckOrder[key] = deckOrder;
+
+	return {
+		...structure,
+		deckOrder: newDeckOrder
+	};
+}
+
+/**
+ * Get the ordered list of deck names for a folder
+ * @param structure - Current folder structure
+ * @param folderId - Folder ID (null for root)
+ * @param allDeckNames - All available deck names in this folder
+ * @returns Ordered array of deck names
+ */
+export function getOrderedDecks(
+	structure: FolderStructure,
+	folderId: string | null,
+	allDeckNames: string[]
+): string[] {
+	const key = folderId || 'root';
+	const savedOrder = structure.deckOrder[key] || [];
+
+	// Filter out decks that no longer exist
+	const validOrder = savedOrder.filter(name => allDeckNames.includes(name));
+
+	// Add any new decks that aren't in the saved order
+	const newDecks = allDeckNames.filter(name => !validOrder.includes(name));
+
+	return [...validOrder, ...newDecks];
 }

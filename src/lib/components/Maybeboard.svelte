@@ -417,8 +417,9 @@
           onkeydown={(e) => { if (e.key === 'Escape') closeCardMenu(); }}
           ondragover={handleDragOver}
           ondrop={handleDrop}
-          role="region"
+          role="application"
           aria-label="Maybeboard cards"
+          tabindex="0"
         >
           {#if cards.length > 0}
             {#each cards as card}
@@ -600,6 +601,7 @@
       onkeydown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
+      tabindex="0"
     >
       <!-- Header -->
       <div class="px-6 py-4 border-b border-[var(--color-border)]">

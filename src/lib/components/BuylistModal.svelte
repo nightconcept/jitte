@@ -310,10 +310,11 @@
 			<!-- From Side -->
 			<div class="space-y-3">
 				<div>
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<label for="from-branch-select" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 						Starting Branch
 					</label>
 					<select
+						id="from-branch-select"
 						bind:value={fromBranch}
 						onchange={handleUserChange}
 						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
@@ -324,10 +325,11 @@
 					</select>
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<label for="from-version-select" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 						Starting Version
 					</label>
 					<select
+						id="from-version-select"
 						bind:value={fromVersion}
 						onchange={handleUserChange}
 						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
@@ -345,10 +347,11 @@
 			<!-- To Side -->
 			<div class="space-y-3">
 				<div>
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<label for="to-branch-select" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 						Final Branch
 					</label>
 					<select
+						id="to-branch-select"
 						bind:value={toBranch}
 						onchange={handleUserChange}
 						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
@@ -359,10 +362,11 @@
 					</select>
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+					<label for="to-version-select" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 						Final Version
 					</label>
 					<select
+						id="to-version-select"
 						bind:value={toVersion}
 						onchange={handleUserChange}
 						class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"

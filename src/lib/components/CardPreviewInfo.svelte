@@ -93,7 +93,7 @@
         title="{scryfallCard.set_name} - {scryfallCard.rarity}"
       ></i>
       <span>
-        <span onmouseenter={loadSetData}>
+        <span onmouseenter={loadSetData} role="group">
           <BaseTooltip trigger="hover" position="below" positioning="absolute" closeDelay={200}>
             {#snippet children()}
               <span class="border-b border-dashed border-current cursor-help">
@@ -139,7 +139,7 @@
         title="{scryfallCard.set_name} - {scryfallCard.rarity}"
       ></i>
       <span>
-        <span onmouseenter={loadSetData}>
+        <span onmouseenter={loadSetData} role="group">
           <BaseTooltip trigger="hover" position="below" positioning="absolute" closeDelay={200}>
             {#snippet children()}
               <span class="border-b border-dashed border-current cursor-help">

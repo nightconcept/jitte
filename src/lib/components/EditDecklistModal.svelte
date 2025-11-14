@@ -48,6 +48,12 @@
     dispatch("close");
   }
 
+  function handleBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  }
+
   // Calculate summary stats
   $: totalCards =
     parseResult?.cards.reduce((sum, card) => sum + card.quantity, 0) || 0;
@@ -60,12 +66,20 @@
   <!-- Modal Backdrop -->
   <div
     class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+    onclick={handleBackdropClick}
+    onkeydown={(e) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClose();
+      }
+    }}
     role="presentation"
   >
     <!-- Modal Content - Much larger -->
     <div
       class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-6xl mx-4 border border-[var(--color-border)] h-[85vh] flex flex-col"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       tabindex="-1"
@@ -85,16 +99,17 @@
       <div class="px-6 py-4 flex-1 flex flex-col min-h-0">
         <div class="flex-1 flex flex-col">
           <label
+            for="edit-decklist-input"
             class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
           >
             Decklist
           </label>
           <textarea
+            id="edit-decklist-input"
             bind:value={decklistInput}
             placeholder={"1 Lightning Bolt\n1 Sol Ring (2XM) 97\n2x Counterspell\n1 Command Tower\n\n(Commander not shown here)"}
             class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"
-            autofocus
-          />
+          ></textarea>
 
           <!-- Status Bar -->
           <div class="flex justify-between items-center mt-2">

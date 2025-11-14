@@ -26,20 +26,22 @@
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 	import { scryfallToCard } from '$lib/utils/card-converter';
 
-	let hoveredCard: Card | null = null;
-	let showCommitModal = false;
-	let showNewDeckModal = false;
-	let showDeckPickerModal = false;
-	let showSettingsModal = false;
-	let showNewBranchModal = false;
-	let showEditDecklistModal = false;
-	let showBuylistModal = false;
-	let showUnsavedChangesModal = false;
-	let pendingLoadAction: (() => void) | null = null;
-	let currentDecklistPlaintext = '';
-	let isLoadingCards = false;
-	let loadingMessage = 'Loading cards...';
-	let showOnboarding = false;
+	// 🚨 CRITICAL: Use $state() for all reactive variables in runes mode!
+	// Regular `let` variables are NOT reactive in Svelte 5 runes mode
+	let hoveredCard = $state<Card | null>(null);
+	let showCommitModal = $state(false);
+	let showNewDeckModal = $state(false);
+	let showDeckPickerModal = $state(false);
+	let showSettingsModal = $state(false);
+	let showNewBranchModal = $state(false);
+	let showEditDecklistModal = $state(false);
+	let showBuylistModal = $state(false);
+	let showUnsavedChangesModal = $state(false);
+	let pendingLoadAction = $state<(() => void) | null>(null);
+	let currentDecklistPlaintext = $state('');
+	let isLoadingCards = $state(false);
+	let loadingMessage = $state('Loading cards...');
+	let showOnboarding = $state(false);
 
 	const cardService = new CardService();
 
@@ -76,12 +78,14 @@
 	});
 
 	// Auto-preview first commander when deck changes
-	$: if ($deckStore?.deck?.cards?.commander?.[0]) {
-		hoveredCard = $deckStore.deck.cards.commander[0];
-	}
+	$effect(() => {
+		if ($deckStore?.deck?.cards?.commander?.[0]) {
+			hoveredCard = $deckStore.deck.cards.commander[0];
+		}
+	});
 
 	// Dynamic page title
-	$: pageTitle = (() => {
+	const pageTitle = $derived.by(() => {
 		if (!$deckStore?.deck) {
 			return 'Jitte';
 		}
@@ -112,7 +116,7 @@
 		}
 
 		return parts.join(' | ');
-	})();
+	});
 
 	function handleCardHover(card: Card | null) {
 		// Only update if a card is provided, otherwise keep the last hovered card
@@ -359,8 +363,12 @@
 	}
 
 	function handleLoadDeck() {
+		console.log('[+page.svelte] handleLoadDeck() called');
 		if (!checkUnsavedChanges(() => showDeckPickerModal = true)) {
+			console.log('[+page.svelte] No unsaved changes, opening modal');
 			showDeckPickerModal = true;
+		} else {
+			console.log('[+page.svelte] Has unsaved changes, showing warning first');
 		}
 	}
 
@@ -715,13 +723,17 @@
 	}
 
 	// Get available versions for branch modal
-	$: availableVersions = $deckManager.activeManifest?.branches
-		?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
-		?.versions?.map(v => v.version) || [];
+	const availableVersions = $derived(
+		$deckManager.activeManifest?.branches
+			?.find(b => b.name === ($deckStore?.deck.currentBranch || 'main'))
+			?.versions?.map(v => v.version) || []
+	);
 
 	// Get available branches
-	$: availableBranches = $deckManager.activeManifest?.branches
-		?.map(b => b.name) || ['main'];
+	const availableBranches = $derived(
+		$deckManager.activeManifest?.branches
+			?.map(b => b.name) || ['main']
+	);
 </script>
 
 <svelte:head>

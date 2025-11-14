@@ -2,16 +2,24 @@
  * Utilities for extracting deck information from archives without full loading
  */
 
-import type { Card } from '$lib/types/card';
+import type { Card, ManaColor } from '$lib/types/card';
 import type { DeckManifest } from '$lib/types/deck';
 import { CardCategory } from '$lib/types/card';
 
 /**
- * Extract commander names from a deck archive
- * @param zipBlob - The deck zip file
- * @returns Array of commander names
+ * Commander information with name and colors
  */
-export async function extractCommanderNames(zipBlob: Blob): Promise<string[]> {
+export interface CommanderInfo {
+	name: string;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Extract commander information (names and colors) from a deck archive
+ * @param zipBlob - The deck zip file
+ * @returns Array of commander info with names and color identities
+ */
+export async function extractCommanderInfo(zipBlob: Blob): Promise<CommanderInfo[]> {
 	try {
 		const { decompressDeckArchive } = await import('./zip');
 		const { deserializeDeck } = await import('./deck-serializer');
@@ -56,13 +64,26 @@ export async function extractCommanderNames(zipBlob: Blob): Promise<string[]> {
 			categorizedCards = await deserializeDeck(versionFileTxt);
 		}
 
-		// Extract commander names
+		// Extract commander info
 		const commanders = categorizedCards[CardCategory.Commander] || [];
-		return commanders.map((card) => card.name);
+		return commanders.map((card) => ({
+			name: card.name,
+			colorIdentity: card.colorIdentity || []
+		}));
 	} catch (error) {
-		console.error('[extractCommanderNames] Error:', error);
+		console.error('[extractCommanderInfo] Error:', error);
 		return [];
 	}
+}
+
+/**
+ * Extract commander names from a deck archive
+ * @param zipBlob - The deck zip file
+ * @returns Array of commander names
+ */
+export async function extractCommanderNames(zipBlob: Blob): Promise<string[]> {
+	const info = await extractCommanderInfo(zipBlob);
+	return info.map((cmd) => cmd.name);
 }
 
 /**

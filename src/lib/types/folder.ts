@@ -32,6 +32,9 @@ export interface FolderStructure {
 	/** Map of deck names to their folder IDs */
 	deckFolderMap: Record<string, string>;
 
+	/** Map of folder IDs to ordered arrays of deck names */
+	deckOrder: Record<string, string[]>;
+
 	/** Version of the folder structure format */
 	version: string;
 }

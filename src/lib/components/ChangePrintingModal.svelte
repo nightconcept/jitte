@@ -3,12 +3,10 @@
   import { cardService } from "$lib/api/card-service";
   import type { Card } from "$lib/types/card";
   import type { ScryfallCard } from "$lib/types/scryfall";
-  import { CardCategory } from "$lib/types/card";
   import GameChangerBadge from "./GameChangerBadge.svelte";
   import { isGameChanger } from "$lib/utils/game-changers";
 
   export let card: Card;
-  export let category: CardCategory;
   export let onConfirm: (newCard: Card) => void;
   export let onClose: () => void;
 
@@ -135,16 +133,23 @@
 <div
   class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
   onclick={onClose}
-  onkeydown={handleKeydown}
-  role="button"
+  onkeydown={(e) => {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClose();
+    }
+  }}
+  role="presentation"
   tabindex="-1"
 >
   <!-- Modal Content -->
   <div
     class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-4xl w-full mx-4 border border-[var(--color-border)] max-h-[80vh] flex flex-col"
     onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
     role="dialog"
     aria-modal="true"
+    tabindex="0"
   >
     <!-- Header -->
     <div class="px-6 py-4 border-b border-[var(--color-border)]">

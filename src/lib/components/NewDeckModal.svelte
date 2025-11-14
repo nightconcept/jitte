@@ -403,11 +403,13 @@
       <!-- Deck Name -->
       <div class={mode === "import" ? "mb-4" : ""}>
         <label
+          for="deck-name-input"
           class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
         >
           Deck Name <span class="text-red-500">*</span>
         </label>
         <input
+          id="deck-name-input"
           type="text"
           bind:value={deckName}
           placeholder="My Awesome Commander Deck"
@@ -421,12 +423,14 @@
         <!-- Commander Search -->
         <div class="relative">
           <label
+            for="commander-search-input"
             class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
           >
             Commander <span class="text-red-500">*</span>
           </label>
           <div class="relative">
             <input
+              id="commander-search-input"
               type="text"
               bind:value={commanderSearchQuery}
               placeholder="Search for a commander..."
@@ -490,6 +494,7 @@
         {#if hasPartnerAbility}
           <div class="relative">
             <label
+              for="partner-search-input"
               class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
             >
               Partner Commander
@@ -500,6 +505,7 @@
             </label>
             <div class="relative">
               <input
+                id="partner-search-input"
                 type="text"
                 bind:value={partnerSearchQuery}
                 placeholder="Search for a partner commander..."
@@ -568,6 +574,7 @@
         <!-- Commander Search -->
         <div class="mb-4">
           <label
+            for="import-commander-input"
             class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
           >
             Commander(s) <span class="text-red-500">*</span>
@@ -631,11 +638,13 @@
         <!-- Decklist Textarea -->
         <div class="flex-1 flex flex-col">
           <label
+            for="decklist-input"
             class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
           >
             Decklist <span class="text-red-500">*</span>
           </label>
           <textarea
+            id="decklist-input"
             bind:value={decklistInput}
             placeholder={"1x Thrasios, Triton Hero [Commander{top}]\n1x Tymna the Weaver [Commander{top}]\n1x Sol Ring (cma) 231\n1x Command Tower (cma) 245\n1x Arcane Signet *F* [Ramp]\n..."}
             class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"

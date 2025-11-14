@@ -82,8 +82,9 @@
 		<div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
 			<span class="font-semibold text-[var(--color-text-primary)]">Probability of drawing</span>
 			<div class="flex items-center gap-2 justify-between sm:justify-end text-sm sm:text-base">
-				<label class="text-[var(--color-text-secondary)]">Cards drawn:</label>
+				<label for="cards-drawn-input" class="text-[var(--color-text-secondary)]">Cards drawn:</label>
 				<input
+					id="cards-drawn-input"
 					type="number"
 					bind:value={cardsDrawn}
 					min="0"

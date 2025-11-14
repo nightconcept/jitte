@@ -195,12 +195,19 @@
 	<div
 		class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleClose();
+			}
+		}}
 		role="presentation"
 	>
 		<!-- Modal Content -->
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl w-full max-w-6xl mx-4 border border-[var(--color-border)] h-[85vh] flex flex-col"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"
@@ -240,7 +247,6 @@
 								oninput={handleInput}
 								placeholder="Search for commander (min {MIN_SEARCH_CHARACTERS} characters)..."
 								class="w-full px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-								autofocus
 							/>
 
 							{#if isLoading}

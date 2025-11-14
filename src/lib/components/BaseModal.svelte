@@ -8,6 +8,7 @@
 		title,
 		subtitle,
 		size = 'md',
+		customSize,
 		height,
 		contentClass = '',
 		children
@@ -16,7 +17,8 @@
 		onClose?: () => void;
 		title?: string;
 		subtitle?: string;
-		size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | 'full';
+		size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full' | 'custom';
+		customSize?: string;
 		height?: string;
 		contentClass?: string;
 		children?: Snippet;
@@ -31,7 +33,9 @@
 		'2xl': 'max-w-2xl',
 		'3xl': 'max-w-3xl',
 		'4xl': 'max-w-4xl',
-		full: 'max-w-full'
+		'5xl': 'max-w-5xl',
+		full: 'max-w-full',
+		custom: ''
 	};
 
 	function handleBackdropClick() {
@@ -75,10 +79,11 @@
 	>
 		<!-- Modal Content -->
 		<div
-			class="bg-[var(--color-surface)] rounded-lg shadow-xl {sizeClasses[
-				size
-			]} w-full mx-4 border border-[var(--color-border)] relative flex flex-col {height || ''} {contentClass}"
+			class="bg-[var(--color-surface)] rounded-lg shadow-xl {size === 'custom' && customSize
+				? customSize
+				: sizeClasses[size]} {size === 'custom' ? '' : 'w-full'} mx-4 border border-[var(--color-border)] relative flex flex-col {height || ''} {contentClass}"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"

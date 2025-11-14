@@ -176,13 +176,22 @@
 	<div
 		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in"
 		onclick={handleBackdropClick}
-		role="dialog"
-		aria-modal="true"
+		onkeydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				onClose();
+			}
+		}}
+		role="presentation"
 	>
 		<!-- Modal Content -->
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-[var(--color-border)] animate-scale-in"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			tabindex="0"
 		>
 			<!-- Header -->
 			<div class="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">

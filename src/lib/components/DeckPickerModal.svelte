@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import BaseModal from './BaseModal.svelte';
 	import FolderPromptModal from './FolderPromptModal.svelte';
 	import type { DeckListItem } from '$lib/stores/deck-manager';
@@ -15,9 +15,11 @@
 		getChildFolders,
 		getFolderById,
 		isValidFolderName,
-		folderNameExists
+		folderNameExists,
+		reorderDecks,
+		getOrderedDecks
 	} from '$lib/utils/folder-manager';
-	import { extractCommanderNames } from '$lib/utils/deck-info-extractor';
+	import { extractCommanderInfo, type CommanderInfo } from '$lib/utils/deck-info-extractor';
 	import { StorageManager } from '$lib/storage/storage-manager';
 
 	let {
@@ -40,7 +42,7 @@
 	let folderStructure = $state<FolderStructure>(loadFolderStructure());
 	let currentFolderId = $state<string | null>(null); // null = root
 	let browserItems = $state<BrowserItem[]>([]);
-	let commanderCache = $state<Map<string, string[]>>(new Map());
+	let commanderCache = $state<Map<string, CommanderInfo[]>>(new Map());
 
 	// UI state
 	let deckToDelete = $state<string | null>(null);
@@ -49,42 +51,103 @@
 	let showNewFolderModal = $state(false);
 	let showRenameFolderModal = $state(false);
 	let isLoadingCommanders = $state(false);
+	const COMMANDER_BATCH_DELAY = 32;
+	let commanderLoadQueue: string[] = [];
+	let commanderLoadHandle: ReturnType<typeof setTimeout> | null = null;
+	let openMenuDeckName = $state<string | null>(null);
+	let openMenuFolderId = $state<string | null>(null);
+	let selectedDeckName = $state<string | null>(null);
 
 	// Drag and drop state
 	let draggedDeckName = $state<string | null>(null);
+	let dropTargetDeckName = $state<string | null>(null); // Which deck row is being hovered
+	let dropPosition = $state<'above' | 'below' | null>(null); // Insert above or below target
 
-	// Load commander info for visible decks in the background
-	async function loadCommanderInfo() {
-		if (!storage || decks.length === 0) return;
+	function stopCommanderLoading() {
+		if (commanderLoadHandle !== null) {
+			clearTimeout(commanderLoadHandle);
+			commanderLoadHandle = null;
+		}
+		commanderLoadQueue = [];
+		isLoadingCommanders = false;
+	}
 
-		isLoadingCommanders = true;
+	async function loadCommanderForDeck(deckName: string) {
+		if (!storage) return;
 
-		// Load commanders in the background, one at a time with yields to the event loop
-		for (const deck of decks) {
-			if (!commanderCache.has(deck.name)) {
-				// Yield to the event loop between each deck to avoid blocking
-				await new Promise(resolve => setTimeout(resolve, 0));
-
-				try {
-					const result = await storage.loadDeck(deck.name);
-					if (result.success && result.data) {
-						const commanders = await extractCommanderNames(result.data);
-						commanderCache.set(deck.name, commanders);
-						// Trigger reactivity update
-						commanderCache = commanderCache;
-					}
-				} catch (error) {
-					console.error(`Failed to load commanders for ${deck.name}:`, error);
-					commanderCache.set(deck.name, []);
-				}
+		console.log('[DeckPickerModal] loadCommanderForDeck() called for:', deckName);
+		try {
+			const result = await storage.loadDeck(deckName);
+			if (result.success && result.data) {
+				console.log('[DeckPickerModal] Extracting commander info for:', deckName);
+				const commanders = await extractCommanderInfo(result.data);
+				console.log('[DeckPickerModal] Commander info extracted:', commanders);
+				// Create a new Map to trigger reactivity
+				commanderCache = new Map(commanderCache.set(deckName, commanders));
+			} else {
+				console.log('[DeckPickerModal] Failed to load deck:', deckName);
+				commanderCache = new Map(commanderCache.set(deckName, []));
 			}
+		} catch (error) {
+			console.error(`[DeckPickerModal] Failed to load commanders for ${deckName}:`, error);
+			commanderCache = new Map(commanderCache.set(deckName, []));
+		}
+	}
+
+	function processCommanderQueue() {
+		if (!isOpen || commanderLoadQueue.length === 0 || !storage) {
+			stopCommanderLoading();
+			return;
 		}
 
-		isLoadingCommanders = false;
+		const nextDeck = commanderLoadQueue.shift();
+		if (!nextDeck) {
+			stopCommanderLoading();
+			return;
+		}
+
+		void loadCommanderForDeck(nextDeck).finally(() => {
+			if (commanderLoadQueue.length === 0) {
+				stopCommanderLoading();
+				return;
+			}
+
+			commanderLoadHandle = setTimeout(() => {
+				processCommanderQueue();
+			}, COMMANDER_BATCH_DELAY);
+		});
+	}
+
+	function scheduleCommanderLoading() {
+		console.log('[DeckPickerModal] scheduleCommanderLoading() called');
+		stopCommanderLoading();
+
+		if (!isOpen || !storage || decks.length === 0) {
+			console.log('[DeckPickerModal] Skipping commander loading:', { isOpen, hasStorage: !!storage, decksLength: decks.length });
+			return;
+		}
+
+		const pendingDecks = decks.filter((deck) => !commanderCache.has(deck.name));
+		console.log('[DeckPickerModal] Pending decks to load:', pendingDecks.length, pendingDecks.map(d => d.name));
+
+		if (pendingDecks.length === 0) {
+			console.log('[DeckPickerModal] All commanders already cached');
+			return;
+		}
+
+		commanderLoadQueue = pendingDecks.map((deck) => deck.name);
+		isLoadingCommanders = true;
+
+		console.log('[DeckPickerModal] Scheduling commander load queue with', commanderLoadQueue.length, 'decks');
+		commanderLoadHandle = setTimeout(() => {
+			console.log('[DeckPickerModal] Starting commander queue processing');
+			processCommanderQueue();
+		}, COMMANDER_BATCH_DELAY);
 	}
 
 	// Build browser items based on current folder
 	function buildBrowserItems() {
+		console.log('[DeckPickerModal] buildBrowserItems() called');
 		const items: BrowserItem[] = [];
 
 		// Add folders at current level
@@ -93,39 +156,84 @@
 			items.push({ type: 'folder', folder });
 		}
 
-		// Add decks at current level
+		// Get decks at current level
+		// NOTE: We DON'T include commander data here to avoid rebuilding when commanders load
+		// Instead, commanders are read directly from commanderCache in the template
+		const decksInFolder: Array<{ name: string; lastModified: Date; size: number }> = [];
 		for (const deck of decks) {
 			const deckFolderId = folderStructure.deckFolderMap[deck.name] || null;
 			if (deckFolderId === currentFolderId) {
+				decksInFolder.push({
+					name: deck.name,
+					lastModified: deck.lastModified,
+					size: deck.size
+				});
+			}
+		}
+
+		// Get ordered deck names and add them in order
+		const deckNames = decksInFolder.map(d => d.name);
+		const orderedDeckNames = getOrderedDecks(folderStructure, currentFolderId, deckNames);
+
+		for (const deckName of orderedDeckNames) {
+			const deck = decksInFolder.find(d => d.name === deckName);
+			if (deck) {
 				items.push({
 					type: 'deck',
 					deckName: deck.name,
 					lastModified: deck.lastModified,
 					size: deck.size,
-					commanders: commanderCache.get(deck.name) || []
+					commanders: [] // Placeholder - will read from cache in template
 				});
 			}
 		}
 
+		console.log('[DeckPickerModal] buildBrowserItems() complete, items count:', items.length);
 		browserItems = items;
 	}
 
 	// Load data when modal opens
+	// IMPORTANT: Use untrack() to prevent circular dependencies
 	$effect(() => {
+		console.log('[DeckPickerModal] Effect - isOpen changed:', isOpen);
 		if (isOpen) {
-			folderStructure = loadFolderStructure();
-			buildBrowserItems();
-			// Load commanders in the background without blocking the modal
-			loadCommanderInfo().catch(err => {
-				console.error('Error loading commander info:', err);
-				isLoadingCommanders = false;
+			console.log('[DeckPickerModal] Modal opening, loading data...');
+			// Use untrack to prevent these operations from being tracked as dependencies
+			untrack(() => {
+				folderStructure = loadFolderStructure();
+				buildBrowserItems();
+				// Load commanders in the background without blocking the modal
+				scheduleCommanderLoading();
+			});
+		} else {
+			console.log('[DeckPickerModal] Modal closing, stopping commander loading...');
+			untrack(() => {
+				stopCommanderLoading();
+				openMenuDeckName = null;
+				openMenuFolderId = null;
 			});
 		}
 	});
 
-	// Rebuild items when decks, folder structure, or current folder changes
+	// Close dropdown menu when clicking outside
 	$effect(() => {
-		buildBrowserItems();
+		function handleClickOutside(event: MouseEvent) {
+			if (openMenuDeckName || openMenuFolderId) {
+				const target = event.target as HTMLElement;
+				// Check if click is outside the dropdown
+				if (!target.closest('.relative')) {
+					openMenuDeckName = null;
+					openMenuFolderId = null;
+				}
+			}
+		}
+
+		if (isOpen) {
+			document.addEventListener('mousedown', handleClickOutside);
+			return () => {
+				document.removeEventListener('mousedown', handleClickOutside);
+			};
+		}
 	});
 
 	function handleLoad(deckName: string) {
@@ -149,14 +257,30 @@
 	}
 
 	function handleClose() {
+		stopCommanderLoading();
 		onclose?.();
 		deckToDelete = null;
 		currentFolderId = null;
+		openMenuDeckName = null;
+		openMenuFolderId = null;
+		selectedDeckName = null;
+	}
+
+	function handleDeckRowClick(deckName: string) {
+		if (selectedDeckName === deckName) {
+			// Second click - load the deck
+			handleLoad(deckName);
+		} else {
+			// First click - select the deck
+			selectedDeckName = deckName;
+		}
 	}
 
 	// Folder navigation
 	function navigateToFolder(folderId: string | null) {
 		currentFolderId = folderId;
+		selectedDeckName = null;
+		buildBrowserItems();
 	}
 
 	function navigateUp() {
@@ -164,6 +288,8 @@
 		const currentFolder = getFolderById(folderStructure, currentFolderId);
 		if (currentFolder) {
 			currentFolderId = currentFolder.parentId;
+			selectedDeckName = null;
+			buildBrowserItems();
 		}
 	}
 
@@ -186,6 +312,7 @@
 		folderStructure = addFolder(folderStructure, newFolder);
 		saveFolderStructure(folderStructure);
 		showNewFolderModal = false;
+		buildBrowserItems();
 	}
 
 	// Folder rename
@@ -213,6 +340,7 @@
 		saveFolderStructure(folderStructure);
 		folderToRename = null;
 		showRenameFolderModal = false;
+		buildBrowserItems();
 	}
 
 	// Folder deletion
@@ -226,6 +354,7 @@
 		folderStructure = deleteFolder(folderStructure, folderToDelete.id);
 		saveFolderStructure(folderStructure);
 		folderToDelete = null;
+		buildBrowserItems();
 	}
 
 	function cancelDeleteFolder() {
@@ -235,10 +364,14 @@
 	// Drag and drop
 	function handleDragStart(deckName: string) {
 		draggedDeckName = deckName;
+		dropTargetDeckName = null;
+		dropPosition = null;
 	}
 
 	function handleDragEnd() {
 		draggedDeckName = null;
+		dropTargetDeckName = null;
+		dropPosition = null;
 	}
 
 	function handleDrop(targetFolderId: string | null) {
@@ -247,10 +380,85 @@
 		folderStructure = moveDeckToFolder(folderStructure, draggedDeckName, targetFolderId);
 		saveFolderStructure(folderStructure);
 		draggedDeckName = null;
+		dropTargetDeckName = null;
+		dropPosition = null;
+		buildBrowserItems();
 	}
 
 	function handleDragOver(event: DragEvent) {
 		event.preventDefault();
+	}
+
+	// Handle drag over a deck row to show insert position
+	function handleDeckDragOver(event: DragEvent, targetDeckName: string) {
+		if (!draggedDeckName || draggedDeckName === targetDeckName) {
+			dropTargetDeckName = null;
+			dropPosition = null;
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		const target = event.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		const midpoint = rect.top + rect.height / 2;
+		const mouseY = event.clientY;
+
+		dropTargetDeckName = targetDeckName;
+		dropPosition = mouseY < midpoint ? 'above' : 'below';
+	}
+
+	// Handle drop on a deck row to reorder
+	function handleDeckDrop(event: DragEvent, targetDeckName: string) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (!draggedDeckName || draggedDeckName === targetDeckName || !dropPosition) {
+			dropTargetDeckName = null;
+			dropPosition = null;
+			return;
+		}
+
+		// Get all deck names in current folder
+		const deckNames = browserItems
+			.filter(item => item.type === 'deck')
+			.map(item => (item as { deckName: string }).deckName);
+
+		// Create new order
+		const newOrder = [...deckNames];
+		const draggedIndex = newOrder.indexOf(draggedDeckName);
+		const targetIndex = newOrder.indexOf(targetDeckName);
+
+		if (draggedIndex === -1 || targetIndex === -1) {
+			dropTargetDeckName = null;
+			dropPosition = null;
+			return;
+		}
+
+		// Remove dragged deck from its current position
+		newOrder.splice(draggedIndex, 1);
+
+		// Calculate new insert position
+		let insertIndex = newOrder.indexOf(targetDeckName);
+		if (dropPosition === 'below') {
+			insertIndex++;
+		}
+
+		// Insert at new position
+		newOrder.splice(insertIndex, 0, draggedDeckName);
+
+		// Save the new order
+		folderStructure = reorderDecks(folderStructure, currentFolderId, newOrder);
+		saveFolderStructure(folderStructure);
+
+		// Clear drag state
+		draggedDeckName = null;
+		dropTargetDeckName = null;
+		dropPosition = null;
+
+		// Rebuild items
+		buildBrowserItems();
 	}
 
 	// Breadcrumb path
@@ -297,6 +505,12 @@
 			return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 		}
 	}
+
+	// Helper to get mana symbol class for a color
+	function getManaSymbolClass(color: string): string {
+		const colorLower = color.toLowerCase();
+		return `ms ms-${colorLower} ms-cost ms-shadow`;
+	}
 </script>
 
 <BaseModal
@@ -304,8 +518,9 @@
 	onClose={handleClose}
 	title="Load Deck"
 	subtitle="{decks.length} deck{decks.length === 1 ? '' : 's'} available"
-	size="2xl"
-	height="max-h-[80vh]"
+	size="custom"
+	customSize="w-[80vw]"
+	height="max-h-[90vh]"
 	contentClass="flex flex-col"
 >
 	{#snippet children()}
@@ -341,94 +556,294 @@
 
 		<!-- Body -->
 		<div class="flex-1 overflow-y-auto" ondragover={handleDragOver} ondrop={() => handleDrop(currentFolderId)} role="region" aria-label="Deck browser">
-			{#if browserItems.length === 0 && decks.length === 0}
+			{#if browserItems.length === 0 && decks.length === 0 && currentFolderId === null}
+				<!-- No decks at all in the system -->
 				<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
 					<p>No decks found. Create a new deck to get started!</p>
 				</div>
-			{:else if browserItems.length === 0}
-				<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
-					<p>This folder is empty. Drag decks here or create a subfolder.</p>
-				</div>
 			{:else}
+				<!-- Column Headers -->
+				<div class="sticky top-0 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] z-10">
+					<div class="px-6 py-3 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+						<div>Deck Name</div>
+						<div>Commander</div>
+						<div>Colors</div>
+						<div class="text-right">Modified</div>
+						<div class="text-right w-20">Size</div>
+						<div class="w-10"></div>
+					</div>
+				</div>
 				<div class="divide-y divide-[var(--color-border)]">
+					<!-- Back/Up Navigation Row -->
+					{#if currentFolderId !== null}
+						<div
+							class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-pointer"
+							ondragover={handleDragOver}
+							ondrop={() => {
+								const currentFolder = getFolderById(folderStructure, currentFolderId);
+								if (currentFolder) {
+									handleDrop(currentFolder.parentId);
+								}
+							}}
+							role="region"
+							aria-label="Parent folder drop zone"
+						>
+							<button
+								type="button"
+								class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center w-full"
+								onclick={navigateUp}
+							>
+								<!-- Back indicator with icon -->
+								<div class="flex items-center gap-2 min-w-0">
+									<span class="text-lg">⬆️</span>
+									<div class="font-medium text-[var(--color-text-secondary)] text-sm truncate">
+										..
+									</div>
+								</div>
+
+								<!-- Empty columns to match deck layout -->
+								<div></div>
+								<div></div>
+								<div></div>
+								<div class="w-20"></div>
+								<div class="w-10"></div>
+							</button>
+						</div>
+					{/if}
+
 					{#each browserItems as item}
 						{#if item.type === 'folder'}
 							<!-- Folder Item -->
 							<div
-								class="px-6 py-4 hover:bg-[var(--color-surface-hover)] transition-colors group"
+								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors relative group"
 								ondragover={handleDragOver}
 								ondrop={() => handleDrop(item.folder.id)}
+								role="region"
+								aria-label="Folder drop zone"
 							>
-								<div class="flex items-center justify-between gap-4">
+								<div class="flex items-center gap-6">
+									<!-- Main content area - single-click to open folder -->
 									<button
 										type="button"
-										class="flex items-center gap-3 flex-1 text-left min-w-0"
-										ondblclick={() => navigateToFolder(item.folder.id)}
+										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto] gap-6 items-center"
+										onclick={() => navigateToFolder(item.folder.id)}
 									>
-										<span class="text-2xl">📁</span>
-										<div class="flex-1 min-w-0">
-											<div class="font-medium text-[var(--color-text-primary)] truncate">
+										<!-- Folder Name with Icon -->
+										<div class="flex items-center gap-2 min-w-0">
+											<span class="text-lg">📁</span>
+											<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
 												{item.folder.name}
 											</div>
 										</div>
+
+										<!-- Empty columns to match deck layout -->
+										<div></div>
+										<div></div>
+										<div></div>
+										<div class="w-20"></div>
 									</button>
 
-									<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+									<!-- Three-dot menu -->
+									<div class="relative w-10">
 										<button
 											type="button"
-											class="px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] rounded border border-[var(--color-border)]"
-											onclick={() => confirmRenameFolder(item.folder)}
+											class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+											onclick={(e) => {
+												e.stopPropagation();
+												openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
+											}}
+											aria-label="Folder options"
 										>
-											Rename
+											<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+												<circle cx="12" cy="5" r="2"/>
+												<circle cx="12" cy="12" r="2"/>
+												<circle cx="12" cy="19" r="2"/>
+											</svg>
 										</button>
-										<button
-											type="button"
-											class="px-2 py-1 text-xs text-red-500 hover:bg-red-500/10 rounded border border-red-500/50 hover:border-red-500"
-											onclick={() => confirmDeleteFolder(item.folder)}
-										>
-											Delete
-										</button>
+
+										<!-- Dropdown menu -->
+										{#if openMenuFolderId === item.folder.id}
+											<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+												<button
+													type="button"
+													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+													onclick={(e) => {
+														e.stopPropagation();
+														confirmRenameFolder(item.folder);
+														openMenuFolderId = null;
+													}}
+												>
+													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+													</svg>
+													Rename
+												</button>
+												<button
+													type="button"
+													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2 border-t border-[var(--color-border)]"
+													onclick={(e) => {
+														e.stopPropagation();
+														confirmDeleteFolder(item.folder);
+														openMenuFolderId = null;
+													}}
+												>
+													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+													</svg>
+													Delete
+												</button>
+											</div>
+										{/if}
 									</div>
 								</div>
 							</div>
 						{:else}
 							<!-- Deck Item -->
 							<div
-								class="px-6 py-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-move"
+								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 {selectedDeckName === item.deckName ? 'bg-[var(--color-accent-blue)]/20' : ''} transition-colors cursor-move relative group"
 								draggable="true"
 								ondragstart={() => handleDragStart(item.deckName)}
 								ondragend={handleDragEnd}
+								ondragover={(e) => handleDeckDragOver(e, item.deckName)}
+								ondrop={(e) => handleDeckDrop(e, item.deckName)}
+								role="button"
+								aria-label="Draggable deck item"
+								tabindex="0"
 							>
-								<div class="flex items-center justify-between gap-4">
-									<button
-										type="button"
-										class="flex-1 text-left min-w-0"
-										onclick={() => handleLoad(item.deckName)}
+								<!-- Drop indicator -->
+								{#if dropTargetDeckName === item.deckName && dropPosition === 'above'}
+									<div class="absolute top-0 left-0 right-0 h-0.5 bg-[var(--color-accent-blue)] z-20"></div>
+								{/if}
+								{#if dropTargetDeckName === item.deckName && dropPosition === 'below'}
+									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-blue)] z-20"></div>
+								{/if}
+								<div class="flex items-center gap-6">
+									<!-- Deck content grid -->
+									<div
+										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto] gap-6 items-center"
+										onclick={() => handleDeckRowClick(item.deckName)}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												handleDeckRowClick(item.deckName);
+											}
+										}}
+										role="button"
+										tabindex="-1"
 									>
-										<div class="font-medium text-[var(--color-text-primary)] truncate">
-											{item.deckName}
+										<!-- Deck Name - single click to load -->
+										<button
+											type="button"
+											class="min-w-0 text-left"
+											onclick={(e) => {
+												e.stopPropagation();
+												handleLoad(item.deckName);
+											}}
+										>
+											<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
+												{item.deckName}
+											</div>
+										</button>
+
+										<!-- Commander Names -->
+										<div class="min-w-0">
+											{#if commanderCache.has(item.deckName)}
+												{@const commanders = commanderCache.get(item.deckName)!}
+												{#if commanders.length > 0}
+													<div class="flex flex-col gap-0.5">
+														{#each commanders as commander}
+															<span class="text-sm text-[var(--color-text-primary)] truncate">
+																{commander.name}
+															</span>
+														{/each}
+													</div>
+												{:else}
+													<span class="text-sm text-[var(--color-text-tertiary)]">No commander</span>
+												{/if}
+											{:else}
+												<span class="text-sm text-[var(--color-text-tertiary)]">Loading...</span>
+											{/if}
 										</div>
-										{#if item.commanders.length > 0}
-											<div class="text-sm text-[var(--color-accent-blue)] mt-0.5 truncate">
-												{item.commanders.join(' / ')}
+
+										<!-- Colors -->
+										<div class="flex items-center">
+											{#if commanderCache.has(item.deckName)}
+												{@const commanders = commanderCache.get(item.deckName)!}
+												{#if commanders.length > 0}
+													{@const allColors = [...new Set(commanders.flatMap(c => c.colorIdentity))]}
+													{#if allColors.length > 0}
+														<div class="flex gap-0.5">
+															{#each allColors.sort() as color}
+																<i class={getManaSymbolClass(color)}></i>
+															{/each}
+														</div>
+													{:else}
+														<i class="ms ms-c ms-cost ms-shadow"></i>
+													{/if}
+												{/if}
+											{/if}
+										</div>
+
+										<!-- Last Modified -->
+										<div class="text-sm text-[var(--color-text-secondary)] text-right whitespace-nowrap">
+											{formatDate(item.lastModified)}
+										</div>
+
+										<!-- Size -->
+										<div class="text-sm text-[var(--color-text-secondary)] text-right whitespace-nowrap w-20">
+											{formatSize(item.size)}
+										</div>
+									</div>
+
+									<!-- Three-dot menu -->
+									<div class="relative w-10">
+										<button
+											type="button"
+											class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+											onclick={(e) => {
+												e.stopPropagation();
+												openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
+											}}
+											aria-label="Deck options"
+										>
+											<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+												<circle cx="12" cy="5" r="2"/>
+												<circle cx="12" cy="12" r="2"/>
+												<circle cx="12" cy="19" r="2"/>
+											</svg>
+										</button>
+
+										<!-- Dropdown menu -->
+										{#if openMenuDeckName === item.deckName}
+											<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+												<button
+													type="button"
+													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
+													onclick={(e) => {
+														e.stopPropagation();
+														confirmDelete(item.deckName);
+														openMenuDeckName = null;
+													}}
+												>
+													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+													</svg>
+													Delete
+												</button>
 											</div>
 										{/if}
-										<div class="text-sm text-[var(--color-text-secondary)] mt-1">
-											Last modified: {formatDate(item.lastModified)} • {formatSize(item.size)}
-										</div>
-									</button>
-
-									<button
-										type="button"
-										class="px-3 py-1 text-sm text-red-500 hover:bg-red-500/10 rounded border border-red-500/50 hover:border-red-500"
-										onclick={() => confirmDelete(item.deckName)}
-									>
-										Delete
-									</button>
+									</div>
 								</div>
 							</div>
 						{/if}
 					{/each}
+
+					<!-- Empty folder message -->
+					{#if browserItems.length === 0 && currentFolderId !== null}
+						<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
+							<p>This folder is empty. Drag decks here or create a subfolder.</p>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>

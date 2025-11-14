@@ -93,10 +93,11 @@
 		<div class="px-6 py-4 space-y-4">
 			<!-- Branch Name -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+				<label for="branch-name-input" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
 					Branch Name <span class="text-red-500">*</span>
 				</label>
 				<input
+					id="branch-name-input"
 					type="text"
 					bind:value={branchName}
 					placeholder="experimental or feature/new-cards"
