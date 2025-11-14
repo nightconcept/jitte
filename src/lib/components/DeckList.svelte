@@ -376,7 +376,7 @@
 
 	// Dynamic layout mode for stacks view
 	let useMasonryLayout = $state(false);
-	let viewportWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1920);
+	let stacksContainerRef = $state<HTMLDivElement>();
 
 	// Calculate card width based on viewport breakpoints
 	function getCardWidth(width: number): number {
@@ -396,8 +396,8 @@
 	}
 
 	// Dynamically determine if we should use grid or masonry based on available space
-	$effect(() => {
-		if (viewMode !== 'stacks') return;
+	function updateStacksLayout() {
+		if (viewMode !== 'stacks' || !stacksContainerRef) return;
 
 		const nonEmptyCategories = categoryOrder.filter(cat => {
 			const cards = deck?.cards[cat] || [];
@@ -405,25 +405,32 @@
 		});
 		const stackCount = nonEmptyCategories.length;
 
+		// Measure actual container width
+		const containerWidth = stacksContainerRef.clientWidth;
+		const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+
 		const cardWidth = getCardWidth(viewportWidth);
 		const gap = getGapSize(viewportWidth);
-		const padding = 48; // Account for page padding (24px on each side)
-		const availableWidth = viewportWidth - padding;
 
-		// Calculate how many columns can fit
-		// Formula: (availableWidth + gap) / (cardWidth + gap)
-		const columnsFit = Math.floor((availableWidth + gap) / (cardWidth + gap));
+		// Calculate how many columns can fit in the actual container width
+		// Formula: (containerWidth + gap) / (cardWidth + gap)
+		const columnsFit = Math.floor((containerWidth + gap) / (cardWidth + gap));
 
-		// Use grid if all stacks fit in available columns, otherwise use masonry
-		useMasonryLayout = stackCount > columnsFit;
+		// Use masonry if we can't fit all stacks in available columns
+		useMasonryLayout = columnsFit < stackCount;
+	}
+
+	// Update layout when dependencies change
+	$effect(() => {
+		updateStacksLayout();
 	});
 
-	// Update viewport width on resize
+	// Update layout on resize
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
 		function handleResize() {
-			viewportWidth = window.innerWidth;
+			updateStacksLayout();
 		}
 
 		window.addEventListener('resize', handleResize);
@@ -631,6 +638,7 @@
 	{:else if viewMode === 'stacks'}
 		<!-- Stacks View - Dynamic Grid/Masonry based on available space -->
 		<div
+			bind:this={stacksContainerRef}
 			class="stacks-view-container {useMasonryLayout ? 'stacks-view-masonry' : 'stacks-view-grid'}"
 			ondragover={handleDragOver}
 			ondrop={handleDrop}
