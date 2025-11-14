@@ -12,7 +12,6 @@
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CommitModal from '$lib/components/CommitModal.svelte';
 	import NewDeckModal from '$lib/components/NewDeckModal.svelte';
-	import ImportDeckModal from '$lib/components/ImportDeckModal.svelte';
 	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
@@ -35,7 +34,6 @@
 	let showNewBranchModal = false;
 	let showEditDecklistModal = false;
 	let showBuylistModal = false;
-	let showImportDeckModal = false;
 	let showUnsavedChangesModal = false;
 	let pendingLoadAction: (() => void) | null = null;
 	let currentDecklistPlaintext = '';
@@ -181,29 +179,36 @@
 		}
 	}
 
-	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderNames: string[] }>) {
-		const { name, commanderNames } = event.detail;
+	async function handleCreateDeck(event: CustomEvent<{ name: string; commanderNames: string[]; decklist?: string }>) {
+		const { name, commanderNames, decklist } = event.detail;
 
-		try {
-			console.log('[handleCreateDeck] Starting deck creation:', { name, commanderNames });
+		// Check if this is an import or empty deck creation
+		if (decklist) {
+			// Import mode: use the import handler logic
+			await handleImportDeck({ deckName: name, commanderNames, decklist });
+		} else {
+			// Empty deck mode: create empty deck with commanders
+			try {
+				console.log('[handleCreateDeck] Starting deck creation:', { name, commanderNames });
 
-			await deckManager.createDeck(name, commanderNames);
+				await deckManager.createDeck(name, commanderNames);
 
-			console.log('[handleCreateDeck] Deck created, closing modal');
+				console.log('[handleCreateDeck] Deck created, closing modal');
 
-			// Close modal immediately
-			showNewDeckModal = false;
+				// Close modal immediately
+				showNewDeckModal = false;
 
-			console.log('[handleCreateDeck] Modal closed, setting edit mode');
+				console.log('[handleCreateDeck] Modal closed, setting edit mode');
 
-			// Start in edit mode for new decks
-			deckStore.setEditMode(true);
+				// Start in edit mode for new decks
+				deckStore.setEditMode(true);
 
-			console.log('[handleCreateDeck] Complete');
-		} catch (error) {
-			console.error('[handleCreateDeck] Error:', error);
-			showNewDeckModal = false; // Close modal even on error
-			toastStore.error(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
+				console.log('[handleCreateDeck] Complete');
+			} catch (error) {
+				console.error('[handleCreateDeck] Error:', error);
+				showNewDeckModal = false; // Close modal even on error
+				toastStore.error(`Failed to create deck: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			}
 		}
 	}
 
@@ -211,7 +216,7 @@
 		const { deckName, commanderNames, decklist } = data;
 
 		// Close modal immediately and show loading
-		showImportDeckModal = false;
+		showNewDeckModal = false;
 		isLoadingCards = true;
 		loadingMessage = 'Importing deck...';
 		toastStore.info('Importing deck from decklist...');
@@ -232,8 +237,8 @@
 			const parseResult = fullParseResult;
 
 			if (parseResult.cards.length === 0) {
-				showImportDeckModal = false;
 				toastStore.warning('No cards found in decklist (excluding commander)');
+				isLoadingCards = false;
 				return;
 			}
 
@@ -743,7 +748,6 @@
 		onSettings={handleSettings}
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
-		onImport={() => showImportDeckModal = true}
 		onCompare={handleBuylist}
 		onSwitchVersion={handleSwitchVersion}
 		onSwitchBranch={handleSwitchBranch}
@@ -792,16 +796,6 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 						</svg>
 						Create New Deck
-					</button>
-
-					<button
-						onclick={() => showImportDeckModal = true}
-						class="w-full px-6 py-3 rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2 transition-colors"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-						</svg>
-						Import Deck
 					</button>
 
 					<button
@@ -875,12 +869,6 @@
 	isOpen={showNewDeckModal}
 	on:create={handleCreateDeck}
 	on:close={() => showNewDeckModal = false}
-/>
-
-<ImportDeckModal
-	isOpen={showImportDeckModal}
-	onImport={handleImportDeck}
-	onClose={() => showImportDeckModal = false}
 />
 
 <DeckPickerModal
