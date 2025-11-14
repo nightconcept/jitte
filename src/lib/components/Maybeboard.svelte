@@ -1,8 +1,6 @@
 <script lang="ts">
   import { deckStore } from "$lib/stores/deck-store";
   import type { Card } from "$lib/types/card";
-  import CardSearch from "./CardSearch.svelte";
-  import ImportMaybeboardModal from "./ImportMaybeboardModal.svelte";
 
   let {
     onCardHover = undefined,
@@ -40,9 +38,6 @@
   // Dropdown state
   let categoryDropdownOpen = $state(false);
   let categoryDropdownRef: HTMLDivElement | undefined = $state();
-
-  // Modal state
-  let importModalOpen = $state(false);
 
   // Card menu state
   let openMaybeboardCardMenu = $state<string | null>(null);
@@ -116,11 +111,6 @@
         activeCategory = "main";
       }
     }
-  }
-
-  function handleImport(decklist: string) {
-    deckStore.importToMaybeboard(decklist, activeCategory);
-    importModalOpen = false;
   }
 
   // Click outside handler for dropdown
@@ -420,41 +410,6 @@
           </div>
         {/if}
 
-        <!-- Search and Import (Edit Mode) -->
-        {#if isEditing}
-          <div
-            class="mb-4 pb-4 border-b border-[var(--color-border)] space-y-3"
-          >
-            <!-- Import Button -->
-            <button
-              onclick={() => (importModalOpen = true)}
-              class="w-full px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center justify-center gap-2"
-              title="Bulk Import Cards"
-            >
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              Bulk Import Cards
-            </button>
-
-            <!-- Search Box -->
-            <CardSearch
-              addToMaybeboard={true}
-              maybeboardCategoryId={activeCategory}
-            />
-          </div>
-        {/if}
-
         <!-- Cards in Active Category -->
         <div
           class="space-y-1 flex-1 overflow-y-auto"
@@ -631,14 +586,6 @@
     </div>
   {/if}
 </aside>
-
-<!-- Import Modal -->
-<ImportMaybeboardModal
-  isOpen={importModalOpen}
-  onClose={() => (importModalOpen = false)}
-  onImport={handleImport}
-  categoryName={currentCategory?.name || ""}
-/>
 
 <!-- Edit Quantity Modal -->
 {#if editQuantityCard}

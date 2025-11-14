@@ -287,23 +287,26 @@
     }
   }
 
-  async function confirmSelection() {
+  async function addToDecklist() {
     if (!selectedCardFull) return;
 
     try {
-      // Add to deck or maybeboard
-      if (addToMaybeboard) {
-        deckStore.addCardToMaybeboard(selectedCardFull, maybeboardCategoryId);
-      } else {
-        deckStore.addCard(selectedCardFull);
-      }
+      deckStore.addCard(selectedCardFull);
+      toastStore.success(`Added ${selectedCardFull.name} to decklist`);
+      onClose();
+    } catch (error) {
+      console.error("Error adding card:", error);
+      toastStore.error(`Failed to add ${selectedCardFull.name}`);
+    }
+  }
 
-      // Show success message
-      toastStore.success(
-        `Added ${selectedCardFull.name} to ${addToMaybeboard ? "maybeboard" : "deck"}`,
-      );
+  async function addToMaybeboardList() {
+    if (!selectedCardFull) return;
 
-      // Close modal
+    try {
+      // Add to maybeboard - if maybeboardCategoryId is provided, use it, otherwise use "main"
+      deckStore.addCardToMaybeboard(selectedCardFull, maybeboardCategoryId || "main");
+      toastStore.success(`Added ${selectedCardFull.name} to maybeboard`);
       onClose();
     } catch (error) {
       console.error("Error adding card:", error);
@@ -698,11 +701,18 @@
           Cancel
         </button>
         <button
-          onclick={confirmSelection}
+          onclick={addToMaybeboardList}
           disabled={!selectedCardFull}
           class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Add Card
+          Add Card to Maybeboard
+        </button>
+        <button
+          onclick={addToDecklist}
+          disabled={!selectedCardFull}
+          class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add Card to Decklist
         </button>
       </div>
       </div>
