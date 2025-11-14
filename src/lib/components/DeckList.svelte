@@ -6,7 +6,6 @@
 	import AddQuantityModal from './AddQuantityModal.svelte';
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
-	import CardSearch from './CardSearch.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import CardDetailModal from './CardDetailModal.svelte';
 	import ManaSymbol from './ManaSymbol.svelte';
@@ -491,13 +490,6 @@
 </script>
 
 <div class="flex-1 px-6 pt-6 pb-2 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
-	<!-- Card Search (Edit Mode Only) -->
-	{#if isEditing}
-		<div class="mb-4">
-			<CardSearch />
-		</div>
-	{/if}
-
 	<!-- Header with dropdowns -->
 	<div class="flex items-center justify-between mb-4">
 		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Decklist</h2>

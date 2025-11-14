@@ -89,7 +89,7 @@
 	}
 </script>
 
-<aside class="{className || 'w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[169px] self-start h-[calc(100vh-169px)]'}">
+<aside class="{className || 'w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)]'}">
 	<!-- Card Image -->
 	<div class="flex-shrink-0 mb-2 perspective-container">
 		<div class="flip-card" class:is-flipped={currentFaceIndex === 1}>

@@ -5,6 +5,7 @@
 	import { toastStore } from '$lib/stores/toast-store';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import CommanderHeader from '$lib/components/CommanderHeader.svelte';
+	import DeckEditNav from '$lib/components/DeckEditNav.svelte';
 	import CardPreview from '$lib/components/CardPreview.svelte';
 	import DeckList from '$lib/components/DeckList.svelte';
 	import Maybeboard from '$lib/components/Maybeboard.svelte';
@@ -825,8 +826,21 @@
 		<!-- Commander Header with Gradient -->
 		<CommanderHeader />
 
-		<!-- Spacer for fixed CommanderHeader -->
-		<div class="h-26"></div>
+		<!-- Deck Edit Navigation (Sticky) -->
+		<DeckEditNav
+			currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
+			currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
+			availableVersions={availableVersions}
+			availableBranches={availableBranches}
+			hasUnsavedChanges={$deckStore?.hasUnsavedChanges ?? false}
+			isNewDeck={$deckManager.activeManifest === null}
+			onSave={handleSave}
+			onSwitchVersion={handleSwitchVersion}
+			onSwitchBranch={handleSwitchBranch}
+			onNewBranch={handleNewBranch}
+			onDeleteBranch={handleDeleteBranch}
+			onSettings={handleSettings}
+		/>
 
 		<!-- Main Content -->
 		<div class="flex flex-1">

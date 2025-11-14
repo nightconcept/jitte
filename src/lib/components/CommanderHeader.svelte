@@ -97,8 +97,8 @@
 	}
 </script>
 
-<!-- Compact Fixed Header -->
-<div class="fixed top-[57px] left-0 right-0 z-40 h-28 flex-shrink-0 border-b border-[var(--color-border)]" style="transform: translateZ(0);">
+<!-- Compact Header -->
+<div class="h-28 flex-shrink-0 border-b border-[var(--color-border)]">
 	<div class="relative h-full overflow-hidden">
 		<!-- Solid black background -->
 		<div class="absolute inset-0 bg-black"></div>
