@@ -40,6 +40,9 @@
 				<div>• <strong>2-3:</strong> Moderately frustrating</div>
 				<div>• <strong>3-4:</strong> Very unfun, ruins games</div>
 			</div>
+			<div class="text-xs salt-secondary mt-2 italic">
+				Note: Salt scores reflect community sentiment about frustration, not deck power or quality.
+			</div>
 		</div>
 
 		{#if saltScore && saltScore.totalCardsWithScores > 0}
@@ -62,45 +65,20 @@
 				</div>
 			</div>
 
-			<!-- Top Salty Cards -->
-			{#if saltScore.topSaltyCards.length > 0}
-				<div class="mt-2 pt-2 criteria-section text-xs">
-					<div class="font-semibold salt-description mb-1">Top Salty Cards:</div>
-					<div class="space-y-0.5">
-						{#each saltScore.topSaltyCards as card, index}
-							<div class="flex justify-between items-center">
-								<span class="salt-title">{index + 1}. {card.name}</span>
-								<span
-									class="px-1.5 py-0.5 rounded text-xs {card.saltScore >= 2.5
-										? 'bg-red-500/20 text-red-400'
-										: card.saltScore >= 2.0
-											? 'bg-orange-500/20 text-orange-400'
-											: card.saltScore >= 1.5
-												? 'bg-yellow-500/20 text-yellow-400'
-												: 'bg-green-500/20 text-green-400'}"
-								>
-									{card.saltScore.toFixed(2)}
-								</span>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
+			<!-- Attribution -->
+			<div class="text-xs salt-secondary">
+				Data from <a
+					href="https://edhrec.com/top/salt"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="text-[var(--color-accent-blue)] hover:underline">EDHREC Salt Scores</a
+				>
+			</div>
 		{:else if loading}
 			<div class="text-xs salt-secondary">Calculating salt scores...</div>
 		{:else}
 			<div class="text-xs salt-secondary">No salt scores found for cards in this deck.</div>
 		{/if}
-
-		<!-- Attribution -->
-		<div class="mt-2 pt-2 criteria-section text-xs salt-secondary">
-			Data from <a
-				href="https://edhrec.com/top/salt"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="text-[var(--color-accent-blue)] hover:underline">EDHREC Salt Scores</a
-			>
-		</div>
 	{/snippet}
 </BaseTooltip>
 
@@ -127,9 +105,5 @@
 
 	:global(.salt-tooltip-content) .salt-section {
 		border-bottom: 1px solid var(--color-border);
-	}
-
-	:global(.salt-tooltip-content) .criteria-section {
-		border-top: 1px solid var(--color-border);
 	}
 </style>

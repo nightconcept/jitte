@@ -153,7 +153,12 @@ export class EDHRECService {
 		const cached = this.cache.get<EDHRECSaltScore>(cacheKey);
 
 		if (cached) {
-			console.log(`[EDHREC] Cache hit for salt score (API-fetched): ${cardName}`);
+			// Check if this is a "no score" marker (saltScore = -1)
+			if (cached.saltScore === -1) {
+				console.log(`[EDHREC] Cache hit: ${cardName} has no salt score (cached)`);
+				return null;
+			}
+			console.log(`[EDHREC] Cache hit for salt score (API-fetched): ${cardName} (${cached.saltScore})`);
 			return cached;
 		}
 
@@ -168,11 +173,19 @@ export class EDHRECService {
 			if (saltScore) {
 				// Aggressively cache API results (90 days) since these are rare cards
 				this.cache.set(cacheKey, saltScore, this.SALT_API_FALLBACK_TTL);
-				console.log(`[EDHREC] API fallback success: ${cardName} (${saltScore.saltScore})`);
+				console.log(`[EDHREC] API fallback success: ${cardName} (${saltScore.saltScore}) - cached for 90 days`);
 				return saltScore;
 			} else {
-				// Card has no salt score
-				console.log(`[EDHREC] No salt score found for ${cardName}`);
+				// Card has no salt score - cache the null result to avoid re-fetching
+				// Use a special marker object to distinguish from cache miss
+				const noScoreMarker = {
+					cardName,
+					saltScore: -1, // Marker value
+					deckCount: 0,
+					rank: undefined
+				};
+				this.cache.set(cacheKey, noScoreMarker, this.SALT_API_FALLBACK_TTL);
+				console.log(`[EDHREC] No salt score found for ${cardName} - cached for 90 days to avoid re-fetch`);
 				return null;
 			}
 		} catch (error) {
@@ -252,7 +265,14 @@ export class EDHRECService {
 			const cached = this.cache.get<EDHRECSaltScore>(cacheKey);
 
 			if (cached) {
-				results.set(name, cached);
+				// Check if this is a "no score" marker
+				if (cached.saltScore === -1) {
+					console.log(`[EDHREC] Cache: "${name}" has no salt score (skipping)`);
+					// Don't add to results, and don't re-fetch
+				} else {
+					console.log(`[EDHREC] Cache: "${name}" = ${cached.saltScore}`);
+					results.set(name, cached);
+				}
 			} else {
 				notInCache.push(name);
 			}
