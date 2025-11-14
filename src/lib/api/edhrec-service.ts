@@ -42,7 +42,8 @@ export class EDHRECService {
 	constructor() {
 		this.client = new EDHRECClient({
 			minDelayMs: 2000, // 30 requests per minute
-			useCorsProxy: false // Try without CORS proxy - EDHREC may allow direct access
+			useCorsProxy: true, // Required for browser access
+			corsProxyUrl: 'https://api.allorigins.win/raw?url=' // Different CORS proxy
 		});
 		this.parser = new EDHRECParser();
 		this.cache = new EDHRECCache();
