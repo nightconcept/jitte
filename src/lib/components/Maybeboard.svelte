@@ -412,8 +412,17 @@
 
         <!-- Cards in Active Category -->
         <div
+          role="button"
+          aria-label="Card list drop zone"
+          tabindex="0"
           class="space-y-1 flex-1 overflow-y-auto"
           onclick={closeCardMenu}
+          onkeydown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              closeCardMenu();
+            }
+          }}
           ondragover={handleDragOver}
           ondrop={handleDrop}
         >

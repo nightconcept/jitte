@@ -764,17 +764,27 @@
 		onDeleteBranch={handleDeleteBranch}
 	/>
 
-	{#if $deckManager.isLoading}
+	{#if $deckManager.isLoading || !$deckManager.isInitialized}
 		<!-- Loading State -->
 		<div class="flex-1 flex items-center justify-center">
 			<div class="text-center">
-				<div class="text-[var(--color-text-primary)] text-lg mb-2">Loading...</div>
+				<!-- Spinner -->
+				<div class="relative w-24 h-24 mx-auto mb-6">
+					<!-- Outer ring -->
+					<div class="absolute inset-0 border-4 border-[var(--color-brand-primary)]/30 rounded-full"></div>
+					<!-- Spinning ring -->
+					<div class="absolute inset-0 border-4 border-transparent border-t-[var(--color-brand-primary)] rounded-full animate-spin"></div>
+					<!-- Inner ring -->
+					<div class="absolute inset-3 border-4 border-transparent border-t-[var(--color-accent-purple)] rounded-full animate-spin-slow"></div>
+				</div>
+
+				<div class="text-[var(--color-text-primary)] text-lg mb-2 font-medium">Loading...</div>
 				<div class="text-[var(--color-text-tertiary)] text-sm">
 					Please wait
 				</div>
 			</div>
 		</div>
-	{:else if !$deckStore}
+	{:else if $deckManager.isInitialized && !$deckStore}
 		<!-- Empty State - No Deck Loaded -->
 		<div class="flex-1 flex items-center justify-center">
 			<div class="text-center max-w-md px-4">
@@ -969,3 +979,18 @@
 	on:complete={handleOnboardingComplete}
 	on:close={handleOnboardingClose}
 />
+
+<style>
+	@keyframes spin-slow {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.animate-spin-slow {
+		animation: spin-slow 2s linear infinite;
+	}
+</style>

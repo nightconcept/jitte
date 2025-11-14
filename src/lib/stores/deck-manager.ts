@@ -81,6 +81,12 @@ function createDeckManager() {
 		const lastActiveDeckName = localStorage.getItem(ACTIVE_DECK_KEY);
 		if (lastActiveDeckName) {
 			await loadDeck(lastActiveDeckName);
+
+			// If deck failed to load, clear the stored deck name
+			const currentState = get({ subscribe });
+			if (currentState.error && !currentState.activeDeckName) {
+				localStorage.removeItem(ACTIVE_DECK_KEY);
+			}
 		}
 
 		update((state) => ({ ...state, isLoading: false }));
