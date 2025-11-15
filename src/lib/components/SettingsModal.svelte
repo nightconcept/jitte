@@ -6,6 +6,10 @@
   import { generateDebugInfo } from "$lib/utils/debugInfo";
   import { toastStore } from "$lib/stores/toast-store";
   import { deckManager } from "$lib/stores/deck-manager";
+  import {
+    isAutoVersionEnabled,
+    setAutoVersionEnabled,
+  } from "$lib/utils/auto-version-settings";
   import VersioningSettings from "./VersioningSettings.svelte";
   import BaseModal from "./BaseModal.svelte";
   import LicensingModal from "./LicensingModal.svelte";
@@ -28,6 +32,14 @@
   const themeState = $derived($themeStore);
   const mode = $derived(themeState.mode);
   const name = $derived(themeState.name);
+
+  // Auto-versioning setting (initialized on client-side)
+  let autoVersionEnabled = $state(false);
+
+  // Initialize auto-version setting from localStorage on mount
+  $effect(() => {
+    autoVersionEnabled = isAutoVersionEnabled();
+  });
 
   // Deck manager state for versioning settings
   let deckManagerState = $state($deckManager);
@@ -107,6 +119,17 @@
     } else {
       toastStore.error("Failed to change versioning scheme");
     }
+  }
+
+  function toggleAutoVersion() {
+    autoVersionEnabled = !autoVersionEnabled;
+    setAutoVersionEnabled(autoVersionEnabled);
+    toastStore.success(
+      autoVersionEnabled
+        ? "Auto-versioning enabled - saves will auto-increment version"
+        : "Auto-versioning disabled - you'll be prompted for version numbers",
+      3000,
+    );
   }
 </script>
 
@@ -211,6 +234,26 @@
               currentScheme={currentVersioningScheme}
               onSchemeChange={handleVersioningSchemeChange}
             />
+
+            <!-- Auto-versioning Toggle -->
+            <div class="mt-4">
+              <label class="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={autoVersionEnabled}
+                  onchange={toggleAutoVersion}
+                  class="mt-0.5 w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]/50 focus:ring-offset-0 cursor-pointer"
+                />
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary)] transition-colors">
+                    Auto-increment version on save
+                  </div>
+                  <div class="text-xs text-[var(--color-text-secondary)] mt-1">
+                    When enabled, saves will automatically increment the version number based on the number of cards changed, skipping the version prompt.
+                  </div>
+                </div>
+              </label>
+            </div>
           </div>
         {/if}
 
