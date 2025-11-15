@@ -1,13 +1,10 @@
 <script lang="ts">
-	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
+	import { deckStore } from '$lib/stores/deck-store';
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
-	import { CardCategory } from '$lib/types/card';
 	import type { Deck } from '$lib/types/deck';
 	import type { DeckSaltScore } from '$lib/types/edhrec';
 	import { DeckFormat } from '$lib/formats/format-registry';
-	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
-	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import { getBracketLabel, isGameChanger } from '$lib/utils/game-changers';
 	import BracketTooltip from './BracketTooltip.svelte';
 	import SaltTooltip from './SaltTooltip.svelte';
@@ -15,22 +12,17 @@
 
 	// Store subscriptions using Svelte 5 runes
 	let deckStoreState = $state($deckStore);
-	let validationWarningsState = $state($validationWarnings);
 	let deckManagerState = $state($deckManager);
 
 	$effect(() => {
 		const unsubscribeDeckStore = deckStore.subscribe((value) => {
 			deckStoreState = value;
 		});
-		const unsubscribeValidations = validationWarnings.subscribe((value) => {
-			validationWarningsState = value;
-		});
 		const unsubscribeDeckManager = deckManager.subscribe((value) => {
 			deckManagerState = value;
 		});
 		return () => {
 			unsubscribeDeckStore();
-			unsubscribeValidations();
 			unsubscribeDeckManager();
 		};
 	});
@@ -45,19 +37,6 @@
 	);
 	let isCommanderFormat = $derived(deck?.format === DeckFormat.Commander);
 	let gameChangersInDeck = $derived(isCommanderFormat && deck ? getAllGameChangers(deck) : []);
-	let deckWideWarnings = $derived(validationWarningsState.filter((w) => !w.cardName));
-	let typeDistribution = $derived({
-		planeswalker:
-			deck?.cards[CardCategory.Planeswalker]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		creature: deck?.cards[CardCategory.Creature]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		instant: deck?.cards[CardCategory.Instant]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		sorcery: deck?.cards[CardCategory.Sorcery]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		artifact: deck?.cards[CardCategory.Artifact]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		enchantment:
-			deck?.cards[CardCategory.Enchantment]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-		land: deck?.cards[CardCategory.Land]?.reduce((sum, c) => sum + c.quantity, 0) || 0
-	});
-	let mainDeckCount = $derived(statistics?.totalCards || 0);
 
 	// Salt score state
 	let saltScore = $state<DeckSaltScore | null>(null);
@@ -212,13 +191,6 @@
 				</div>
 
 				<div class="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
-					<div class="flex items-center gap-2">
-						<span class="font-semibold">{mainDeckCount}</span> cards
-						<!-- Deck-wide validation warnings -->
-						{#each deckWideWarnings as warning}
-							<ValidationWarningIcon {warning} position="below" />
-						{/each}
-					</div>
 					<!-- Bracket Level - Only for Commander -->
 					{#if isCommanderFormat && deck && statistics?.bracketLevel}
 						<div class="flex items-center gap-2">
@@ -323,43 +295,6 @@
 							</SaltTooltip>
 						</div>
 					{/if}
-				</div>
-			</div>
-
-			<!-- Center: Stats -->
-			<div
-				class="flex items-center justify-center gap-6 text-[var(--color-text-primary)] flex-1"
-			>
-				<!-- Type Distribution -->
-				<div class="flex items-center gap-3">
-					<div class="flex items-center gap-1" title="Planeswalkers">
-						<ManaSymbolIcon type="planeswalker" />
-						<span class="text-sm font-medium">{typeDistribution.planeswalker}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Creatures">
-						<ManaSymbolIcon type="creature" />
-						<span class="text-sm font-medium">{typeDistribution.creature}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Instants">
-						<ManaSymbolIcon type="instant" />
-						<span class="text-sm font-medium">{typeDistribution.instant}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Sorceries">
-						<ManaSymbolIcon type="sorcery" />
-						<span class="text-sm font-medium">{typeDistribution.sorcery}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Artifacts">
-						<ManaSymbolIcon type="artifact" />
-						<span class="text-sm font-medium">{typeDistribution.artifact}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Enchantments">
-						<ManaSymbolIcon type="enchantment" />
-						<span class="text-sm font-medium">{typeDistribution.enchantment}</span>
-					</div>
-					<div class="flex items-center gap-1" title="Lands">
-						<ManaSymbolIcon type="land" />
-						<span class="text-sm font-medium">{typeDistribution.land}</span>
-					</div>
 				</div>
 			</div>
 

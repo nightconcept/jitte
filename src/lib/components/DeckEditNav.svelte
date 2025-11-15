@@ -5,6 +5,10 @@
 	 */
 
 	import CardSearch from './CardSearch.svelte';
+	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
+	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
+	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
+	import { CardCategory } from '$lib/types/card';
 
 	let {
 		currentBranch = 'main',
@@ -37,6 +41,40 @@
 		onSettings?: (() => void) | undefined;
 		onRecommendations?: (() => void) | undefined;
 	} = $props();
+
+	// Store subscriptions using Svelte 5 runes
+	let deckStoreState = $state($deckStore);
+	let validationWarningsState = $state($validationWarnings);
+
+	$effect(() => {
+		const unsubscribeDeckStore = deckStore.subscribe((value) => {
+			deckStoreState = value;
+		});
+		const unsubscribeValidations = validationWarnings.subscribe((value) => {
+			validationWarningsState = value;
+		});
+		return () => {
+			unsubscribeDeckStore();
+			unsubscribeValidations();
+		};
+	});
+
+	// Derived values
+	let deck = $derived(deckStoreState?.deck);
+	let statistics = $derived(deckStoreState?.statistics);
+	let deckWideWarnings = $derived(validationWarningsState.filter((w) => !w.cardName));
+	let typeDistribution = $derived({
+		planeswalker:
+			deck?.cards[CardCategory.Planeswalker]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		creature: deck?.cards[CardCategory.Creature]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		instant: deck?.cards[CardCategory.Instant]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		sorcery: deck?.cards[CardCategory.Sorcery]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		artifact: deck?.cards[CardCategory.Artifact]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		enchantment:
+			deck?.cards[CardCategory.Enchantment]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+		land: deck?.cards[CardCategory.Land]?.reduce((sum, c) => sum + c.quantity, 0) || 0
+	});
+	let mainDeckCount = $derived(statistics?.totalCards || 0);
 
 	// Save button is enabled if:
 	// - Deck is in edit mode AND
@@ -249,6 +287,65 @@
 				</svg>
 				Save
 			</button>
+		</div>
+
+		<!-- Center: Card Count & Type Distribution -->
+		<div class="flex items-center gap-6 flex-1 justify-center">
+			<!-- Card Count -->
+			<div class="flex items-center gap-2 text-sm">
+				<span class="font-semibold text-[var(--color-text-primary)]">{mainDeckCount}</span>
+				<span class="text-[var(--color-text-secondary)]">cards</span>
+				<!-- Deck-wide validation warnings -->
+				{#each deckWideWarnings as warning}
+					<ValidationWarningIcon {warning} position="below" />
+				{/each}
+			</div>
+
+			<!-- Type Distribution -->
+			<div class="flex items-center gap-3">
+				<div class="flex items-center gap-1" title="Planeswalkers">
+					<ManaSymbolIcon type="planeswalker" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.planeswalker}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Creatures">
+					<ManaSymbolIcon type="creature" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.creature}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Instants">
+					<ManaSymbolIcon type="instant" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.instant}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Sorceries">
+					<ManaSymbolIcon type="sorcery" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.sorcery}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Artifacts">
+					<ManaSymbolIcon type="artifact" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.artifact}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Enchantments">
+					<ManaSymbolIcon type="enchantment" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.enchantment}</span
+					>
+				</div>
+				<div class="flex items-center gap-1" title="Lands">
+					<ManaSymbolIcon type="land" />
+					<span class="text-sm font-medium text-[var(--color-text-primary)]"
+						>{typeDistribution.land}</span
+					>
+				</div>
+			</div>
 		</div>
 
 		<!-- Right: Recommendations, Search and Settings -->
