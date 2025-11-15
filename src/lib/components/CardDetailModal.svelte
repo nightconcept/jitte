@@ -276,21 +276,10 @@
 					<!-- EDHREC Stats (Commander only) -->
 					{#if isCommander && commanderName && card.name !== commanderName && (loadingEdhrecData || edhrecData)}
 						<div class="w-full max-w-sm mt-3">
-							<div class="flex items-center gap-1.5 mb-1.5">
-								{#if edhrecData}
-									<a
-										href={edhrecData.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="text-sm font-bold text-[var(--color-brand-primary)] hover:underline"
-									>
-										EDHREC
-									</a>
-								{:else}
-									<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
-								{/if}
-								<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
-							</div>
+					<div class="flex items-center gap-1.5 mb-1.5">
+						<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
+						<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
+					</div>
 
 							{#if loadingEdhrecData}
 								<div class="flex items-center justify-center py-3">
@@ -416,6 +405,19 @@
 			<!-- Footer -->
 			<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-end items-center">
 				<div class="flex gap-3">
+				{#if isCommander && commanderName && card.name !== commanderName && edhrecData}
+					<a
+						href={edhrecData.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] flex items-center gap-2"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+						</svg>
+						View on EDHREC
+					</a>
+				{/if}
 					<a
 						href="https://scryfall.com/search?q={encodeURIComponent(card.name)}"
 						target="_blank"
