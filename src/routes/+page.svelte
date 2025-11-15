@@ -17,6 +17,7 @@
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
 	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
 	import BuylistModal from '$lib/components/BuylistModal.svelte';
+	import RecommendationsModal from '$lib/components/RecommendationsModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
 	import type { Card } from '$lib/types/card';
@@ -37,6 +38,7 @@
 	let showNewBranchModal = $state(false);
 	let showEditDecklistModal = $state(false);
 	let showBuylistModal = $state(false);
+	let showRecommendationsModal = $state(false);
 	let showUnsavedChangesModal = $state(false);
 	let pendingLoadAction = $state<(() => void) | null>(null);
 	let currentDecklistPlaintext = $state('');
@@ -117,6 +119,18 @@
 		}
 
 		return parts.join(' | ');
+	});
+
+	// Check if current deck is Commander format
+	const isCommander = $derived($deckStore?.deck?.format === DeckFormat.Commander);
+
+	// Get commander name for EDHREC recommendations
+	const commanderName = $derived.by(() => {
+		if (!$deckStore?.deck) return '';
+		const commanders = $deckStore.deck.cards?.commander || [];
+		if (commanders.length === 0) return '';
+		// Use first commander's name for EDHREC (for partner commanders, EDHREC usually uses the first)
+		return commanders[0].name;
 	});
 
 	function handleCardHover(card: Card | null) {
@@ -414,6 +428,10 @@
 
 	function handleNewBranch() {
 		showNewBranchModal = true;
+	}
+
+	function handleRecommendations() {
+		showRecommendationsModal = true;
 	}
 
 	async function handleCreateBranch(event: CustomEvent<{ branchName: string; mode: 'current' | 'version'; fromVersion?: string }>) {
@@ -854,12 +872,14 @@
 			availableBranches={availableBranches}
 			hasUnsavedChanges={$deckStore?.hasUnsavedChanges ?? false}
 			isNewDeck={$deckManager.activeManifest === null}
+			{isCommander}
 			onSave={handleSave}
 			onSwitchVersion={handleSwitchVersion}
 			onSwitchBranch={handleSwitchBranch}
 			onNewBranch={handleNewBranch}
 			onDeleteBranch={handleDeleteBranch}
 			onSettings={handleSettings}
+			onRecommendations={handleRecommendations}
 		/>
 
 		<!-- Main Content -->
@@ -974,6 +994,12 @@
 	currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 	currentDeck={$deckStore?.deck}
 	onClose={() => showBuylistModal = false}
+/>
+
+<RecommendationsModal
+	isOpen={showRecommendationsModal}
+	{commanderName}
+	onClose={() => showRecommendationsModal = false}
 />
 
 <!-- Loading Overlay -->

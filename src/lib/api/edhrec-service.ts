@@ -61,8 +61,6 @@ export class EDHRECService {
 			return cached;
 		}
 
-		console.log(`[EDHREC] Fetching commander data for: ${commander}`);
-
 		try {
 			const html = await this.client.fetchCommanderPage(commander);
 			const data = this.parser.parseCommanderData(html);
@@ -70,6 +68,7 @@ export class EDHRECService {
 			this.cache.set(cacheKey, data, this.COMMANDER_TTL);
 			return data;
 		} catch (error) {
+			console.error(`[EDHREC] Error fetching recommendations for ${commander}:`, error);
 			if (error instanceof EDHRECError) {
 				throw error;
 			}
@@ -132,8 +131,6 @@ export class EDHRECService {
 		// 1. Check local data first (instant, no network call)
 		const localScore = getLocalSaltScore(cardName);
 		if (localScore) {
-			console.log(`[EDHREC] Local data hit for salt score: ${cardName} (${localScore.score})`);
-
 			// Convert local format to service format
 			const saltScore: EDHRECSaltScore = {
 				cardName: localScore.name,
@@ -156,16 +153,12 @@ export class EDHRECService {
 		if (cached) {
 			// Check if this is a "no score" marker (saltScore = -1)
 			if (cached.saltScore === -1) {
-				console.log(`[EDHREC] Cache hit: ${cardName} has no salt score (cached)`);
 				return null;
 			}
-			console.log(`[EDHREC] Cache hit for salt score (API-fetched): ${cardName} (${cached.saltScore})`);
 			return cached;
 		}
 
 		// 3. Card not in local top ${SALT_SCORES_COUNT} - try API as fallback
-		console.log(`[EDHREC] Card not in local top ${SALT_SCORES_COUNT}, fetching from API: ${cardName}`);
-
 		try {
 			// Try individual card page
 			const html = await this.client.fetchCardPage(cardName);
@@ -174,7 +167,6 @@ export class EDHRECService {
 			if (saltScore) {
 				// Aggressively cache API results (90 days) since these are rare cards
 				this.cache.set(cacheKey, saltScore, this.SALT_API_FALLBACK_TTL);
-				console.log(`[EDHREC] API fallback success: ${cardName} (${saltScore.saltScore}) - cached for 90 days`);
 				return saltScore;
 			} else {
 				// Card has no salt score - cache the null result to avoid re-fetching
@@ -186,7 +178,6 @@ export class EDHRECService {
 					rank: undefined
 				};
 				this.cache.set(cacheKey, noScoreMarker, this.SALT_API_FALLBACK_TTL);
-				console.log(`[EDHREC] No salt score found for ${cardName} - cached for 90 days to avoid re-fetch`);
 				return null;
 			}
 		} catch (error) {
@@ -227,8 +218,6 @@ export class EDHRECService {
 		const results = new Map<string, EDHRECSaltScore>();
 		const notInLocal: string[] = [];
 
-		console.log(`[EDHREC] Batch lookup for ${cardNames.length} cards`);
-
 		// 1. Check local data first for all cards (instant, no API call)
 		for (const name of cardNames) {
 			const localScore = getLocalSaltScore(name);
@@ -251,11 +240,8 @@ export class EDHRECService {
 			}
 		}
 
-		console.log(
-			`[EDHREC] Local data: ${results.size}/${cardNames.length} cards found (${notInLocal.length} need fallback)`
-		);
-
 		if (notInLocal.length === 0) {
+			console.log(`[EDHREC] Salt scores: ${results.size}/${cardNames.length} cards (all from local data)`);
 			return results; // All cards found in local data!
 		}
 
@@ -267,11 +253,7 @@ export class EDHRECService {
 
 			if (cached) {
 				// Check if this is a "no score" marker
-				if (cached.saltScore === -1) {
-					console.log(`[EDHREC] Cache: "${name}" has no salt score (skipping)`);
-					// Don't add to results, and don't re-fetch
-				} else {
-					console.log(`[EDHREC] Cache: "${name}" = ${cached.saltScore}`);
+				if (cached.saltScore !== -1) {
 					results.set(name, cached);
 				}
 			} else {
@@ -279,11 +261,10 @@ export class EDHRECService {
 			}
 		}
 
-		console.log(
-			`[EDHREC] Cache: ${notInLocal.length - notInCache.length} additional cards found`
-		);
-
 		if (notInCache.length === 0) {
+			console.log(
+				`[EDHREC] Salt scores: ${results.size}/${cardNames.length} cards (${notInLocal.length - notInCache.length} from cache)`
+			);
 			return results; // All remaining cards in cache!
 		}
 
@@ -291,7 +272,7 @@ export class EDHRECService {
 		// Use a very conservative delay (5 seconds) to avoid hammering EDHREC
 		if (notInCache.length > 0) {
 			console.log(
-				`[EDHREC] ${notInCache.length} cards need API fetch (5 second delay between requests)`
+				`[EDHREC] Fetching salt scores from API for ${notInCache.length} cards (5s delay between requests)...`
 			);
 
 			for (let i = 0; i < notInCache.length; i++) {
@@ -299,21 +280,13 @@ export class EDHRECService {
 
 				// Add 5 second delay before each request (except the first)
 				if (i > 0) {
-					console.log(`[EDHREC] Waiting 5 seconds before fetching "${name}"...`);
 					await new Promise((resolve) => setTimeout(resolve, 5000));
 				}
 
 				try {
-					console.log(
-						`[EDHREC] Fetching salt score for "${name}" (${i + 1}/${notInCache.length})...`
-					);
 					const saltScore = await this.getSaltScore(name);
-
 					if (saltScore) {
 						results.set(name, saltScore);
-						console.log(`[EDHREC] ✓ Found salt score for "${name}": ${saltScore.saltScore}`);
-					} else {
-						console.log(`[EDHREC] ✗ No salt score found for "${name}"`);
 					}
 				} catch (error) {
 					console.warn(`[EDHREC] Failed to fetch salt score for "${name}":`, error);
@@ -322,7 +295,7 @@ export class EDHRECService {
 			}
 
 			console.log(
-				`[EDHREC] Batch complete: ${results.size}/${cardNames.length} cards have salt scores`
+				`[EDHREC] Salt scores complete: ${results.size}/${cardNames.length} cards (${notInCache.length} from API)`
 			);
 		}
 

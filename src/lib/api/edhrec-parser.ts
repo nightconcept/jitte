@@ -81,15 +81,34 @@ export class EDHRECParser {
 			return [];
 		}
 
-		return cardviews.map((card) => ({
-			name: (card.name as string) || '',
-			sanitized: (card.sanitized as string) || '',
-			synergyScore: this.parsePercentage((card.synergy as string) || ''),
-			inclusionRate: this.parsePercentage((card.label as string) || ''),
-			deckCount: this.parseDeckCount((card.label as string) || ''),
-			label: (card.label as string) || '',
-			url: `https://edhrec.com/cards/${card.sanitized as string}`
-		}));
+		return cardviews.map((card) => {
+			// EDHREC data structure (new format):
+			// synergy: 0.02 (decimal, 0.02 = 2%)
+			// inclusion: 111 (number of decks using this card)
+			// num_decks: 111 (same as inclusion)
+			// potential_decks: 27014 (total decks for this commander)
+
+			const synergy = (card.synergy as number) || 0;
+			const inclusion = (card.inclusion as number) || (card.num_decks as number) || 0;
+			const potentialDecks = (card.potential_decks as number) || 1;
+
+			// Calculate synergy and inclusion as percentages
+			const synergyScore = Math.round(synergy * 100);
+			const inclusionRate = Math.round((inclusion / potentialDecks) * 100);
+
+			// Build label in the old format for compatibility
+			const label = `${inclusionRate}% of ${inclusion.toLocaleString()} decks`;
+
+			return {
+				name: (card.name as string) || '',
+				sanitized: (card.sanitized as string) || '',
+				synergyScore,
+				inclusionRate,
+				deckCount: inclusion,
+				label,
+				url: `https://edhrec.com/cards/${card.sanitized as string}`
+			};
+		});
 	}
 
 	/**
