@@ -961,6 +961,21 @@
 		onClose={() => detailModalCard = null}
 		{isCommander}
 		{commanderName}
+		onPrintingChange={(cardName, printingData) => {
+			deckStore.updateCardPrinting(cardName, {
+				scryfallId: printingData.id,
+				setCode: printingData.set,
+				collectorNumber: printingData.collector_number,
+				imageUrls: printingData.image_uris ? {
+					small: printingData.image_uris.small,
+					normal: printingData.image_uris.normal,
+					large: printingData.image_uris.large,
+					png: printingData.image_uris.png,
+					artCrop: printingData.image_uris.art_crop,
+					borderCrop: printingData.image_uris.border_crop
+				} : undefined
+			});
+		}}
 	/>
 {/if}
 

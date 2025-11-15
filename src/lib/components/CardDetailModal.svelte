@@ -13,13 +13,15 @@
 		isOpen = false,
 		onClose = () => {},
 		isCommander = false,
-		commanderName = ''
+		commanderName = '',
+		onPrintingChange = undefined
 	}: {
 		card: Card;
 		isOpen: boolean;
 		onClose: () => void;
 		isCommander?: boolean;
 		commanderName?: string;
+		onPrintingChange?: (cardName: string, printingData: ScryfallCard) => void;
 	} = $props();
 
 	let scryfallCard = $state<ScryfallCard | null>(null);
@@ -27,6 +29,8 @@
 	let rulings = $state<Array<{ published_at: string; comment: string }>>([]);
 	let edhrecData = $state<EDHRECCardRecommendation | null>(null);
 	let loadingEdhrecData = $state(false);
+	let printings = $state<ScryfallCard[]>([]);
+	let loadingPrintings = $state(false);
 
 	// Create a merged card with full face data for CardPreview
 	let cardWithFaces = $derived.by(() => {
@@ -34,6 +38,18 @@
 
 		// Merge the original card with cardFaces data from Scryfall
 		const merged: Card = { ...card };
+
+		// Update image URLs from the current printing
+		if (scryfallCard.image_uris) {
+			merged.imageUrls = {
+				small: scryfallCard.image_uris.small,
+				normal: scryfallCard.image_uris.normal,
+				large: scryfallCard.image_uris.large,
+				png: scryfallCard.image_uris.png,
+				artCrop: scryfallCard.image_uris.art_crop,
+				borderCrop: scryfallCard.image_uris.border_crop
+			};
+		}
 
 		// Add card faces if available
 		if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
@@ -88,6 +104,7 @@
 		loading = true;
 		loadingEdhrecData = false;
 		edhrecData = null;
+		printings = [];
 
 		try {
 			// Get full Scryfall card data
@@ -101,6 +118,9 @@
 					const rulingsData = await rulingsResponse.json();
 					rulings = rulingsData.data || [];
 				}
+
+				// Fetch printings (in parallel, don't block loading)
+				loadPrintings();
 			}
 		} catch (error) {
 			console.error('Error loading card details:', error);
@@ -143,6 +163,32 @@
 			console.error('[CardDetailModal] Error loading EDHREC data:', error);
 		} finally {
 			loadingEdhrecData = false;
+		}
+	}
+
+	async function loadPrintings() {
+		if (!scryfallCard?.prints_search_uri) return;
+
+		loadingPrintings = true;
+		try {
+			const response = await fetch(scryfallCard.prints_search_uri);
+			const data = await response.json();
+			printings = data.data || [];
+			console.log('[CardDetailModal] Loaded', printings.length, 'printings for', card.name);
+		} catch (error) {
+			console.error('[CardDetailModal] Error loading printings:', error);
+		} finally {
+			loadingPrintings = false;
+		}
+	}
+
+	function changePrinting(printing: ScryfallCard) {
+		scryfallCard = printing;
+		console.log('[CardDetailModal] Changed to printing:', printing.set_name, printing.collector_number);
+
+		// Notify parent component to update the deck
+		if (onPrintingChange) {
+			onPrintingChange(card.name, printing);
 		}
 	}
 
@@ -265,7 +311,7 @@
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start min-h-[calc(90vh-16rem)]">
 						<!-- Left Column: Card Image with Flip Functionality -->
 						<div class="flex flex-col items-center sticky top-0 self-start h-[calc(90vh-16rem)]">
-							<div class="card-preview-wrapper w-full max-w-sm flex flex-col">
+							<div class="card-preview-wrapper w-full flex flex-col flex-1 min-h-0">
 								<CardPreview
 									hoveredCard={cardWithFaces}
 									showPricing={false}
@@ -273,9 +319,34 @@
 								/>
 							</div>
 
+							<!-- Printings Selector -->
+							{#if printings.length > 1}
+								<div class="w-full mt-auto flex-shrink-0">
+									<label for="printing-select" class="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1">
+										Printing
+									</label>
+									<select
+										id="printing-select"
+										class="w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+										onchange={(e) => {
+											const selectedId = (e.target as HTMLSelectElement).value;
+											const printing = printings.find(p => p.id === selectedId);
+											if (printing) changePrinting(printing);
+										}}
+										value={scryfallCard?.id}
+									>
+										{#each printings as printing}
+											<option value={printing.id}>
+												{printing.set_name} ({printing.collector_number}) - {printing.artist || 'Unknown Artist'}
+											</option>
+										{/each}
+									</select>
+								</div>
+							{/if}
+
 					<!-- EDHREC Stats (Commander only) -->
 					{#if isCommander && commanderName && card.name !== commanderName && (loadingEdhrecData || edhrecData)}
-						<div class="w-full max-w-sm mt-3">
+						<div class="w-full mt-2 flex-shrink-0" class:mt-auto={printings.length <= 1}>
 					<div class="flex items-center gap-1.5 mb-1.5">
 						<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
 						<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
@@ -294,7 +365,7 @@
 										</div>
 										<div>
 											<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Usage</span>
-											<span class="text-[0.65rem] font-semibold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}% of {edhrecData.deckCount.toLocaleString()} decks</span>
+											<span class="text-base font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}% of {edhrecData.deckCount.toLocaleString()} decks</span>
 										</div>
 									</div>
 								</div>
@@ -470,45 +541,51 @@
 		animation: scale-in 150ms ease-out;
 	}
 
-	/* Card preview wrapper - fill parent height */
+	/* Card preview wrapper - grow to fit content */
 	.card-preview-wrapper {
 		width: 100%;
-		height: 100%;
-		max-width: 24rem;
+		flex: 1 1 auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		position: relative;
+		min-height: 0;
 	}
 
 	/* Scale the card preview to fill available space */
 	.card-preview-wrapper :global(.scale-card-preview) {
 		width: 100% !important;
-		height: 100% !important;
+		flex: 1 1 auto !important;
 		display: flex !important;
 		flex-direction: column !important;
 		align-items: center !important;
+		justify-content: center !important;
 		padding: 0 !important;
+		min-height: 0 !important;
 	}
 
-	/* Perspective container: provide explicit dimensions */
+	/* Perspective container: sized wrapper for aspect ratio */
 	.card-preview-wrapper :global(.perspective-container) {
 		position: relative;
 		width: 100%;
-		height: calc(100% - 4rem); /* Reserve space for flip button */
-		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex: 1 1 auto !important;
+		min-height: 0 !important;
 	}
 
-	/* Flip card: use absolute positioning with max constraints + aspect-ratio */
+	/* Flip card: constrained by aspect ratio */
 	.card-preview-wrapper :global(.flip-card) {
-		position: absolute;
-		inset: 0;
-		margin: auto;
-		max-width: 100%;
-		max-height: 100%;
-		width: auto;
-		height: auto;
+		position: relative;
 		aspect-ratio: 5 / 7;
+		/* Fill available height, let width be determined by aspect ratio */
+		height: 100%;
+		width: auto;
+		/* But don't exceed container width */
+		max-width: 100%;
+		/* If width-constrained, shrink height accordingly */
+		max-height: 100%;
 	}
 
 	.card-preview-wrapper :global(.card-face) {
@@ -527,9 +604,15 @@
 
 	/* Ensure flip button is visible with proper spacing */
 	.card-preview-wrapper :global(aside > button) {
-		flex-shrink: 0;
-		margin-top: 1rem;
+		flex-shrink: 0 !important;
+		margin-top: 0.5rem !important;
 		position: relative;
+	}
+
+	/* Make sure aside elements within scale-card-preview don't take excess space */
+	.card-preview-wrapper :global(.scale-card-preview > aside) {
+		flex-shrink: 0 !important;
+		margin-top: 0.5rem !important;
 	}
 
 	/* Legend tooltip hover */

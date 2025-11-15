@@ -1085,6 +1085,69 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Update card printing information
+		 * Updates set-specific data like scryfallId, setCode, collectorNumber, and imageUrls
+		 */
+		updateCardPrinting(
+			cardName: string,
+			printingData: {
+				scryfallId?: string;
+				setCode?: string;
+				collectorNumber?: string;
+				imageUrls?: Card['imageUrls'];
+			}
+		): void {
+			update((state) => {
+				if (!state) return state;
+
+				let cardFound = false;
+				const updatedCards = { ...state.deck.cards };
+
+				// Search through all categories to find and update the card
+				for (const category of Object.keys(updatedCards) as CardCategory[]) {
+					const categoryCards = updatedCards[category];
+					const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+
+					if (cardIndex !== -1) {
+						// Found the card, update its printing data
+						const updatedCard = {
+							...categoryCards[cardIndex],
+							...printingData
+						};
+
+						updatedCards[category] = [
+							...categoryCards.slice(0, cardIndex),
+							updatedCard,
+							...categoryCards.slice(cardIndex + 1)
+						];
+
+						cardFound = true;
+						break; // Card found and updated, stop searching
+					}
+				}
+
+				if (!cardFound) {
+					console.warn(`Card "${cardName}" not found in deck for printing update`);
+					return state;
+				}
+
+				// Create new deck object with updated cards
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
 		 * Clear the deck
 		 */
 		clear(): void {
