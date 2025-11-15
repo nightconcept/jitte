@@ -144,10 +144,15 @@ export class CardService {
 
 	/**
 	 * Get a card by exact name, with caching
+	 * @param name - Card name
+	 * @param requestType - Request type for queue manager (default: 'general')
 	 */
-	async getCardByName(name: string): Promise<ScryfallCard | null> {
+	async getCardByName(
+		name: string,
+		requestType: string = 'general'
+	): Promise<ScryfallCard | null> {
 		try {
-			const card = await scryfallClient.getCardNamed(name, true);
+			const card = await scryfallClient.getCardNamed(name, true, requestType);
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
@@ -163,10 +168,15 @@ export class CardService {
 	async getCardBySetAndNumber(
 		setCode: string,
 		collectorNumber: string,
-		fallbackName?: string
+		fallbackName?: string,
+		requestType: string = 'general'
 	): Promise<ScryfallCard | null> {
 		try {
-			const card = await scryfallClient.getCardBySetAndNumber(setCode, collectorNumber);
+			const card = await scryfallClient.getCardBySetAndNumber(
+				setCode,
+				collectorNumber,
+				requestType
+			);
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
@@ -175,7 +185,7 @@ export class CardService {
 			// Fall back to name lookup if provided
 			if (fallbackName) {
 				console.log(`Falling back to name lookup: ${fallbackName}`);
-				return this.getCardByName(fallbackName);
+				return this.getCardByName(fallbackName, requestType);
 			}
 
 			return null;
@@ -333,7 +343,7 @@ export class CardService {
 	/**
 	 * Get a card by ID, with caching
 	 */
-	async getCard(id: string): Promise<ScryfallCard | null> {
+	async getCard(id: string, requestType: string = 'general'): Promise<ScryfallCard | null> {
 		// Try cache first
 		const cached = await cardCache.getCard(id);
 		if (cached) {
@@ -342,7 +352,7 @@ export class CardService {
 
 		// Fetch from API
 		try {
-			const card = await scryfallClient.getCard(id);
+			const card = await scryfallClient.getCard(id, requestType);
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {

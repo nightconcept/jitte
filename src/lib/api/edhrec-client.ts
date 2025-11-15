@@ -14,7 +14,8 @@
  * EDHREC for official API access.
  */
 
-import { RateLimiter } from './rate-limiter';
+import { RequestQueueManager } from './request-queue';
+import { EDHREC_QUEUE_CONFIG } from './queue-configs';
 import { EDHRECParser } from './edhrec-parser';
 import { EDHRECError } from '$lib/types/edhrec';
 
@@ -34,7 +35,7 @@ export interface EDHRECClientConfig {
 }
 
 export class EDHRECClient {
-	private rateLimiter: RateLimiter;
+	private queueManager: RequestQueueManager;
 	private baseUrl: string;
 	private userAgent: string;
 	private timeoutMs: number;
@@ -48,13 +49,13 @@ export class EDHRECClient {
 		this.useCorsProxy = config.useCorsProxy ?? false;
 		this.corsProxyUrl = config.corsProxyUrl || 'https://corsproxy.io/?';
 
-		// Default to 2000ms delay = 30 requests per minute
-		const minDelayMs = config.minDelayMs || 2000;
+		// Use custom rate limit if provided, otherwise use default from config
+		const queueConfig = { ...EDHREC_QUEUE_CONFIG };
+		if (config.minDelayMs) {
+			queueConfig.rateLimitMs = config.minDelayMs;
+		}
 
-		this.rateLimiter = new RateLimiter({
-			minDelayMs,
-			maxConcurrent: 1 // Strict sequential processing
-		});
+		this.queueManager = new RequestQueueManager(queueConfig);
 	}
 
 	/**
@@ -64,7 +65,12 @@ export class EDHRECClient {
 		const slug = EDHRECParser.sanitizeName(commander);
 		const url = `${this.baseUrl}/commanders/${slug}`;
 
-		return this.fetchWithRateLimit(url);
+		return this.queueManager.enqueue({
+			type: 'commander',
+			params: { commanderName: commander },
+			id: '',
+			fn: async () => this.fetchUrl(url)
+		});
 	}
 
 	/**
@@ -72,7 +78,13 @@ export class EDHRECClient {
 	 */
 	async fetchSaltScorePage(): Promise<string> {
 		const url = `${this.baseUrl}/top/salt`;
-		return this.fetchWithRateLimit(url);
+
+		return this.queueManager.enqueue({
+			type: 'general',
+			params: {},
+			id: '',
+			fn: async () => this.fetchUrl(url)
+		});
 	}
 
 	/**
@@ -82,80 +94,89 @@ export class EDHRECClient {
 		const slug = EDHRECParser.sanitizeName(cardName);
 		const url = `${this.baseUrl}/cards/${slug}`;
 
-		return this.fetchWithRateLimit(url);
+		return this.queueManager.enqueue({
+			type: 'salt_score',
+			params: { cardName },
+			id: '',
+			fn: async () => this.fetchUrl(url)
+		});
 	}
 
 	/**
-	 * Fetch URL with rate limiting and error handling
+	 * Fetch URL with error handling (no rate limiting - handled by queue manager)
 	 */
-	private async fetchWithRateLimit(url: string): Promise<string> {
-		return this.rateLimiter.execute(async () => {
-			try {
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+	private async fetchUrl(url: string): Promise<string> {
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
-				// Apply CORS proxy if enabled
-				const fetchUrl = this.useCorsProxy ? `${this.corsProxyUrl}${encodeURIComponent(url)}` : url;
+			// Apply CORS proxy if enabled
+			const fetchUrl = this.useCorsProxy
+				? `${this.corsProxyUrl}${encodeURIComponent(url)}`
+				: url;
 
-				const response = await fetch(fetchUrl, {
-					headers: {
-						'User-Agent': this.userAgent,
-						Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-						'Accept-Language': 'en-US,en;q=0.5',
-						'Accept-Encoding': 'gzip, deflate, br',
-						DNT: '1',
-						Connection: 'keep-alive',
-						'Upgrade-Insecure-Requests': '1'
-					},
-					signal: controller.signal
-				});
+			const response = await fetch(fetchUrl, {
+				headers: {
+					'User-Agent': this.userAgent,
+					Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+					'Accept-Language': 'en-US,en;q=0.5',
+					'Accept-Encoding': 'gzip, deflate, br',
+					DNT: '1',
+					Connection: 'keep-alive',
+					'Upgrade-Insecure-Requests': '1'
+				},
+				signal: controller.signal
+			});
 
-				clearTimeout(timeoutId);
+			clearTimeout(timeoutId);
 
-				if (!response.ok) {
-					throw new EDHRECError(
-						`EDHREC request failed for ${url}`,
-						response.status
-					);
+			if (!response.ok) {
+				throw new EDHRECError(`EDHREC request failed for ${url}`, response.status);
+			}
+
+			return await response.text();
+		} catch (error) {
+			if (error instanceof EDHRECError) {
+				throw error;
+			}
+
+			if (error instanceof Error) {
+				if (error.name === 'AbortError') {
+					throw new EDHRECError(`Request timeout after ${this.timeoutMs}ms`);
 				}
 
-				return await response.text();
-			} catch (error) {
-				if (error instanceof EDHRECError) {
-					throw error;
-				}
-
-				if (error instanceof Error) {
-					if (error.name === 'AbortError') {
-						throw new EDHRECError(`Request timeout after ${this.timeoutMs}ms`);
-					}
-
-					// Check for CORS-specific errors
-					if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-						throw new EDHRECError(
-							`CORS Error: Browser blocked request to EDHREC. This is a browser security restriction. Solutions: 1) Enable CORS proxy in settings, 2) Use a server-side proxy, or 3) Contact EDHREC for API access. See console for details.`,
-							undefined,
-							error
-						);
-					}
-
+				// Check for CORS-specific errors
+				if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
 					throw new EDHRECError(
-						`Network error fetching EDHREC page: ${error.message}`,
+						`CORS Error: Browser blocked request to EDHREC. This is a browser security restriction. Solutions: 1) Enable CORS proxy in settings, 2) Use a server-side proxy, or 3) Contact EDHREC for API access. See console for details.`,
 						undefined,
 						error
 					);
 				}
 
-				throw new EDHRECError('Unknown error fetching EDHREC page');
+				throw new EDHRECError(
+					`Network error fetching EDHREC page: ${error.message}`,
+					undefined,
+					error
+				);
 			}
-		});
+
+			throw new EDHRECError('Unknown error fetching EDHREC page');
+		}
 	}
 
 	/**
-	 * Get current rate limiter queue size (for monitoring)
+	 * Get current queue size (for monitoring)
 	 */
 	getQueueSize(): number {
-		return this.rateLimiter.getQueueSize();
+		return this.queueManager.getQueueSize();
+	}
+
+	/**
+	 * Get queue statistics
+	 */
+	getQueueStats() {
+		return this.queueManager.getStats();
 	}
 
 	/**
@@ -163,13 +184,20 @@ export class EDHRECClient {
 	 * Use this to make rate limiting more conservative if needed
 	 */
 	updateRateLimit(minDelayMs: number): void {
-		this.rateLimiter.updateConfig({ minDelayMs });
+		console.warn('[EDHREC] Runtime rate limit updates not yet supported with queue manager');
 	}
 
 	/**
 	 * Clear the request queue (use with caution)
 	 */
 	clearQueue(): void {
-		this.rateLimiter.clear();
+		this.queueManager.clear();
+	}
+
+	/**
+	 * Cancel all pending requests of a specific type
+	 */
+	cancelRequestsByType(type: string): void {
+		this.queueManager.cancel(type);
 	}
 }

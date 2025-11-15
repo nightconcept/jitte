@@ -4,7 +4,8 @@
  * API Documentation: https://backend.commanderspellbook.com/
  */
 
-import { RateLimiter } from './rate-limiter';
+import { RequestQueueManager } from './request-queue';
+import { SPELLBOOK_QUEUE_CONFIG } from './queue-configs';
 
 const BASE_URL = 'https://backend.commanderspellbook.com';
 const RATE_LIMIT_MS = 100; // 100ms between requests (conservative)
@@ -108,10 +109,16 @@ export interface FindMyCombosResponse {
  * Commander Spellbook API Client
  */
 export class CommanderSpellbookClient {
-	private rateLimiter: RateLimiter;
+	private queueManager: RequestQueueManager;
 
 	constructor(rateLimitMs: number = RATE_LIMIT_MS) {
-		this.rateLimiter = new RateLimiter({ minDelayMs: rateLimitMs });
+		// Use custom rate limit if provided, otherwise use default from config
+		const queueConfig = { ...SPELLBOOK_QUEUE_CONFIG };
+		if (rateLimitMs !== RATE_LIMIT_MS) {
+			queueConfig.rateLimitMs = rateLimitMs;
+		}
+
+		this.queueManager = new RequestQueueManager(queueConfig);
 	}
 
 	/**
@@ -129,19 +136,26 @@ export class CommanderSpellbookClient {
 	 * searchVariants('card:"Thassa\'s Oracle" card:"Demonic Consultation"')
 	 */
 	async searchVariants(query: string, limit: number = 100): Promise<VariantsResponse> {
-		return this.rateLimiter.execute(async () => {
-			const params = new URLSearchParams({
-				q: query,
-				limit: limit.toString()
-			});
+		return this.queueManager.enqueue({
+			type: 'search',
+			params: { query, limit },
+			id: '',
+			fn: async () => {
+				const params = new URLSearchParams({
+					q: query,
+					limit: limit.toString()
+				});
 
-			const response = await fetch(`${BASE_URL}/variants?${params}`);
+				const response = await fetch(`${BASE_URL}/variants?${params}`);
 
-			if (!response.ok) {
-				throw new Error(`Commander Spellbook API error: ${response.status} ${response.statusText}`);
+				if (!response.ok) {
+					throw new Error(
+						`Commander Spellbook API error: ${response.status} ${response.statusText}`
+					);
+				}
+
+				return response.json();
 			}
-
-			return response.json();
 		});
 	}
 
@@ -149,18 +163,25 @@ export class CommanderSpellbookClient {
 	 * Get a specific variant by ID
 	 */
 	async getVariantById(id: string): Promise<ComboVariant | null> {
-		return this.rateLimiter.execute(async () => {
-			const response = await fetch(`${BASE_URL}/variants/${id}/`);
+		return this.queueManager.enqueue({
+			type: 'variant_by_id',
+			params: { id },
+			id: '',
+			fn: async () => {
+				const response = await fetch(`${BASE_URL}/variants/${id}/`);
 
-			if (response.status === 404) {
-				return null;
+				if (response.status === 404) {
+					return null;
+				}
+
+				if (!response.ok) {
+					throw new Error(
+						`Commander Spellbook API error: ${response.status} ${response.statusText}`
+					);
+				}
+
+				return response.json();
 			}
-
-			if (!response.ok) {
-				throw new Error(`Commander Spellbook API error: ${response.status} ${response.statusText}`);
-			}
-
-			return response.json();
 		});
 	}
 
@@ -172,23 +193,28 @@ export class CommanderSpellbookClient {
 	 * are present in the deck.
 	 */
 	async findMyCombos(request: FindMyCombosRequest): Promise<FindMyCombosResponse> {
-		return this.rateLimiter.execute(async () => {
-			const response = await fetch(`${BASE_URL}/find-my-combos/`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(request)
-			});
+		return this.queueManager.enqueue({
+			type: 'find_combos',
+			params: {},
+			id: '',
+			fn: async () => {
+				const response = await fetch(`${BASE_URL}/find-my-combos/`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(request)
+				});
 
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(
-					`Commander Spellbook API error: ${response.status} ${response.statusText}\n${errorText}`
-				);
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(
+						`Commander Spellbook API error: ${response.status} ${response.statusText}\n${errorText}`
+					);
+				}
+
+				return response.json();
 			}
-
-			return response.json();
 		});
 	}
 
