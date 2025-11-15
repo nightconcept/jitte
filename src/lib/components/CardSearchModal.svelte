@@ -293,7 +293,7 @@
     try {
       deckStore.addCard(selectedCardFull);
       toastStore.success(`Added ${selectedCardFull.name} to decklist`);
-      onClose();
+      // Don't close modal - allow user to add more cards
     } catch (error) {
       console.error("Error adding card:", error);
       toastStore.error(`Failed to add ${selectedCardFull.name}`);
@@ -307,7 +307,7 @@
       // Add to maybeboard - if maybeboardCategoryId is provided, use it, otherwise use "main"
       deckStore.addCardToMaybeboard(selectedCardFull, maybeboardCategoryId || "main");
       toastStore.success(`Added ${selectedCardFull.name} to maybeboard`);
-      onClose();
+      // Don't close modal - allow user to add more cards
     } catch (error) {
       console.error("Error adding card:", error);
       toastStore.error(`Failed to add ${selectedCardFull.name}`);
@@ -697,7 +697,7 @@
           onclick={onClose}
           class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
         >
-          Cancel
+          Close
         </button>
         <button
           onclick={addToMaybeboardList}
