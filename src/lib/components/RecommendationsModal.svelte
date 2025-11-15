@@ -18,6 +18,7 @@
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
 	import { toastStore } from '$lib/stores/toast-store';
+	import { imageCache } from '$lib/utils/image-cache';
 	import type { EDHRECCardRecommendation } from '$lib/types/edhrec';
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
@@ -45,7 +46,8 @@
 	let previewImage = $state<string | null>(null);
 	let isLoadingPreview = $state(false);
 
-	// Cache for card images (map of card name -> image URL)
+	// In-memory cache for card images (map of card name -> image URL)
+	// Fast access during current session, backed by persistent localStorage cache
 	let cardImageCache = $state<Map<string, string>>(new Map());
 
 	// Subscribe to deck store
@@ -324,6 +326,7 @@
 
 	// Fetch card image from Scryfall and cache it (with loading state)
 	async function fetchCardImageWithLoading(cardName: string) {
+		// Check in-memory cache first
 		if (cardImageCache.has(cardName)) {
 			// Remove from loading set (create new Set for reactivity)
 			const newLoadingCards = new Set(loadingCards);
@@ -332,6 +335,22 @@
 			return;
 		}
 
+		// Check persistent cache second (localStorage)
+		const cachedUrl = imageCache.get(cardName);
+		if (cachedUrl) {
+			// Add to in-memory cache (create new Map for reactivity)
+			const newCache = new Map(cardImageCache);
+			newCache.set(cardName, cachedUrl);
+			cardImageCache = newCache;
+
+			// Remove from loading set
+			const newLoadingCards = new Set(loadingCards);
+			newLoadingCards.delete(cardName);
+			loadingCards = newLoadingCards;
+			return;
+		}
+
+		// Not in cache, fetch from Scryfall
 		try {
 			const scryfallCard = await cardService.getCardByName(cardName);
 			if (scryfallCard) {
@@ -341,11 +360,13 @@
 					imageUrl = scryfallCard.card_faces[0].image_uris.normal;
 				}
 				if (imageUrl) {
-					// Add to cache (create new Map for reactivity)
+					// Store in persistent cache (localStorage)
+					imageCache.set(cardName, imageUrl);
+
+					// Add to in-memory cache (create new Map for reactivity)
 					const newCache = new Map(cardImageCache);
 					newCache.set(cardName, imageUrl);
 					cardImageCache = newCache;
-					console.log(`[Recommendations] Loaded image for: ${cardName}`);
 				}
 			}
 		} catch (error) {
@@ -360,8 +381,20 @@
 
 	// Fetch card image from Scryfall and cache it (without loading state)
 	async function fetchCardImage(cardName: string) {
+		// Check in-memory cache first
 		if (cardImageCache.has(cardName)) return;
 
+		// Check persistent cache second (localStorage)
+		const cachedUrl = imageCache.get(cardName);
+		if (cachedUrl) {
+			// Add to in-memory cache (create new Map for reactivity)
+			const newCache = new Map(cardImageCache);
+			newCache.set(cardName, cachedUrl);
+			cardImageCache = newCache;
+			return;
+		}
+
+		// Not in cache, fetch from Scryfall
 		try {
 			const scryfallCard = await cardService.getCardByName(cardName);
 			if (scryfallCard) {
@@ -371,7 +404,10 @@
 					imageUrl = scryfallCard.card_faces[0].image_uris.normal;
 				}
 				if (imageUrl) {
-					// Add to cache (create new Map for reactivity)
+					// Store in persistent cache (localStorage)
+					imageCache.set(cardName, imageUrl);
+
+					// Add to in-memory cache (create new Map for reactivity)
 					const newCache = new Map(cardImageCache);
 					newCache.set(cardName, imageUrl);
 					cardImageCache = newCache;
