@@ -295,17 +295,10 @@
 											</div>
 											<div>
 												<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Usage</span>
-												<span class="text-base font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
-											</div>
-										</div>
-										<div class="mt-2 pt-2 border-t border-[var(--color-border)]">
-											<div class="flex justify-between items-center gap-1.5">
-												<span class="text-[var(--color-text-secondary)] text-[0.65rem]">{edhrecData.deckCount.toLocaleString()} decks</span>
-												{#if edhrecData.category}
-													<span class="px-1.5 py-0.5 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)] text-[0.6rem] truncate">
-														{edhrecData.category}
-													</span>
-												{/if}
+												<div class="flex flex-col">
+													<span class="text-base font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
+													<span class="text-[0.6rem] text-[var(--color-text-tertiary)]">{edhrecData.deckCount.toLocaleString()} decks</span>
+												</div>
 											</div>
 										</div>
 									</div>
