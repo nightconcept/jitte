@@ -28,6 +28,8 @@
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 	import { scryfallToCard } from '$lib/utils/card-converter';
 	import { DeckFormat } from '$lib/formats/format-registry';
+	import { isAutoVersionEnabled } from '$lib/utils/auto-version-settings';
+	import { applyBump } from '$lib/utils/semver';
 
 	// 🚨 CRITICAL: Use $state() for all reactive variables in runes mode!
 	// Regular `let` variables are NOT reactive in Svelte 5 runes mode
@@ -149,8 +151,47 @@
 	async function handleSave() {
 		if (!$deckStore) return;
 
-		// Show commit modal
-		showCommitModal = true;
+		// Check if we're in edit mode and have changes
+		if (!$deckStore.isEditing) {
+			toastStore.warning('Deck is not in edit mode');
+			return;
+		}
+
+		// Check for any unsaved changes (deck or maybeboard)
+		if (!$deckStore.hasUnsavedChanges) {
+			toastStore.info('No changes to save');
+			return;
+		}
+
+		const diff = $currentDiff;
+		const hasDeckChanges = diff && diff.totalChanges > 0;
+
+		// Check if auto-versioning is enabled
+		if (isAutoVersionEnabled()) {
+			// Auto-version: calculate version and commit automatically
+			const currentVersion = $deckStore.deck.currentVersion;
+
+			let newVersion: string;
+			let message: string;
+
+			if (hasDeckChanges) {
+				// Main deck changes - use suggested bump
+				newVersion = applyBump(currentVersion, diff.suggestedBump);
+				const changeCount = diff.totalChanges;
+				const changeType = diff.suggestedBump;
+				message = `Auto-save: ${changeCount} change${changeCount !== 1 ? 's' : ''} (${changeType})`;
+			} else {
+				// Maybeboard-only changes - use patch bump
+				newVersion = applyBump(currentVersion, 'patch');
+				message = 'Auto-save: maybeboard changes';
+			}
+
+			// Commit directly without showing modal
+			await handleCommit(newVersion, message);
+		} else {
+			// Manual versioning: show commit modal
+			showCommitModal = true;
+		}
 	}
 
 	async function handleCommit(version: string, message: string) {
