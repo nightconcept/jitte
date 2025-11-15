@@ -211,10 +211,22 @@ export class EDHRECParser {
 	 * Sanitize card name to URL slug (matches EDHREC's format)
 	 * EDHREC handles possessives by removing apostrophes but keeping the 's' attached
 	 * Example: "Sevinne's Reclamation" → "sevinnes-reclamation" not "sevinne-s-reclamation"
+	 * For modal/double-faced cards, only uses the front face name
+	 * Example: "Peter Parker // Amazing Spider-Man" → "peter-parker"
+	 * Handles accented characters by converting to base forms
+	 * Example: "Araña, Heart of the Spider" → "arana-heart-of-the-spider"
 	 */
 	static sanitizeName(name: string): string {
-		return name
+		// For modal/double-faced cards, only use the front face
+		const frontFace = name.split('//')[0].trim();
+
+		return frontFace
 			.toLowerCase()
+			// Normalize Unicode characters and remove diacritical marks
+			// NFD = Normalization Form Canonical Decomposition
+			// This converts "ñ" to "n" + combining tilde, then we strip the combining marks
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks (accents, tildes, etc.)
 			.replace(/'/g, '') // Remove apostrophes first (keeps possessive 's' attached)
 			.replace(/[^a-z0-9]+/g, '-') // Then replace other non-alphanumeric with hyphens
 			.replace(/^-|-$/g, ''); // Remove leading/trailing hyphens

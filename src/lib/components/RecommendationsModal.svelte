@@ -9,6 +9,7 @@
    * - Category filtering
    * - Synergy threshold filtering
    * - Hide cards already in deck
+   * - Hide cards already in maybeboard
    * - Bulk add to deck or maybeboard
    */
 
@@ -42,6 +43,7 @@
   let minSynergy = $state(0);
   let minUsage = $state(0);
   let hideOwnedCards = $state(true);
+  let hideMaybeboardCards = $state(true);
   let selectedCards = $state<Set<string>>(new Set());
   let hoveredCard = $state<EDHRECCardRecommendation | null>(null);
   let previewImage = $state<string | null>(null);
@@ -79,6 +81,23 @@
     return cardNames;
   });
 
+  // Get cards currently in maybeboard (for filtering)
+  let cardsInMaybeboard = $derived(() => {
+    const maybeboard = deckStoreState?.maybeboard;
+    if (!maybeboard || !maybeboard.categories) return new Set<string>();
+
+    const cardNames = new Set<string>();
+
+    // Add all cards from all maybeboard categories
+    maybeboard.categories.forEach((category) => {
+      category.cards.forEach((card) => {
+        cardNames.add(card.name.toLowerCase());
+      });
+    });
+
+    return cardNames;
+  });
+
   // Filtered recommendations based on selected category and filters
   let filteredRecommendations = $derived(() => {
     let filtered = allRecommendations.filter((rec) => {
@@ -93,6 +112,11 @@
 
       // Hide owned cards
       if (hideOwnedCards && cardsInDeck().has(rec.name.toLowerCase())) {
+        return false;
+      }
+
+      // Hide maybeboard cards
+      if (hideMaybeboardCards && cardsInMaybeboard().has(rec.name.toLowerCase())) {
         return false;
       }
 
@@ -588,7 +612,19 @@
               class="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-brand-primary)] focus:ring-[var(--color-brand-primary)]"
             />
             <span class="text-sm font-medium text-[var(--color-text-secondary)]"
-              >Hide already cards in deck</span
+              >Hide cards in deck</span
+            >
+          </label>
+
+          <!-- Hide Maybeboard Cards -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              bind:checked={hideMaybeboardCards}
+              class="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-brand-primary)] focus:ring-[var(--color-brand-primary)]"
+            />
+            <span class="text-sm font-medium text-[var(--color-text-secondary)]"
+              >Hide cards in maybeboard</span
             >
           </label>
 
