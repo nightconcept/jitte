@@ -274,36 +274,35 @@
 							</div>
 
 					<!-- EDHREC Stats (Commander only) -->
-					<!-- Debug: isCommander={isCommander}, commanderName={commanderName}, card.name={card.name} -->
-					{#if isCommander && commanderName && card.name !== commanderName}
-						<div class="w-full max-w-sm mt-4">
-							<div class="flex items-center gap-2 mb-2">
-								<h3 class="text-base font-bold text-[var(--color-text-primary)]">EDHREC Stats</h3>
+					{#if isCommander && commanderName && card.name !== commanderName && (loadingEdhrecData || edhrecData)}
+						<div class="w-full max-w-sm mt-3">
+							<div class="flex items-center gap-1.5 mb-1.5">
+								<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
+								<span class="text-[0.65rem] text-[var(--color-text-tertiary)]">for {commanderName}</span>
 							</div>
-							<div class="text-xs text-[var(--color-text-tertiary)] mb-2">for {commanderName}</div>
 
 							{#if loadingEdhrecData}
-								<div class="flex items-center justify-center py-4">
-									<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-brand-primary)]"></div>
+								<div class="flex items-center justify-center py-3">
+									<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--color-brand-primary)]"></div>
 								</div>
 							{:else if edhrecData}
-								<div class="space-y-2">
-									<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
-										<div class="grid grid-cols-2 gap-3 text-sm">
+								<div class="space-y-1.5">
+									<div class="p-2 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
+										<div class="grid grid-cols-2 gap-2 text-xs">
 											<div>
-												<span class="text-[var(--color-text-secondary)] block mb-1 text-xs">Synergy</span>
-												<span class="text-xl font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
+												<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Synergy</span>
+												<span class="text-base font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
 											</div>
 											<div>
-												<span class="text-[var(--color-text-secondary)] block mb-1 text-xs">Usage</span>
-												<span class="text-xl font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
+												<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Usage</span>
+												<span class="text-base font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
 											</div>
 										</div>
-										<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
-											<div class="flex justify-between items-center text-xs gap-2">
-												<span class="text-[var(--color-text-secondary)]">{edhrecData.deckCount.toLocaleString()} decks</span>
+										<div class="mt-2 pt-2 border-t border-[var(--color-border)]">
+											<div class="flex justify-between items-center gap-1.5">
+												<span class="text-[var(--color-text-secondary)] text-[0.65rem]">{edhrecData.deckCount.toLocaleString()} decks</span>
 												{#if edhrecData.category}
-													<span class="px-2 py-1 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)] text-xs truncate">
+													<span class="px-1.5 py-0.5 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)] text-[0.6rem] truncate">
 														{edhrecData.category}
 													</span>
 												{/if}
@@ -314,14 +313,10 @@
 										href={edhrecData.url}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="block w-full px-3 py-2 text-sm text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
+										class="block w-full px-2 py-1.5 text-xs text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
 									>
 										View on EDHREC →
 									</a>
-								</div>
-							{:else}
-								<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)] text-center text-sm text-[var(--color-text-tertiary)]">
-									No EDHREC data
 								</div>
 							{/if}
 						</div>
