@@ -115,9 +115,11 @@
 	}
 
 	async function loadEdhrecData() {
+		console.log('[CardDetailModal] Loading EDHREC data for card:', card.name, 'commander:', commanderName);
 		loadingEdhrecData = true;
 		try {
 			const recommendations = await edhrecService.getCommanderRecommendations(commanderName);
+			console.log('[CardDetailModal] Got recommendations with', recommendations.cardlists.length, 'categories');
 
 			// Find this card in the recommendations
 			for (const cardlist of recommendations.cardlists) {
@@ -129,8 +131,13 @@
 						...foundCard,
 						category: cardlist.header
 					};
+					console.log('[CardDetailModal] Found EDHREC data for', card.name, ':', edhrecData);
 					break;
 				}
+			}
+
+			if (!edhrecData) {
+				console.log('[CardDetailModal] No EDHREC data found for card:', card.name);
 			}
 		} catch (error) {
 			console.error('[CardDetailModal] Error loading EDHREC data:', error);
@@ -265,6 +272,60 @@
 									className="w-full bg-transparent border-none flex flex-col static h-auto scale-card-preview"
 								/>
 							</div>
+
+					<!-- EDHREC Stats (Commander only) -->
+					<!-- Debug: isCommander={isCommander}, commanderName={commanderName}, card.name={card.name} -->
+					{#if isCommander && commanderName && card.name !== commanderName}
+						<div class="w-full max-w-sm mt-4">
+							<div class="flex items-center gap-2 mb-2">
+								<h3 class="text-base font-bold text-[var(--color-text-primary)]">EDHREC Stats</h3>
+							</div>
+							<div class="text-xs text-[var(--color-text-tertiary)] mb-2">for {commanderName}</div>
+
+							{#if loadingEdhrecData}
+								<div class="flex items-center justify-center py-4">
+									<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-brand-primary)]"></div>
+								</div>
+							{:else if edhrecData}
+								<div class="space-y-2">
+									<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<span class="text-[var(--color-text-secondary)] block mb-1 text-xs">Synergy</span>
+												<span class="text-xl font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
+											</div>
+											<div>
+												<span class="text-[var(--color-text-secondary)] block mb-1 text-xs">Usage</span>
+												<span class="text-xl font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
+											</div>
+										</div>
+										<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
+											<div class="flex justify-between items-center text-xs gap-2">
+												<span class="text-[var(--color-text-secondary)]">{edhrecData.deckCount.toLocaleString()} decks</span>
+												{#if edhrecData.category}
+													<span class="px-2 py-1 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)] text-xs truncate">
+														{edhrecData.category}
+													</span>
+												{/if}
+											</div>
+										</div>
+									</div>
+									<a
+										href={edhrecData.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="block w-full px-3 py-2 text-sm text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
+									>
+										View on EDHREC →
+									</a>
+								</div>
+							{:else}
+								<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)] text-center text-sm text-[var(--color-text-tertiary)]">
+									No EDHREC data
+								</div>
+							{/if}
+						</div>
+					{/if}
 						</div>
 
 						<!-- Right Column: Details -->
@@ -291,58 +352,6 @@
 								</div>
 							</div>
 
-							<!-- EDHREC Stats (Commander only) -->
-							{#if isCommander && commanderName && card.name !== commanderName}
-								<div>
-									<div class="flex items-center gap-2 mb-2">
-										<h3 class="text-lg font-bold text-[var(--color-text-primary)]">EDHREC Stats</h3>
-										<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
-									</div>
-
-									{#if loadingEdhrecData}
-										<div class="flex items-center justify-center py-4">
-											<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-brand-primary)]"></div>
-										</div>
-									{:else if edhrecData}
-										<div class="space-y-2">
-											<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
-												<div class="grid grid-cols-2 gap-3 text-sm">
-													<div>
-														<span class="text-[var(--color-text-secondary)] block mb-1">Synergy Score</span>
-														<span class="text-2xl font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
-													</div>
-													<div>
-														<span class="text-[var(--color-text-secondary)] block mb-1">Inclusion Rate</span>
-														<span class="text-2xl font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
-													</div>
-												</div>
-												<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
-													<div class="flex justify-between items-center text-xs">
-														<span class="text-[var(--color-text-secondary)]">Used in {edhrecData.deckCount.toLocaleString()} decks</span>
-														{#if edhrecData.category}
-															<span class="px-2 py-1 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)]">
-																{edhrecData.category}
-															</span>
-														{/if}
-													</div>
-												</div>
-											</div>
-											<a
-												href={edhrecData.url}
-												target="_blank"
-												rel="noopener noreferrer"
-												class="block w-full px-3 py-2 text-sm text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
-											>
-												View on EDHREC →
-											</a>
-										</div>
-									{:else}
-										<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)] text-center text-sm text-[var(--color-text-tertiary)]">
-											No EDHREC data available for this card
-										</div>
-									{/if}
-								</div>
-							{/if}
 
 							<!-- Format Legality -->
 							<div>
