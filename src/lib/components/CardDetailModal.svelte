@@ -2,6 +2,8 @@
 	import type { Card } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import { cardService } from '$lib/api/card-service';
+	import { edhrecService } from '$lib/api/edhrec-service';
+	import type { EDHRECCardRecommendation } from '$lib/types/edhrec';
 	import CardPreview from './CardPreview.svelte';
 	import CardPreviewInfo from './CardPreviewInfo.svelte';
 	import OracleText from './OracleText.svelte';
@@ -9,16 +11,22 @@
 	let {
 		card,
 		isOpen = false,
-		onClose = () => {}
+		onClose = () => {},
+		isCommander = false,
+		commanderName = ''
 	}: {
 		card: Card;
 		isOpen: boolean;
 		onClose: () => void;
+		isCommander?: boolean;
+		commanderName?: string;
 	} = $props();
 
 	let scryfallCard = $state<ScryfallCard | null>(null);
 	let loading = $state(true);
 	let rulings = $state<Array<{ published_at: string; comment: string }>>([]);
+	let edhrecData = $state<EDHRECCardRecommendation | null>(null);
+	let loadingEdhrecData = $state(false);
 
 	// Create a merged card with full face data for CardPreview
 	let cardWithFaces = $derived.by(() => {
@@ -78,6 +86,9 @@
 
 	async function loadCardDetails() {
 		loading = true;
+		loadingEdhrecData = false;
+		edhrecData = null;
+
 		try {
 			// Get full Scryfall card data
 			const fullCard = await cardService.getCardByName(card.name);
@@ -95,6 +106,36 @@
 			console.error('Error loading card details:', error);
 		} finally {
 			loading = false;
+		}
+
+		// Fetch EDHREC data for Commander decks (in parallel, don't block loading)
+		if (isCommander && commanderName && card.name !== commanderName) {
+			loadEdhrecData();
+		}
+	}
+
+	async function loadEdhrecData() {
+		loadingEdhrecData = true;
+		try {
+			const recommendations = await edhrecService.getCommanderRecommendations(commanderName);
+
+			// Find this card in the recommendations
+			for (const cardlist of recommendations.cardlists) {
+				const foundCard = cardlist.cards.find(c =>
+					c.name.toLowerCase() === card.name.toLowerCase()
+				);
+				if (foundCard) {
+					edhrecData = {
+						...foundCard,
+						category: cardlist.header
+					};
+					break;
+				}
+			}
+		} catch (error) {
+			console.error('[CardDetailModal] Error loading EDHREC data:', error);
+		} finally {
+			loadingEdhrecData = false;
 		}
 	}
 
@@ -249,6 +290,59 @@
 									</div>
 								</div>
 							</div>
+
+							<!-- EDHREC Stats (Commander only) -->
+							{#if isCommander && commanderName && card.name !== commanderName}
+								<div>
+									<div class="flex items-center gap-2 mb-2">
+										<h3 class="text-lg font-bold text-[var(--color-text-primary)]">EDHREC Stats</h3>
+										<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
+									</div>
+
+									{#if loadingEdhrecData}
+										<div class="flex items-center justify-center py-4">
+											<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--color-brand-primary)]"></div>
+										</div>
+									{:else if edhrecData}
+										<div class="space-y-2">
+											<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
+												<div class="grid grid-cols-2 gap-3 text-sm">
+													<div>
+														<span class="text-[var(--color-text-secondary)] block mb-1">Synergy Score</span>
+														<span class="text-2xl font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
+													</div>
+													<div>
+														<span class="text-[var(--color-text-secondary)] block mb-1">Inclusion Rate</span>
+														<span class="text-2xl font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
+													</div>
+												</div>
+												<div class="mt-3 pt-3 border-t border-[var(--color-border)]">
+													<div class="flex justify-between items-center text-xs">
+														<span class="text-[var(--color-text-secondary)]">Used in {edhrecData.deckCount.toLocaleString()} decks</span>
+														{#if edhrecData.category}
+															<span class="px-2 py-1 bg-[var(--color-surface)] rounded text-[var(--color-text-tertiary)]">
+																{edhrecData.category}
+															</span>
+														{/if}
+													</div>
+												</div>
+											</div>
+											<a
+												href={edhrecData.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="block w-full px-3 py-2 text-sm text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
+											>
+												View on EDHREC →
+											</a>
+										</div>
+									{:else}
+										<div class="p-3 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)] text-center text-sm text-[var(--color-text-tertiary)]">
+											No EDHREC data available for this card
+										</div>
+									{/if}
+								</div>
+							{/if}
 
 							<!-- Format Legality -->
 							<div>

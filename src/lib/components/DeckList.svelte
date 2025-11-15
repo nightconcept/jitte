@@ -3,6 +3,7 @@
 	import { viewSettingsStore, type ViewMode } from '$lib/stores/viewSettingsStore';
 	import { CardCategory } from '$lib/types/card';
 	import type { Card } from '$lib/types/card';
+	import { DeckFormat } from '$lib/formats/format-registry';
 	import AddQuantityModal from './AddQuantityModal.svelte';
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
@@ -38,6 +39,14 @@
 
 	let deck = $derived(deckStoreState?.deck);
 	let isEditing = $derived(deckStoreState?.isEditing ?? false);
+
+	// EDHREC data - check if deck is Commander format
+	let isCommander = $derived(deck?.format === DeckFormat.Commander);
+	let commanderName = $derived.by(() => {
+		if (!deck || !isCommander) return '';
+		const commanders = deck.cards?.commander || [];
+		return commanders.length > 0 ? commanders[0].name : '';
+	});
 
 	// Token detection - dynamically calculate tokens from deck cards
 	let tokens = $state<TokenInfo[]>([]);
@@ -950,6 +959,8 @@
 		card={detailModalCard}
 		isOpen={detailModalCard !== null}
 		onClose={() => detailModalCard = null}
+		{isCommander}
+		{commanderName}
 	/>
 {/if}
 
