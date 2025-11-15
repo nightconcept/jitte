@@ -1,6 +1,7 @@
 <script lang="ts">
   import { deckStore } from "$lib/stores/deck-store";
   import type { Card } from "$lib/types/card";
+  import CardDetailModal from "./CardDetailModal.svelte";
 
   let {
     onCardHover = undefined,
@@ -49,6 +50,10 @@
   // Quantity modal state
   let editQuantityCard = $state<Card | null>(null);
   let editQuantityAmount = $state(1);
+
+  // Card detail modal state
+  let cardDetailModalOpen = $state(false);
+  let selectedCardForDetail = $state<Card | null>(null);
 
   function selectCategory(categoryId: string) {
     activeCategory = categoryId;
@@ -111,6 +116,16 @@
         activeCategory = "main";
       }
     }
+  }
+
+  function openCardDetail(card: Card) {
+    selectedCardForDetail = card;
+    cardDetailModalOpen = true;
+  }
+
+  function closeCardDetail() {
+    cardDetailModalOpen = false;
+    selectedCardForDetail = null;
   }
 
   // Click outside handler for dropdown
@@ -432,12 +447,24 @@
                 <div
                   class="flex items-center justify-between py-2 px-3 hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {isEditing
                     ? 'cursor-grab active:cursor-grabbing'
-                    : ''}"
+                    : 'cursor-pointer'}"
                   draggable={isEditing}
                   ondragstart={(e) => handleDragStart(e, card)}
                   ondragend={handleDragEnd}
                   onmouseenter={() => onCardHover?.(card)}
                   onmouseleave={() => onCardHover?.(null)}
+                  onclick={(e) => {
+                    // Don't open modal if clicking on the menu button or if dragging
+                    if (!isDragging && !(e.target as HTMLElement).closest('button')) {
+                      openCardDetail(card);
+                    }
+                  }}
+                  onkeydown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !isDragging) {
+                      e.preventDefault();
+                      openCardDetail(card);
+                    }
+                  }}
                   role="button"
                   tabindex="0"
                 >
@@ -655,6 +682,15 @@
       </div>
     </div>
   </div>
+{/if}
+
+<!-- Card Detail Modal -->
+{#if selectedCardForDetail}
+  <CardDetailModal
+    card={selectedCardForDetail}
+    isOpen={cardDetailModalOpen}
+    onClose={closeCardDetail}
+  />
 {/if}
 
 <style>
