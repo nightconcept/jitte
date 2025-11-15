@@ -28,18 +28,21 @@ export const SCRYFALL_QUEUE_CONFIG: QueueConfig = {
 		hover: {
 			priority: 10,
 			cancellationStrategy: 'replace-pending',
-			deduplicationKey: (params) => `hover:${params.name}`
+			deduplicationKey: (params) => `hover:${params.name}`,
+			silentCancellation: true // Resolve with null instead of rejecting
 		},
 		search: {
 			priority: 8,
 			cancellationStrategy: 'debounce',
 			debounceMs: 300,
-			deduplicationKey: (params) => `search:${params.query}:${params.limit || 10}`
+			deduplicationKey: (params) => `search:${params.query}:${params.limit || 10}`,
+			silentCancellation: true // Resolve with null instead of rejecting
 		},
 		autocomplete: {
 			priority: 7,
 			cancellationStrategy: 'deduplicate',
-			deduplicationKey: (params) => `autocomplete:${params.query}:${params.includeExtras || false}`
+			deduplicationKey: (params) => `autocomplete:${params.query}:${params.includeExtras || false}`,
+			silentCancellation: true // Resolve with null instead of rejecting
 		},
 		printing: {
 			priority: 6,

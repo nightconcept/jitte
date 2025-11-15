@@ -11,6 +11,39 @@
  * Designed to work with any API by passing different configurations.
  */
 
+/**
+ * Typed error classes for better error handling in components
+ */
+export class RequestCancelledError extends Error {
+	constructor(
+		public requestType: string,
+		public reason: string
+	) {
+		super(`Request cancelled: ${requestType} (${reason})`);
+		this.name = 'RequestCancelledError';
+	}
+}
+
+export class RequestTimeoutError extends Error {
+	constructor(
+		public requestType: string,
+		public timeoutMs: number
+	) {
+		super(`Request timeout: ${requestType} (${timeoutMs}ms)`);
+		this.name = 'RequestTimeoutError';
+	}
+}
+
+export class RequestQueueFullError extends Error {
+	constructor(
+		public queueName: string,
+		public maxSize: number
+	) {
+		super(`Queue full: ${queueName} (max: ${maxSize})`);
+		this.name = 'RequestQueueFullError';
+	}
+}
+
 export type CancellationStrategy =
 	| 'replace-pending' // Cancel all pending requests of this type when a new one arrives
 	| 'no-cancel' // Never cancel - execute all requests in order
@@ -22,6 +55,7 @@ export interface RequestTypeConfig {
 	cancellationStrategy: CancellationStrategy;
 	debounceMs?: number; // Only for 'debounce' strategy (default: 300ms)
 	deduplicationKey?: (params: any) => string; // Generate unique ID for deduplication
+	silentCancellation?: boolean; // If true, resolve with null instead of rejecting on cancellation (default: false)
 }
 
 export interface QueueConfig {
@@ -136,12 +170,12 @@ export class RequestQueueManager {
 
 		// Handle replace-pending strategy
 		if (typeConfig.cancellationStrategy === 'replace-pending') {
-			this.cancelPendingByType(request.type);
+			this.cancelPendingByType(request.type, 'replaced-by-newer');
 		}
 
 		// Handle debounce strategy
 		if (typeConfig.cancellationStrategy === 'debounce') {
-			this.cancelPendingByType(request.type); // Cancel previous debounced requests
+			this.cancelPendingByType(request.type, 'debounced'); // Cancel previous debounced requests
 		}
 
 		// Create promise that will be resolved when request completes
@@ -203,8 +237,18 @@ export class RequestQueueManager {
 				console.warn(
 					`[${this.config.name}] Queue full (${this.config.maxQueueSize}). Dropping low priority request: ${dropped.type}`
 				);
-				this.cancelRequest(dropped);
+				this.cancelRequest(dropped, 'queue-full');
 				this.queue.splice(lowestPriorityIndex, 1);
+			} else {
+				// No pending requests to drop - reject the new request
+				console.error(
+					`[${this.config.name}] Queue full (${this.config.maxQueueSize}) with no pending requests to drop`
+				);
+				request.status = 'cancelled';
+				request.reject(
+					new RequestQueueFullError(this.config.name, this.config.maxQueueSize)
+				);
+				return;
 			}
 		}
 
@@ -320,11 +364,11 @@ export class RequestQueueManager {
 	/**
 	 * Cancel all pending requests of a specific type
 	 */
-	private cancelPendingByType(type: string): void {
+	private cancelPendingByType(type: string, reason: string = 'replaced'): void {
 		const toCancel = this.queue.filter((r) => r.type === type && r.status === 'pending');
 
 		for (const request of toCancel) {
-			this.cancelRequest(request);
+			this.cancelRequest(request, reason);
 		}
 
 		// Remove cancelled requests from queue
@@ -334,14 +378,28 @@ export class RequestQueueManager {
 	/**
 	 * Cancel a single request
 	 */
-	private cancelRequest(request: InternalQueueRequest<unknown>): void {
+	private cancelRequest(request: InternalQueueRequest<unknown>, reason: string = 'replaced'): void {
 		// Clear debounce timer if exists
 		if (request.debounceTimer) {
 			clearTimeout(request.debounceTimer);
 		}
 
 		request.status = 'cancelled';
-		request.reject(new Error(`Request cancelled: ${request.type}`));
+
+		// Get type config to check for silent cancellation
+		const typeConfig = this.config.requestTypes[request.type];
+		const silentCancellation = typeConfig?.silentCancellation ?? false;
+
+		if (silentCancellation) {
+			// Silent cancellation: resolve with null instead of rejecting
+			console.debug(
+				`[${this.config.name}] Silent cancellation: ${request.type} (${reason})`
+			);
+			request.resolve(null as any);
+		} else {
+			// Normal cancellation: reject with typed error
+			request.reject(new RequestCancelledError(request.type, reason));
+		}
 
 		// Update stats
 		this.stats.cancelled++;
@@ -361,7 +419,7 @@ export class RequestQueueManager {
 	 * Cancel all pending requests of a specific type (public API)
 	 */
 	cancel(type: string): void {
-		this.cancelPendingByType(type);
+		this.cancelPendingByType(type, 'manual-cancel');
 	}
 
 	/**
@@ -370,7 +428,7 @@ export class RequestQueueManager {
 	cancelById(id: string): void {
 		const request = this.queue.find((r) => r.id === id && r.status === 'pending');
 		if (request) {
-			this.cancelRequest(request);
+			this.cancelRequest(request, 'manual-cancel-by-id');
 			this.queue = this.queue.filter((r) => r.id !== id);
 		}
 	}
@@ -381,7 +439,7 @@ export class RequestQueueManager {
 	clear(): void {
 		const pendingRequests = this.queue.filter((r) => r.status === 'pending');
 		for (const request of pendingRequests) {
-			this.cancelRequest(request);
+			this.cancelRequest(request, 'queue-cleared');
 		}
 		this.queue = this.queue.filter((r) => r.status === 'in-flight');
 	}

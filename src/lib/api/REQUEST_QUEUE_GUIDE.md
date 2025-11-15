@@ -216,6 +216,125 @@ if (scryfallClient.getQueueSize() > 50) {
 }
 ```
 
+## Error Handling
+
+### Silent Cancellations vs. Typed Errors
+
+The queue system uses two different error handling strategies depending on the request type:
+
+#### Silent Cancellations (User-Driven Interactions)
+
+Request types with `silentCancellation: true` resolve with `null` instead of throwing errors when cancelled. This prevents annoying error toasts for normal user behavior.
+
+**Request types with silent cancellation:**
+- `hover` - Card previews (replace-pending strategy)
+- `search` - Search queries (debounce strategy)
+- `autocomplete` - Name autocomplete (deduplicate strategy)
+
+**Component pattern for silent cancellations:**
+```typescript
+// ❌ Bad: Assumes result is always present
+const card = await cardService.getCardByName(name, 'hover');
+displayCard(card); // Error if request was cancelled!
+
+// ✅ Good: Handle null result from silent cancellation
+const card = await cardService.getCardByName(name, 'hover');
+if (card) {
+  displayCard(card);
+} else {
+  // Request was cancelled (user hovered away) - do nothing
+  // This is expected behavior, not an error!
+}
+```
+
+**When to use silent cancellation:**
+- User-driven interactions where cancellation is expected (hover, typing)
+- Requests that may become obsolete before completion
+- UI preview features where showing errors would be confusing
+
+#### Typed Errors (Critical Operations)
+
+Request types without `silentCancellation` throw typed errors that should be caught and handled appropriately.
+
+**Available error types:**
+```typescript
+import {
+  RequestCancelledError,
+  RequestTimeoutError,
+  RequestQueueFullError
+} from '$lib/api/request-queue';
+```
+
+**Error handling patterns:**
+```typescript
+// Pattern 1: Specific error handling
+try {
+  const card = await cardService.getCardByName(name, 'general');
+} catch (error) {
+  if (error instanceof RequestCancelledError) {
+    console.warn(`Request cancelled: ${error.reason}`);
+    // Show user-friendly message or retry
+  } else if (error instanceof RequestQueueFullError) {
+    console.error('Queue is full, please try again');
+    showToast('Too many requests, please wait', 'error');
+  } else if (error instanceof RequestTimeoutError) {
+    console.error('Request timed out');
+    showToast('Request took too long', 'error');
+  } else {
+    // Network error, API error, etc.
+    console.error('API error:', error);
+    showToast('Failed to fetch card', 'error');
+  }
+}
+
+// Pattern 2: Simple error handling
+try {
+  const results = await scryfallClient.search('legendary creatures');
+} catch (error) {
+  console.error('Search failed:', error);
+  return []; // Return empty results on error
+}
+```
+
+### Error Properties
+
+**RequestCancelledError:**
+- `requestType: string` - Type of request that was cancelled ('hover', 'search', etc.)
+- `reason: string` - Why it was cancelled ('replaced-by-newer', 'debounced', 'manual-cancel', 'queue-full', 'queue-cleared')
+
+**RequestTimeoutError:**
+- `requestType: string` - Type of request that timed out
+- `timeoutMs: number` - Timeout duration in milliseconds
+
+**RequestQueueFullError:**
+- `queueName: string` - Name of the queue ('scryfall', 'edhrec', 'commander_spellbook')
+- `maxSize: number` - Maximum queue size
+
+### Best Practices
+
+**✅ DO:**
+- Use `'hover'` request type for card previews (gets silent cancellation)
+- Check for `null` results when using hover/search/autocomplete request types
+- Use typed error checking (`instanceof`) for critical operations
+- Log cancellation reasons for debugging (`error.reason`)
+
+**❌ DON'T:**
+- Show error toasts for silent cancellations (user expects this behavior)
+- Use `'general'` request type for hover operations (won't get silent cancellation)
+- Assume hover/search requests always return data (they may return null)
+- Ignore errors from `'import'` or `'bulk'` request types (these are critical)
+
+### Debugging Cancellations
+
+Silent cancellations are logged to `console.debug` for troubleshooting without cluttering the console:
+
+```typescript
+// To see silent cancellation logs in browser console:
+// 1. Open DevTools
+// 2. Set console level to "Verbose" or "All levels"
+// 3. Look for: "[scryfall] Silent cancellation: hover (replaced-by-newer)"
+```
+
 ## Troubleshooting
 
 ### Issue: Requests not executing
@@ -251,6 +370,21 @@ const queueSize = scryfallClient.getQueueSize();
 ```typescript
 // Instead of 75 individual requests:
 await scryfallClient.getCardCollection(identifiers);
+```
+
+### Issue: Getting `null` results unexpectedly
+
+**Check:** Are you using a request type with silent cancellation?
+```typescript
+// If using 'hover', 'search', or 'autocomplete', null is expected for cancelled requests
+const card = await cardService.getCardByName(name, 'hover');
+if (!card) {
+  // This is normal - user hovered away or typed more characters
+}
+
+// For guaranteed results, use 'general' (but this won't cancel on new hovers)
+const card = await cardService.getCardByName(name, 'general');
+// Will throw error if it fails, not return null
 ```
 
 ## Configuration
