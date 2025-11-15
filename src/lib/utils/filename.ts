@@ -106,6 +106,16 @@ export function getDeckFilename(deckName: string): string {
 }
 
 /**
+ * Creates a folder name for a deck (folder-based storage)
+ *
+ * @param deckName - The deck name
+ * @returns Sanitized folder name
+ */
+export function getDeckFolderName(deckName: string): string {
+	return sanitizeDeckName(deckName);
+}
+
+/**
  * Creates a filename for a specific version
  *
  * @param version - Version string (e.g., "1.2.3")

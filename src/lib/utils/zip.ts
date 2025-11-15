@@ -63,21 +63,21 @@ export async function compressDeckArchive(archive: DeckArchive, _deckName: strin
 		}, null, 2)
 	});
 
-	// Add version files for each branch
+	// Add version files for each branch (in branches/ folder)
 	for (const [branchName, versions] of Object.entries(archive.versions)) {
 		for (const [versionFile, content] of Object.entries(versions)) {
 			files.push({
-				path: `${branchName}/${versionFile}`,
+				path: `branches/${branchName}/${versionFile}`,
 				content: content
 			});
 		}
 	}
 
-	// Add stashes if present
+	// Add stashes if present (in branches/ folder)
 	if (archive.stashes) {
 		for (const [branchName, stashContent] of Object.entries(archive.stashes)) {
 			files.push({
-				path: `${branchName}/stash.txt`,
+				path: `branches/${branchName}/stash.txt`,
 				content: stashContent
 			});
 		}
@@ -126,6 +126,7 @@ export async function decompressDeckArchive(zipBlob: Blob): Promise<DeckArchive>
 	};
 
 	// Parse version files by branch
+	// Supports both old format (branches at root) and new format (branches/ folder)
 	const versions: Record<string, Record<string, string>> = {};
 	const stashes: Record<string, string> = {};
 
@@ -135,9 +136,23 @@ export async function decompressDeckArchive(zipBlob: Blob): Promise<DeckArchive>
 			continue;
 		}
 
-		// Parse branch/version structure
 		const pathParts = file.path.split('/');
-		if (pathParts.length === 2) {
+
+		// New format: branches/{branchName}/{file}
+		if (pathParts.length === 3 && pathParts[0] === 'branches') {
+			const [, branchName, fileName] = pathParts;
+
+			if (fileName === 'stash.txt') {
+				stashes[branchName] = file.content;
+			} else if (fileName.startsWith('v') && (fileName.endsWith('.txt') || fileName.endsWith('.json'))) {
+				if (!versions[branchName]) {
+					versions[branchName] = {};
+				}
+				versions[branchName][fileName] = file.content;
+			}
+		}
+		// Old format (backward compatibility): {branchName}/{file}
+		else if (pathParts.length === 2) {
 			const [branchName, fileName] = pathParts;
 
 			if (fileName === 'stash.txt') {

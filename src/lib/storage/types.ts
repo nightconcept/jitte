@@ -8,8 +8,10 @@
 export enum StorageProvider {
 	/** Browser localStorage (fallback) */
 	LocalStorage = 'localStorage',
-	/** File System Access API */
-	FileSystem = 'fileSystem'
+	/** File System Access API (zip files) */
+	FileSystem = 'fileSystem',
+	/** File System Access API (folder structure) */
+	FolderStorage = 'folderStorage'
 }
 
 /**

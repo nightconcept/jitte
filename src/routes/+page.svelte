@@ -20,6 +20,7 @@
 	import RecommendationsModal from '$lib/components/RecommendationsModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
+	import MigrationModal from '$lib/components/MigrationModal.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
@@ -1010,6 +1011,12 @@
 	isOpen={showOnboarding}
 	on:complete={handleOnboardingComplete}
 	on:close={handleOnboardingClose}
+/>
+
+<MigrationModal
+	bind:isOpen={$deckManager.needsMigration}
+	directoryHandle={$deckManager.migrationDirectoryHandle}
+	onComplete={() => deckManager.completeMigration()}
 />
 
 <style>

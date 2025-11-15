@@ -33,6 +33,8 @@ interface AppState {
 	isLoading: boolean;
 	error: string | null;
 	isInitialized: boolean;
+	needsMigration: boolean;
+	migrationDirectoryHandle: FileSystemDirectoryHandle | null;
 }
 
 const ACTIVE_DECK_KEY = 'jitte:activeDeckName';
@@ -47,7 +49,9 @@ function createDeckManager() {
 		activeManifest: null,
 		isLoading: false,
 		error: null,
-		isInitialized: false
+		isInitialized: false,
+		needsMigration: false,
+		migrationDirectoryHandle: null
 	};
 
 	const { subscribe, set, update } = writable<AppState>(initialState);
@@ -74,6 +78,24 @@ function createDeckManager() {
 		}
 
 		update((state) => ({ ...state, isInitialized: true }));
+
+		// Check for migration needs
+		const config = storage.getConfig();
+		if (config?.directoryHandle) {
+			const { hasLegacyZipDecks } = await import('$lib/storage/migration');
+			const needsMigration = await hasLegacyZipDecks(config.directoryHandle);
+
+			if (needsMigration) {
+				update((state) => ({
+					...state,
+					needsMigration: true,
+					migrationDirectoryHandle: config.directoryHandle || null
+				}));
+				// Don't load decks yet, wait for migration
+				update((state) => ({ ...state, isLoading: false }));
+				return;
+			}
+		}
 
 		// Load deck list
 		await refreshDeckList();
@@ -948,6 +970,35 @@ function createDeckManager() {
 		return storage;
 	}
 
+	/**
+	 * Complete migration and continue loading
+	 */
+	async function completeMigration(): Promise<void> {
+		update((state) => ({
+			...state,
+			needsMigration: false,
+			migrationDirectoryHandle: null,
+			isLoading: true
+		}));
+
+		// Load deck list
+		await refreshDeckList();
+
+		// Load last active deck
+		const lastActiveDeckName = localStorage.getItem(ACTIVE_DECK_KEY);
+		if (lastActiveDeckName) {
+			await loadDeck(lastActiveDeckName);
+
+			// If deck failed to load, clear the stored deck name
+			const currentState = get({ subscribe });
+			if (currentState.error && !currentState.activeDeckName) {
+				localStorage.removeItem(ACTIVE_DECK_KEY);
+			}
+		}
+
+		update((state) => ({ ...state, isLoading: false }));
+	}
+
 	return {
 		subscribe,
 		initializeStorage,
@@ -964,7 +1015,8 @@ function createDeckManager() {
 		deleteBranchFromDeck,
 		updateVersioningScheme,
 		clearError,
-		getStorage
+		getStorage,
+		completeMigration
 	};
 }
 

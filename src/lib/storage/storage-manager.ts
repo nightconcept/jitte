@@ -4,6 +4,7 @@
  */
 
 import { FileSystemProvider, isFileSystemSupported } from './filesystem-provider';
+import { FileSystemFolderProvider, isFolderStorageSupported } from './filesystem-folder-provider';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { DeckListEntry, IStorageProvider, StorageConfig, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
@@ -18,7 +19,7 @@ export class StorageManager {
 
 	/**
 	 * Initialize storage with auto-detection
-	 * Prefers FileSystem API if available, falls back to localStorage
+	 * Prefers FolderStorage if available, falls back to localStorage
 	 */
 	async initialize(preferredProvider?: StorageProvider): Promise<StorageResult<StorageConfig>> {
 		// Determine which provider to use
@@ -26,6 +27,9 @@ export class StorageManager {
 
 		if (preferredProvider) {
 			providerType = preferredProvider;
+		} else if (isFolderStorageSupported()) {
+			// Prefer folder-based storage for better dev experience
+			providerType = StorageProvider.FolderStorage;
 		} else if (isFileSystemSupported()) {
 			providerType = StorageProvider.FileSystem;
 		} else {
@@ -39,8 +43,26 @@ export class StorageManager {
 		const initResult = await this.provider.initialize();
 
 		if (!initResult.success) {
-			// If preferred provider failed and it was FileSystem, fall back to localStorage
-			if (providerType === StorageProvider.FileSystem) {
+			// Fallback chain: FolderStorage -> FileSystem -> LocalStorage
+			if (providerType === StorageProvider.FolderStorage) {
+				console.warn(
+					'FolderStorage initialization failed, falling back to localStorage',
+					initResult.error
+				);
+
+				this.provider = this.createProvider(StorageProvider.LocalStorage);
+				const fallbackResult = await this.provider.initialize();
+
+				if (!fallbackResult.success) {
+					return {
+						success: false,
+						error: 'All storage providers failed to initialize',
+						errorCode: StorageErrorCode.NotSupported
+					};
+				}
+
+				providerType = StorageProvider.LocalStorage;
+			} else if (providerType === StorageProvider.FileSystem) {
 				console.warn(
 					'FileSystem API initialization failed, falling back to localStorage',
 					initResult.error
@@ -71,11 +93,11 @@ export class StorageManager {
 		this.config = {
 			provider: providerType,
 			directoryHandle:
-				this.provider instanceof FileSystemProvider
+				this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider
 					? this.provider.getDirectoryHandle() || undefined
 					: undefined,
 			directoryPath:
-				this.provider instanceof FileSystemProvider
+				this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider
 					? this.provider.getDirectoryPath() || undefined
 					: undefined
 		};
@@ -92,8 +114,11 @@ export class StorageManager {
 	async initializeWithConfig(config: StorageConfig): Promise<StorageResult<void>> {
 		this.provider = this.createProvider(config.provider);
 
-		// If FileSystem provider and has handle, restore it
-		if (this.provider instanceof FileSystemProvider && config.directoryHandle) {
+		// If FileSystem or FolderStorage provider and has handle, restore it
+		if (
+			(this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider) &&
+			config.directoryHandle
+		) {
 			const result = await this.provider.initializeWithHandle(config.directoryHandle);
 			if (!result.success) {
 				return result;
@@ -257,11 +282,11 @@ export class StorageManager {
 		this.config = {
 			provider: newProvider,
 			directoryHandle:
-				provider instanceof FileSystemProvider
+				provider instanceof FileSystemProvider || provider instanceof FileSystemFolderProvider
 					? provider.getDirectoryHandle() || undefined
 					: undefined,
 			directoryPath:
-				provider instanceof FileSystemProvider
+				provider instanceof FileSystemProvider || provider instanceof FileSystemFolderProvider
 					? provider.getDirectoryPath() || undefined
 					: undefined
 		};
@@ -279,6 +304,8 @@ export class StorageManager {
 		switch (type) {
 			case StorageProvider.FileSystem:
 				return new FileSystemProvider();
+			case StorageProvider.FolderStorage:
+				return new FileSystemFolderProvider();
 			case StorageProvider.LocalStorage:
 				return new LocalStorageProvider();
 			default:
