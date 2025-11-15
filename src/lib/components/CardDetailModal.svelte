@@ -277,8 +277,19 @@
 					{#if isCommander && commanderName && card.name !== commanderName && (loadingEdhrecData || edhrecData)}
 						<div class="w-full max-w-sm mt-3">
 							<div class="flex items-center gap-1.5 mb-1.5">
-								<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
-								<span class="text-[0.65rem] text-[var(--color-text-tertiary)]">for {commanderName}</span>
+								{#if edhrecData}
+									<a
+										href={edhrecData.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-sm font-bold text-[var(--color-brand-primary)] hover:underline"
+									>
+										EDHREC
+									</a>
+								{:else}
+									<h3 class="text-sm font-bold text-[var(--color-text-primary)]">EDHREC</h3>
+								{/if}
+								<span class="text-xs text-[var(--color-text-tertiary)]">for {commanderName}</span>
 							</div>
 
 							{#if loadingEdhrecData}
@@ -286,30 +297,17 @@
 									<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--color-brand-primary)]"></div>
 								</div>
 							{:else if edhrecData}
-								<div class="space-y-1.5">
-									<div class="p-2 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
-										<div class="grid grid-cols-2 gap-2 text-xs">
-											<div>
-												<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Synergy</span>
-												<span class="text-base font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
-											</div>
-											<div>
-												<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Usage</span>
-												<div class="flex flex-col">
-													<span class="text-base font-bold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}%</span>
-													<span class="text-[0.6rem] text-[var(--color-text-tertiary)]">{edhrecData.deckCount.toLocaleString()} decks</span>
-												</div>
-											</div>
+								<div class="p-2 bg-[var(--color-bg-secondary)] rounded border border-[var(--color-border)]">
+									<div class="grid grid-cols-2 gap-2 text-xs">
+										<div>
+											<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Synergy</span>
+											<span class="text-base font-bold text-[var(--color-brand-primary)]">{edhrecData.synergyScore}%</span>
+										</div>
+										<div>
+											<span class="text-[var(--color-text-secondary)] block mb-0.5 text-[0.65rem]">Usage</span>
+											<span class="text-[0.65rem] font-semibold text-[var(--color-text-primary)]">{edhrecData.inclusionRate}% of {edhrecData.deckCount.toLocaleString()} decks</span>
 										</div>
 									</div>
-									<a
-										href={edhrecData.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="block w-full px-2 py-1.5 text-xs text-center bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-brand-primary)] font-medium"
-									>
-										View on EDHREC →
-									</a>
 								</div>
 							{/if}
 						</div>
