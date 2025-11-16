@@ -179,49 +179,50 @@ export class RequestQueueManager {
 		}
 
 		// Create promise that will be resolved when request completes
-		return new Promise<T>((resolve, reject) => {
-			const internalRequest: InternalQueueRequest<T> = {
-				id,
-				type: request.type,
-				priority: typeConfig.priority,
-				fn: request.fn,
-				resolve,
-				reject,
-				status: 'pending',
-				createdAt: Date.now()
-			};
+		// Use a single promise for all strategies (fixes bug where deduplicate/debounce created two promises)
+		let resolvePromise: (value: T) => void;
+		let rejectPromise: (error: unknown) => void;
 
-			// Handle debounce timer
-			if (typeConfig.cancellationStrategy === 'debounce') {
-				const debounceMs = typeConfig.debounceMs ?? 300;
-
-				internalRequest.debounceTimer = setTimeout(() => {
-					// Add to queue after debounce period
-					this.addToQueue(internalRequest as InternalQueueRequest<unknown>);
-				}, debounceMs);
-
-				// Store the promise for deduplication during debounce period
-				const promise = new Promise<T>((res, rej) => {
-					internalRequest.resolve = res;
-					internalRequest.reject = rej;
-				});
-				this.pendingPromises.set(id, promise);
-
-				return;
-			}
-
-			// Add to queue immediately for other strategies
-			this.addToQueue(internalRequest as InternalQueueRequest<unknown>);
-
-			// Track promise for deduplication
-			if (typeConfig.cancellationStrategy === 'deduplicate') {
-				const promise = new Promise<T>((res, rej) => {
-					internalRequest.resolve = res;
-					internalRequest.reject = rej;
-				});
-				this.pendingPromises.set(id, promise);
-			}
+		const promise = new Promise<T>((resolve, reject) => {
+			resolvePromise = resolve;
+			rejectPromise = reject;
 		});
+
+		const internalRequest: InternalQueueRequest<T> = {
+			id,
+			type: request.type,
+			priority: typeConfig.priority,
+			fn: request.fn,
+			resolve: resolvePromise!,
+			reject: rejectPromise!,
+			status: 'pending',
+			createdAt: Date.now()
+		};
+
+		// Store promise for deduplication strategies
+		if (
+			typeConfig.cancellationStrategy === 'deduplicate' ||
+			typeConfig.cancellationStrategy === 'debounce'
+		) {
+			this.pendingPromises.set(id, promise);
+		}
+
+		// Handle debounce timer
+		if (typeConfig.cancellationStrategy === 'debounce') {
+			const debounceMs = typeConfig.debounceMs ?? 300;
+
+			internalRequest.debounceTimer = setTimeout(() => {
+				// Add to queue after debounce period
+				this.addToQueue(internalRequest as InternalQueueRequest<unknown>);
+			}, debounceMs);
+
+			return promise;
+		}
+
+		// Add to queue immediately for other strategies
+		this.addToQueue(internalRequest as InternalQueueRequest<unknown>);
+
+		return promise;
 	}
 
 	/**
