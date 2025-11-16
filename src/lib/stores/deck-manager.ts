@@ -484,46 +484,18 @@ function createDeckManager() {
 				const { CardService } = await import('$lib/api/card-service');
 				const cardService = new CardService();
 
+				// Import the card converter utility
+				const { scryfallToCard } = await import('$lib/utils/card-converter');
+
 				// Fetch all commanders
 				for (const commanderName of namesArray) {
 					const commanderCard = await cardService.getCardByName(commanderName);
 					console.log('[deckManager.createDeck] Commander card fetched:', commanderCard?.name);
 
 					if (commanderCard) {
-						// Convert ScryfallCard to Card type
-						commanders.push({
-							name: commanderCard.name,
-							quantity: 1,
-							setCode: commanderCard.set,
-							collectorNumber: commanderCard.collector_number,
-							scryfallId: commanderCard.id,
-							oracleId: commanderCard.oracle_id,
-							types: commanderCard.type_line?.split('—')[0]?.trim().split(' '),
-							cmc: commanderCard.cmc,
-							manaCost: commanderCard.mana_cost,
-							colorIdentity: commanderCard.color_identity,
-							oracleText: commanderCard.oracle_text,
-							keywords: commanderCard.keywords,
-							imageUrls: commanderCard.image_uris
-								? {
-										small: commanderCard.image_uris.small,
-										normal: commanderCard.image_uris.normal,
-										large: commanderCard.image_uris.large,
-										png: commanderCard.image_uris.png,
-										artCrop: commanderCard.image_uris.art_crop,
-										borderCrop: commanderCard.image_uris.border_crop
-								  }
-								: undefined,
-							price: commanderCard.prices.usd ? parseFloat(commanderCard.prices.usd) : undefined,
-							prices: commanderCard.prices.usd
-								? {
-										cardkingdom: parseFloat(commanderCard.prices.usd) * 1.05,
-										tcgplayer: parseFloat(commanderCard.prices.usd),
-										manapool: parseFloat(commanderCard.prices.usd) * 0.95
-								  }
-								: undefined,
-							priceUpdatedAt: Date.now()
-						});
+						// Convert ScryfallCard to Card type using the utility (handles double-faced cards correctly)
+						const card = scryfallToCard(commanderCard, 1);
+						commanders.push(card);
 					}
 				}
 			} catch (error) {

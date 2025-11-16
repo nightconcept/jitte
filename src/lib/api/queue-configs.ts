@@ -31,6 +31,12 @@ export const SCRYFALL_QUEUE_CONFIG: QueueConfig = {
 			deduplicationKey: (params) => `hover:${params.name}`,
 			silentCancellation: true // Resolve with null instead of rejecting
 		},
+		'commander-detect': {
+			priority: 9,
+			cancellationStrategy: 'deduplicate',
+			deduplicationKey: (params) => `commander-detect:${params.name}`,
+			silentCancellation: false // Let errors propagate for timeout handling
+		},
 		search: {
 			priority: 8,
 			cancellationStrategy: 'debounce',

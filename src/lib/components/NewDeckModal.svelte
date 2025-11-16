@@ -46,6 +46,8 @@
   let parseResult: ParseResult | null = null;
   let showErrors = false;
   let isDetectingCommanders = false;
+  let detectionTimeoutId: number | undefined;
+  let autoDetectEnabled = true; // Auto-detection enabled by default (bypasses queue)
 
   const cardServiceInstance = new CardService();
 
@@ -71,17 +73,29 @@
     resetForm();
   }
 
-  // Parse decklist and auto-detect commanders when input changes (import mode only)
+  // Parse decklist when input changes (import mode only)
   $: if (mode === "import" && decklistInput.trim()) {
     const newParseResult = parsePlaintext(decklistInput);
     parseResult = newParseResult;
 
-    // Auto-detect commanders if we haven't already and user hasn't manually selected any
-    if (selectedCommanders.length === 0 && newParseResult) {
-      detectCommanders(newParseResult);
+    // Cancel any pending detection
+    if (detectionTimeoutId) {
+      clearTimeout(detectionTimeoutId);
+    }
+
+    // Auto-detect commanders if enabled, haven't already selected any, and user hasn't manually selected any
+    // Debounce to avoid triggering on every keystroke
+    if (autoDetectEnabled && selectedCommanders.length === 0 && newParseResult && !isDetectingCommanders) {
+      detectionTimeoutId = window.setTimeout(() => {
+        detectCommanders(newParseResult);
+      }, 500); // Wait 500ms after user stops typing
     }
   } else if (mode === "import" && !decklistInput.trim()) {
     parseResult = null;
+    // Cancel any pending detection
+    if (detectionTimeoutId) {
+      clearTimeout(detectionTimeoutId);
+    }
   }
 
   // Calculate summary stats
@@ -93,12 +107,25 @@
 
   // Commander detection for import mode
   async function detectCommanders(result: ParseResult) {
+    // Prevent concurrent detections
+    if (isDetectingCommanders) {
+      console.log('[detectCommanders] Already detecting, skipping...');
+      return;
+    }
+
+    console.log('[detectCommanders] Starting detection...', {
+      totalCards: result.cards.length,
+      hasCommanderTags: !!(result.commanderNames && result.commanderNames.length > 0),
+      commanderNames: result.commanderNames
+    });
+
     isDetectingCommanders = true;
     const detectedCommanders: Card[] = [];
 
     try {
       // First, check if the parser found commanders via [Commander{top}] tags
       if (result.commanderNames && result.commanderNames.length > 0) {
+        console.log('[detectCommanders] Checking tagged commanders:', result.commanderNames);
         for (const commanderName of result.commanderNames.slice(0, 2)) {
           const card = await fetchAndValidateCommander(commanderName);
           if (card) {
@@ -108,10 +135,12 @@
       } else {
         // Moxfield exports often place the commander last; try trailing entries first
         const trailingCards = getTrailingCards(result.cards, 2);
+        console.log('[detectCommanders] Checking trailing cards:', trailingCards.map(c => c.name));
         await tryCommanderCandidates(trailingCards, detectedCommanders);
 
         // If no commanders found in trailing entries, try first couple of entries
         if (detectedCommanders.length === 0) {
+          console.log('[detectCommanders] No commanders in trailing cards, checking first 2...');
           await tryCommanderCandidates(
             result.cards.slice(0, 2),
             detectedCommanders,
@@ -121,13 +150,26 @@
 
       // Only update if we found valid commanders
       if (detectedCommanders.length > 0) {
+        console.log('[detectCommanders] ✓ Found commanders:', detectedCommanders.map(c => c.name));
         selectedCommanders = detectedCommanders;
+      } else {
+        console.log('[detectCommanders] ✗ No commanders detected');
       }
     } catch (error) {
-      console.error("Error detecting commanders:", error);
+      console.error("[detectCommanders] Error:", error);
     } finally {
       isDetectingCommanders = false;
     }
+  }
+
+  function cancelDetection() {
+    // Cancel pending detection timeout
+    if (detectionTimeoutId) {
+      clearTimeout(detectionTimeoutId);
+      detectionTimeoutId = undefined;
+    }
+    // Stop the detection spinner
+    isDetectingCommanders = false;
   }
 
   async function tryCommanderCandidates(
@@ -170,8 +212,32 @@
     cardName: string,
   ): Promise<Card | null> {
     try {
-      const scryfallCard = await cardService.getCardByName(cardName);
-      if (!scryfallCard) return null;
+      console.log(`[fetchAndValidateCommander] Fetching: "${cardName}"`);
+
+      // Bypass the queue entirely by making a direct fetch call
+      const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(cardName)}`;
+
+      // Add timeout wrapper (5 seconds)
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout after 5 seconds')), 5000);
+      });
+
+      const fetchPromise = fetch(url).then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return await response.json();
+      });
+
+      const scryfallCard = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!scryfallCard) {
+        console.log(`[fetchAndValidateCommander] ✗ Not found: "${cardName}"`);
+        return null;
+      }
+
+      // Add small delay to respect Scryfall rate limit (150ms)
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       // Validate it's a valid commander
       const typeLine = scryfallCard.type_line.toLowerCase();
@@ -180,14 +246,29 @@
       const isCreature = typeLine.includes("creature");
       const canBeCommander = oracleText.includes("can be your commander");
 
+      console.log(`[fetchAndValidateCommander] Card: "${scryfallCard.name}"`, {
+        typeLine: scryfallCard.type_line,
+        isLegendary,
+        isCreature,
+        canBeCommander,
+        valid: canBeCommander || (isLegendary && isCreature)
+      });
+
       if (!canBeCommander && !(isLegendary && isCreature)) {
+        console.log(`[fetchAndValidateCommander] ✗ Not a valid commander: "${cardName}"`);
         return null;
       }
 
       // Convert to our Card type
-      return scryfallToCard(scryfallCard);
+      const card = scryfallToCard(scryfallCard);
+      console.log(`[fetchAndValidateCommander] ✓ Valid commander: "${card.name}"`, {
+        hasImageUrls: !!card.imageUrls,
+        hasCardFaces: !!card.cardFaces,
+        layout: card.layout
+      });
+      return card;
     } catch (error) {
-      console.error(`Error fetching commander ${cardName}:`, error);
+      console.error(`[fetchAndValidateCommander] Error fetching commander ${cardName}:`, error);
       return null;
     }
   }
@@ -378,6 +459,12 @@
     parseResult = null;
     showErrors = false;
     isDetectingCommanders = false;
+    autoDetectEnabled = true; // Keep auto-detection enabled
+    // Clean up detection timeout
+    if (detectionTimeoutId) {
+      clearTimeout(detectionTimeoutId);
+      detectionTimeoutId = undefined;
+    }
   }
 </script>
 
@@ -632,35 +719,57 @@
         {#if needsCommander}
           <!-- Commander Search -->
           <div class="mb-4">
-          <label
-            for="import-commander-input"
-            class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
-          >
-            Commander(s) <span class="text-red-500">*</span>
-          </label>
+          <div class="flex items-center justify-between mb-2">
+            <label
+              for="import-commander-input"
+              class="block text-sm font-medium text-[var(--color-text-primary)]"
+            >
+              Commander(s) <span class="text-red-500">*</span>
+            </label>
+            {#if !isDetectingCommanders && selectedCommanders.length === 0 && parseResult && parseResult.cards.length > 0}
+              <button
+                type="button"
+                onclick={() => {
+                  if (parseResult) {
+                    detectCommanders(parseResult);
+                  }
+                }}
+                class="text-xs px-2 py-1 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-800 rounded text-blue-300 transition-colors"
+              >
+                Auto-Detect Commanders
+              </button>
+            {/if}
+          </div>
           <p class="text-xs text-[var(--color-text-secondary)] mb-2">
-            We'll attempt to auto-detect commander names from decklist tags,
-            early cards, or the final entries (Moxfield format) to speed things
-            up.
+            We'll auto-detect commanders from your decklist (tagged commanders, trailing cards, or first cards). You can also manually search below or click "Auto-Detect" to retry.
           </p>
           {#if isDetectingCommanders}
             <div
-              class="px-4 py-3 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 flex items-center gap-2"
+              class="px-4 py-3 bg-blue-900/20 border border-blue-800 rounded text-sm text-blue-300 flex items-center justify-between gap-2"
             >
-              <svg
-                class="w-4 h-4 animate-spin"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <div class="flex items-center gap-2">
+                <svg
+                  class="w-4 h-4 animate-spin"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Detecting commanders from decklist...
+              </div>
+              <button
+                type="button"
+                onclick={cancelDetection}
+                class="px-2 py-1 text-xs bg-blue-800 hover:bg-blue-700 rounded text-blue-100 transition-colors"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Detecting commanders from decklist...
+                Cancel
+              </button>
             </div>
           {:else}
             <CommanderSearch bind:selectedCommanders maxCommanders={2} />
