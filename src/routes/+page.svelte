@@ -337,13 +337,26 @@
 			// Filter out the commanders (both tagged and manually selected) to avoid duplicates
 			const commanderNamesToFilter = new Set<string>();
 
+			// Helper to add both full name and front face (for double-faced cards)
+			const addCommanderNameVariations = (name: string) => {
+				const lowerName = name.toLowerCase();
+				commanderNamesToFilter.add(lowerName);
+
+				// For double-faced cards like "Terra, Magical Adept // Esper Terra",
+				// also add just the front face "Terra, Magical Adept"
+				if (lowerName.includes(' // ')) {
+					const frontFace = lowerName.split(' // ')[0];
+					commanderNamesToFilter.add(frontFace);
+				}
+			};
+
 			// Add tagged commanders
 			if (fullParseResult.commanderNames && fullParseResult.commanderNames.length > 0) {
-				fullParseResult.commanderNames.forEach(name => commanderNamesToFilter.add(name.toLowerCase()));
+				fullParseResult.commanderNames.forEach(addCommanderNameVariations);
 			}
 
 			// Add manually selected commanders
-			commanderNames.forEach(name => commanderNamesToFilter.add(name.toLowerCase()));
+			commanderNames.forEach(addCommanderNameVariations);
 
 			const cardsToImport = parseResult.cards.filter(card =>
 				!commanderNamesToFilter.has(card.name.toLowerCase())
