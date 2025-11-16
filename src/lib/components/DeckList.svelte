@@ -739,7 +739,6 @@
 												ondragstart={(e) => handleDragStart(e, card, category)}
 												ondragend={handleDragEnd}
 												onmouseenter={() => {
-													console.log('[DeckList] Card hover:', card.name, 'scryfallId:', card.scryfallId, 'imageUrls:', card.imageUrls?.normal);
 													onCardHover?.(card);
 												}}
 												onclick={() => { detailModalCard = { name: card.name, category }; }}
