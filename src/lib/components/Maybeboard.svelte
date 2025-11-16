@@ -18,6 +18,7 @@
   });
 
   // Derived values
+  let deck = $derived(deckStoreState?.deck);
   let maybeboard = $derived(deckStoreState?.maybeboard);
   let isEditing = $derived(deckStoreState?.isEditing ?? false);
   let categories = $derived(maybeboard?.categories || []);
@@ -30,6 +31,9 @@
       (sum, cat) => sum + cat.cards.reduce((s, c) => s + c.quantity, 0),
       0,
     ),
+  );
+  let commanderName = $derived(
+    deck?.cards.commander?.[0]?.name ?? ''
   );
 
   // Active category
@@ -690,6 +694,79 @@
     card={selectedCardForDetail}
     isOpen={cardDetailModalOpen}
     onClose={closeCardDetail}
+    isCommander={true}
+    {commanderName}
+    onPrintingChange={(cardName, printingData) => {
+      console.log('[Maybeboard] onPrintingChange called:', {
+        cardName,
+        activeCategory,
+        printingData: {
+          id: printingData.id,
+          set: printingData.set,
+          collector_number: printingData.collector_number,
+          image_uris: printingData.image_uris ? 'present' : 'missing',
+          card_faces: printingData.card_faces ? 'present' : 'missing'
+        }
+      });
+
+      // For double-faced cards, image_uris might be on card_faces[0] instead of top level
+      let imageUrls = undefined;
+      let cardFaces = undefined;
+
+      if (printingData.image_uris) {
+        imageUrls = {
+          small: printingData.image_uris.small,
+          normal: printingData.image_uris.normal,
+          large: printingData.image_uris.large,
+          png: printingData.image_uris.png,
+          artCrop: printingData.image_uris.art_crop,
+          borderCrop: printingData.image_uris.border_crop
+        };
+      } else if (printingData.card_faces?.[0]?.image_uris) {
+        // For double-faced cards, extract image from first face for top-level
+        imageUrls = {
+          small: printingData.card_faces[0].image_uris.small,
+          normal: printingData.card_faces[0].image_uris.normal,
+          large: printingData.card_faces[0].image_uris.large,
+          png: printingData.card_faces[0].image_uris.png,
+          artCrop: printingData.card_faces[0].image_uris.art_crop,
+          borderCrop: printingData.card_faces[0].image_uris.border_crop
+        };
+      }
+
+      // If card has multiple faces, update the cardFaces array too
+      if (printingData.card_faces && printingData.card_faces.length > 1) {
+        cardFaces = printingData.card_faces.map(face => ({
+          name: face.name,
+          manaCost: face.mana_cost,
+          typeLine: face.type_line,
+          oracleText: face.oracle_text,
+          imageUrls: face.image_uris ? {
+            small: face.image_uris.small,
+            normal: face.image_uris.normal,
+            large: face.image_uris.large,
+            png: face.image_uris.png,
+            artCrop: face.image_uris.art_crop,
+            borderCrop: face.image_uris.border_crop
+          } : undefined,
+          colors: face.colors,
+          power: face.power,
+          toughness: face.toughness,
+          loyalty: face.loyalty
+        }));
+      }
+
+      const updateData = {
+        scryfallId: printingData.id,
+        setCode: printingData.set,
+        collectorNumber: printingData.collector_number,
+        imageUrls,
+        cardFaces
+      };
+
+      console.log('[Maybeboard] Calling deckStore.updateMaybeboardCardPrinting with:', cardName, activeCategory, updateData);
+      deckStore.updateMaybeboardCardPrinting(cardName, activeCategory, updateData);
+    }}
   />
 {/if}
 

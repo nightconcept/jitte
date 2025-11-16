@@ -32,6 +32,17 @@
 	// Use hovered card if available, otherwise default to commander
 	let displayCard = $derived(hoveredCard || commander);
 
+	// Debug: Log when displayCard changes for Gwen Stacy
+	$effect(() => {
+		if (displayCard?.name.includes('Gwen Stacy')) {
+			console.log('[CardPreview] displayCard updated - Gwen Stacy:', {
+				scryfallId: displayCard.scryfallId,
+				imageUrls: displayCard.imageUrls?.normal,
+				cardFaces: displayCard.cardFaces?.length
+			});
+		}
+	});
+
 	// Track which face is currently displayed (0 = front, 1 = back)
 	let currentFaceIndex = $state(0);
 
@@ -64,14 +75,28 @@
 	let imageUrl = $derived.by(() => {
 		if (!displayCard) return null;
 
+		let url = null;
+
 		// If card has card faces, use the current face's image
 		if (isDoubleFaced && displayCard.cardFaces) {
 			const face = displayCard.cardFaces[currentFaceIndex];
-			return face?.imageUrls?.normal || face?.imageUrls?.large;
+			url = face?.imageUrls?.normal || face?.imageUrls?.large;
+		} else {
+			// Otherwise use the card's main image URLs
+			url = displayCard.imageUrls?.normal || displayCard.imageUrls?.large;
 		}
 
-		// Otherwise use the card's main image URLs
-		return displayCard.imageUrls?.normal || displayCard.imageUrls?.large;
+		if (displayCard.name.includes('Gwen Stacy')) {
+			console.log('[CardPreview] imageUrl computed for Gwen Stacy:', {
+				url,
+				isDoubleFaced,
+				currentFaceIndex,
+				hasMainImageUrls: !!displayCard.imageUrls,
+				hasCardFaces: !!displayCard.cardFaces
+			});
+		}
+
+		return url;
 	});
 
 	// Reset to front face when card changes

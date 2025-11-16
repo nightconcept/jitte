@@ -287,6 +287,12 @@
 			return [...cards].sort((a, b) => (a.cmc || 0) - (b.cmc || 0));
 		}
 
+		// Log when returning cards for debugging
+		if (category === CardCategory.Creature && cards.some(c => c.name.includes('Gwen Stacy'))) {
+			const gwenCard = cards.find(c => c.name.includes('Gwen Stacy'));
+			console.log('[DeckList] getCategoryCards for Creature - Gwen Stacy scryfallId:', gwenCard?.scryfallId);
+		}
+
 		return cards;
 	}
 
@@ -314,10 +320,19 @@
 	// Modal states
 	let addMoreCard = $state<{ card: Card; category: CardCategory } | null>(null);
 	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
-	let detailModalCard = $state<Card | null>(null);
+	let detailModalCard = $state<{ name: string; category: CardCategory } | null>(null);
 	let isChangeCommanderModalOpen = $state(false);
 	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
 	let commanderToReplaceIndex = $state<number>(0);
+
+	// Look up the current card from the store when modal is open
+	// This ensures we always get the latest card data including printing changes
+	let detailModalCardObject = $derived.by(() => {
+		if (!detailModalCard || !deck) return null;
+		const cardInfo = detailModalCard; // Capture to satisfy TypeScript
+		const cards = deck.cards[cardInfo.category];
+		return cards.find(c => c.name === cardInfo.name) || null;
+	});
 
 	function showAddMoreModal(card: Card, category: CardCategory) {
 		addMoreCard = { card, category };
@@ -636,7 +651,7 @@
 						categoryLabel={categoryLabels[category]}
 						categoryIcon={categoryIcons[category]}
 						isEditing={isEditing}
-						onCardClick={(card) => { detailModalCard = card; }}
+						onCardClick={(card) => { detailModalCard = { name: card.name, category }; }}
 						onCardHover={onCardHover}
 						onDragStart={handleDragStart}
 						onDragEnd={handleDragEnd}
@@ -663,7 +678,7 @@
 						categoryLabel={categoryLabels[category]}
 						categoryIcon={categoryIcons[category]}
 						isEditing={isEditing}
-						onCardClick={(card) => { detailModalCard = card; }}
+						onCardClick={(card) => { detailModalCard = { name: card.name, category }; }}
 						onCardHover={onCardHover}
 						onDragStart={handleDragStart}
 						onDragEnd={handleDragEnd}
@@ -723,9 +738,12 @@
 												draggable={isEditing && category !== CardCategory.Commander}
 												ondragstart={(e) => handleDragStart(e, card, category)}
 												ondragend={handleDragEnd}
-												onmouseenter={() => onCardHover?.(card)}
-												onclick={() => { detailModalCard = card; }}
-												onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = card; } }}
+												onmouseenter={() => {
+													console.log('[DeckList] Card hover:', card.name, 'scryfallId:', card.scryfallId, 'imageUrls:', card.imageUrls?.normal);
+													onCardHover?.(card);
+												}}
+												onclick={() => { detailModalCard = { name: card.name, category }; }}
+												onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = { name: card.name, category }; } }}
 												role="button"
 												tabindex="0"
 											>
@@ -954,27 +972,82 @@
 	/>
 {/if}
 
-{#if detailModalCard}
+{#if detailModalCardObject}
 	<CardDetailModal
-		card={detailModalCard}
-		isOpen={detailModalCard !== null}
+		card={detailModalCardObject}
+		isOpen={detailModalCardObject !== null}
 		onClose={() => detailModalCard = null}
 		{isCommander}
 		{commanderName}
 		onPrintingChange={(cardName, printingData) => {
-			deckStore.updateCardPrinting(cardName, {
-				scryfallId: printingData.id,
-				setCode: printingData.set,
-				collectorNumber: printingData.collector_number,
-				imageUrls: printingData.image_uris ? {
+			console.log('[DeckList] onPrintingChange called:', {
+				cardName,
+				printingData: {
+					id: printingData.id,
+					set: printingData.set,
+					collector_number: printingData.collector_number,
+					image_uris: printingData.image_uris ? 'present' : 'missing',
+					card_faces: printingData.card_faces ? 'present' : 'missing'
+				}
+			});
+
+			// For double-faced cards, image_uris might be on card_faces[0] instead of top level
+			let imageUrls = undefined;
+			let cardFaces = undefined;
+
+			if (printingData.image_uris) {
+				imageUrls = {
 					small: printingData.image_uris.small,
 					normal: printingData.image_uris.normal,
 					large: printingData.image_uris.large,
 					png: printingData.image_uris.png,
 					artCrop: printingData.image_uris.art_crop,
 					borderCrop: printingData.image_uris.border_crop
-				} : undefined
-			});
+				};
+			} else if (printingData.card_faces?.[0]?.image_uris) {
+				// For double-faced cards, extract image from first face for top-level
+				imageUrls = {
+					small: printingData.card_faces[0].image_uris.small,
+					normal: printingData.card_faces[0].image_uris.normal,
+					large: printingData.card_faces[0].image_uris.large,
+					png: printingData.card_faces[0].image_uris.png,
+					artCrop: printingData.card_faces[0].image_uris.art_crop,
+					borderCrop: printingData.card_faces[0].image_uris.border_crop
+				};
+			}
+
+			// If card has multiple faces, update the cardFaces array too
+			if (printingData.card_faces && printingData.card_faces.length > 1) {
+				cardFaces = printingData.card_faces.map(face => ({
+					name: face.name,
+					manaCost: face.mana_cost,
+					typeLine: face.type_line,
+					oracleText: face.oracle_text,
+					imageUrls: face.image_uris ? {
+						small: face.image_uris.small,
+						normal: face.image_uris.normal,
+						large: face.image_uris.large,
+						png: face.image_uris.png,
+						artCrop: face.image_uris.art_crop,
+						borderCrop: face.image_uris.border_crop
+					} : undefined,
+					colors: face.colors,
+					power: face.power,
+					toughness: face.toughness,
+					loyalty: face.loyalty
+				}));
+			}
+
+			const updateData = {
+				scryfallId: printingData.id,
+				setCode: printingData.set,
+				collectorNumber: printingData.collector_number,
+				imageUrls,
+				cardFaces
+			};
+
+			console.log('[DeckList] Calling deckStore.updateCardPrinting with:', cardName, updateData);
+			deckStore.updateCardPrinting(cardName, updateData);
 		}}
 	/>
 {/if}

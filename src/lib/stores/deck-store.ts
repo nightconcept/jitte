@@ -1095,8 +1095,14 @@ function createDeckStore() {
 				setCode?: string;
 				collectorNumber?: string;
 				imageUrls?: Card['imageUrls'];
+				cardFaces?: Card['cardFaces'];
 			}
 		): void {
+			console.log('[DeckStore] updateCardPrinting called:', {
+				cardName,
+				printingData
+			});
+
 			update((state) => {
 				if (!state) return state;
 
@@ -1109,11 +1115,16 @@ function createDeckStore() {
 					const cardIndex = categoryCards.findIndex(c => c.name === cardName);
 
 					if (cardIndex !== -1) {
+						console.log('[DeckStore] Found card in category:', category, 'at index:', cardIndex);
+						console.log('[DeckStore] Original card:', categoryCards[cardIndex]);
+
 						// Found the card, update its printing data
 						const updatedCard = {
 							...categoryCards[cardIndex],
 							...printingData
 						};
+
+						console.log('[DeckStore] Updated card:', updatedCard);
 
 						updatedCards[category] = [
 							...categoryCards.slice(0, cardIndex),
@@ -1127,7 +1138,7 @@ function createDeckStore() {
 				}
 
 				if (!cardFound) {
-					console.warn(`Card "${cardName}" not found in deck for printing update`);
+					console.warn(`[DeckStore] Card "${cardName}" not found in deck for printing update`);
 					return state;
 				}
 
@@ -1138,10 +1149,82 @@ function createDeckStore() {
 					updatedAt: new Date().toISOString()
 				};
 
+				console.log('[DeckStore] Returning updated state with new deck');
+
 				return {
 					...state,
 					deck: newDeck,
 					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Update maybeboard card printing information
+		 * Updates set-specific data like scryfallId, setCode, collectorNumber, and imageUrls
+		 */
+		updateMaybeboardCardPrinting(
+			cardName: string,
+			categoryId: string,
+			printingData: {
+				scryfallId?: string;
+				setCode?: string;
+				collectorNumber?: string;
+				imageUrls?: Card['imageUrls'];
+				cardFaces?: Card['cardFaces'];
+			}
+		): void {
+			console.log('[DeckStore] updateMaybeboardCardPrinting called:', {
+				cardName,
+				categoryId,
+				printingData
+			});
+
+			update((state) => {
+				if (!state) return state;
+
+				const categoryIndex = state.maybeboard.categories.findIndex(c => c.id === categoryId);
+				if (categoryIndex === -1) {
+					console.warn(`[DeckStore] Maybeboard category "${categoryId}" not found`);
+					return state;
+				}
+
+				const newMaybeboard = { ...state.maybeboard };
+				const category = { ...newMaybeboard.categories[categoryIndex] };
+				const categoryCards = [...category.cards];
+
+				const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+				if (cardIndex === -1) {
+					console.warn(`[DeckStore] Card "${cardName}" not found in maybeboard category "${categoryId}"`);
+					return state;
+				}
+
+				console.log('[DeckStore] Found card in maybeboard category:', categoryId, 'at index:', cardIndex);
+				console.log('[DeckStore] Original card:', categoryCards[cardIndex]);
+
+				// Update the card with new printing data
+				categoryCards[cardIndex] = {
+					...categoryCards[cardIndex],
+					...printingData
+				};
+
+				console.log('[DeckStore] Updated card:', categoryCards[cardIndex]);
+
+				category.cards = categoryCards;
+				category.updatedAt = new Date().toISOString();
+
+				newMaybeboard.categories = [
+					...newMaybeboard.categories.slice(0, categoryIndex),
+					category,
+					...newMaybeboard.categories.slice(categoryIndex + 1)
+				];
+
+				console.log('[DeckStore] Returning updated state with new maybeboard');
+
+				return {
+					...state,
+					maybeboard: newMaybeboard,
 					hasUnsavedChanges: true
 				};
 			});

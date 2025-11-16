@@ -31,6 +31,7 @@
 	let loadingEdhrecData = $state(false);
 	let printings = $state<ScryfallCard[]>([]);
 	let loadingPrintings = $state(false);
+	let currentCardName = $state<string | null>(null); // Track which card we're viewing
 
 	// Create a merged card with full face data for CardPreview
 	let cardWithFaces = $derived.by(() => {
@@ -77,10 +78,32 @@
 		return merged;
 	});
 
-	// Fetch full Scryfall data when modal opens
+	// Fetch full Scryfall data when modal opens or card changes
 	$effect(() => {
 		if (isOpen && card) {
-			loadCardDetails();
+			// Only reload if it's a different card (by name), not just a different printing
+			if (currentCardName !== card.name) {
+				console.log('[CardDetailModal] Modal opened with card:', {
+					name: card.name,
+					scryfallId: card.scryfallId,
+					setCode: card.setCode,
+					collectorNumber: card.collectorNumber,
+					fullCard: card
+				});
+				currentCardName = card.name;
+				loadCardDetails();
+			} else {
+				console.log('[CardDetailModal] Card printing updated, but same card name. Updating scryfallCard from card prop.');
+				// Just update the scryfall card data from the updated card prop
+				// This handles when the parent updates the card with new printing info
+				if (card.scryfallId !== scryfallCard?.id) {
+					console.log('[CardDetailModal] Scryfall ID changed from', scryfallCard?.id, 'to', card.scryfallId, '- reloading');
+					loadCardDetails();
+				}
+			}
+		} else if (!isOpen) {
+			// Reset when modal closes
+			currentCardName = null;
 		}
 	});
 
@@ -108,9 +131,39 @@
 
 		try {
 			// Get full Scryfall card data
-			const fullCard = await cardService.getCardByName(card.name);
+			// Prefer specific printing if available (scryfallId or set+collector)
+			let fullCard: ScryfallCard | null = null;
+
+			if (card.scryfallId) {
+				// Use the specific printing by Scryfall ID
+				console.log('[CardDetailModal] Loading card by Scryfall ID:', card.scryfallId);
+				fullCard = await cardService.getCard(card.scryfallId);
+				console.log('[CardDetailModal] getCard result:', fullCard ? 'success' : 'null');
+			} else if (card.setCode && card.collectorNumber) {
+				// Use set code and collector number for specific printing
+				console.log('[CardDetailModal] Loading card by set/collector:', card.setCode, card.collectorNumber);
+				fullCard = await cardService.getCardBySetAndNumber(
+					card.setCode,
+					card.collectorNumber,
+					card.name // Fallback to name if set/collector lookup fails
+				);
+				console.log('[CardDetailModal] getCardBySetAndNumber result:', fullCard ? 'success' : 'null');
+			} else {
+				// Fall back to name lookup (gets default printing)
+				console.log('[CardDetailModal] Loading card by name:', card.name);
+				fullCard = await cardService.getCardByName(card.name);
+				console.log('[CardDetailModal] getCardByName result:', fullCard ? 'success' : 'null');
+			}
+
 			if (fullCard) {
 				scryfallCard = fullCard;
+				console.log('[CardDetailModal] Loaded card:', {
+					id: fullCard.id,
+					name: fullCard.name,
+					set: fullCard.set,
+					set_name: fullCard.set_name,
+					collector_number: fullCard.collector_number
+				});
 
 				// Fetch rulings if available
 				if (fullCard.rulings_uri) {
@@ -121,10 +174,13 @@
 
 				// Fetch printings (in parallel, don't block loading)
 				loadPrintings();
+			} else {
+				console.error('[CardDetailModal] Failed to load card - fullCard is null');
 			}
 		} catch (error) {
-			console.error('Error loading card details:', error);
+			console.error('[CardDetailModal] Error loading card details:', error);
 		} finally {
+			console.log('[CardDetailModal] Setting loading = false');
 			loading = false;
 		}
 
@@ -167,10 +223,16 @@
 	}
 
 	async function loadPrintings() {
-		if (!scryfallCard?.prints_search_uri) return;
+		console.log('[CardDetailModal] loadPrintings called, scryfallCard:', scryfallCard?.name, 'prints_search_uri:', scryfallCard?.prints_search_uri ? 'exists' : 'missing');
+
+		if (!scryfallCard?.prints_search_uri) {
+			console.warn('[CardDetailModal] No prints_search_uri, skipping printings load');
+			return;
+		}
 
 		loadingPrintings = true;
 		try {
+			console.log('[CardDetailModal] Fetching printings from:', scryfallCard.prints_search_uri);
 			const response = await fetch(scryfallCard.prints_search_uri);
 			const data = await response.json();
 			printings = data.data || [];
@@ -184,11 +246,23 @@
 
 	function changePrinting(printing: ScryfallCard) {
 		scryfallCard = printing;
-		console.log('[CardDetailModal] Changed to printing:', printing.set_name, printing.collector_number);
+		console.log('[CardDetailModal] Changed to printing:', {
+			cardName: card.name,
+			newPrinting: {
+				id: printing.id,
+				set: printing.set,
+				set_name: printing.set_name,
+				collector_number: printing.collector_number,
+				artist: printing.artist
+			}
+		});
 
 		// Notify parent component to update the deck
 		if (onPrintingChange) {
+			console.log('[CardDetailModal] Calling onPrintingChange with:', card.name, printing);
 			onPrintingChange(card.name, printing);
+		} else {
+			console.warn('[CardDetailModal] No onPrintingChange handler provided!');
 		}
 	}
 
@@ -322,9 +396,14 @@
 							<!-- Printings Selector -->
 							{#if printings.length > 1}
 								<div class="w-full mt-auto flex-shrink-0">
-									<label for="printing-select" class="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1">
-										Printing
-									</label>
+									<div class="flex items-center justify-between mb-1">
+										<label for="printing-select" class="text-xs font-semibold text-[var(--color-text-secondary)]">
+											Printing
+										</label>
+										<span class="text-[0.65rem] text-[var(--color-text-tertiary)] italic">
+											Changes deck printing
+										</span>
+									</div>
 									<select
 										id="printing-select"
 										class="w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
