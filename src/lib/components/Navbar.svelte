@@ -1,12 +1,22 @@
 <script lang="ts">
   import { deckStore } from "$lib/stores/deck-store";
 
-  export let onSave: (() => void) | undefined = undefined;
-  export let onToggleEdit: (() => void) | undefined = undefined;
+  let { onSave = undefined, onToggleEdit = undefined }: { onSave?: () => void; onToggleEdit?: () => void } = $props();
 
-  $: deck = $deckStore?.deck;
-  $: isEditing = $deckStore?.isEditing ?? false;
-  $: hasUnsavedChanges = $deckStore?.hasUnsavedChanges ?? false;
+  // Store subscriptions using Svelte 5 runes
+  let deckStoreState = $state($deckStore);
+
+  $effect(() => {
+    const unsubscribe = deckStore.subscribe((value) => {
+      deckStoreState = value;
+    });
+    return unsubscribe;
+  });
+
+  // Derived values
+  let deck = $derived(deckStoreState?.deck);
+  let isEditing = $derived(deckStoreState?.isEditing ?? false);
+  let hasUnsavedChanges = $derived(deckStoreState?.hasUnsavedChanges ?? false);
 </script>
 
 <nav

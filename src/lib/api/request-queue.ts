@@ -161,7 +161,9 @@ export class RequestQueueManager {
 		if (typeConfig.cancellationStrategy === 'deduplicate') {
 			const existingPromise = this.pendingPromises.get(id);
 			if (existingPromise) {
-				console.log(
+				// Only log deduplication in debug mode to reduce console noise
+				// Use console.debug instead of console.log so it's hidden by default
+				console.debug(
 					`[${this.config.name}] Deduplicated request: ${request.type} (id: ${id})`
 				);
 				return existingPromise as Promise<T>;

@@ -10,6 +10,17 @@ import { SPELLBOOK_QUEUE_CONFIG } from './queue-configs';
 const BASE_URL = 'https://backend.commanderspellbook.com';
 const RATE_LIMIT_MS = 100; // 100ms between requests (conservative)
 
+export interface CommanderSpellbookClientConfig {
+	/** Base URL for Commander Spellbook API (default: https://backend.commanderspellbook.com) */
+	baseUrl?: string;
+	/** Minimum delay between requests in ms (default: 100ms) */
+	minDelayMs?: number;
+	/** Use CORS proxy (for browser deployments without CORS headers) */
+	useCorsProxy?: boolean;
+	/** CORS proxy URL (default: https://corsproxy.io/?) */
+	corsProxyUrl?: string;
+}
+
 export interface SpellbookCard {
 	id: number;
 	name: string;
@@ -110,15 +121,32 @@ export interface FindMyCombosResponse {
  */
 export class CommanderSpellbookClient {
 	private queueManager: RequestQueueManager;
+	private baseUrl: string;
+	private useCorsProxy: boolean;
+	private corsProxyUrl: string;
 
-	constructor(rateLimitMs: number = RATE_LIMIT_MS) {
+	constructor(config: CommanderSpellbookClientConfig = {}) {
+		this.baseUrl = config.baseUrl || BASE_URL;
+		this.useCorsProxy = config.useCorsProxy ?? false;
+		this.corsProxyUrl = config.corsProxyUrl || 'https://corsproxy.io/?';
+
 		// Use custom rate limit if provided, otherwise use default from config
 		const queueConfig = { ...SPELLBOOK_QUEUE_CONFIG };
-		if (rateLimitMs !== RATE_LIMIT_MS) {
-			queueConfig.rateLimitMs = rateLimitMs;
+		if (config.minDelayMs && config.minDelayMs !== RATE_LIMIT_MS) {
+			queueConfig.rateLimitMs = config.minDelayMs;
 		}
 
 		this.queueManager = new RequestQueueManager(queueConfig);
+	}
+
+	/**
+	 * Apply CORS proxy to URL if enabled
+	 */
+	private getCorsUrl(url: string): string {
+		if (this.useCorsProxy) {
+			return `${this.corsProxyUrl}${encodeURIComponent(url)}`;
+		}
+		return url;
 	}
 
 	/**
@@ -146,7 +174,8 @@ export class CommanderSpellbookClient {
 					limit: limit.toString()
 				});
 
-				const response = await fetch(`${BASE_URL}/variants?${params}`);
+				const url = `${this.baseUrl}/variants?${params}`;
+				const response = await fetch(this.getCorsUrl(url));
 
 				if (!response.ok) {
 					throw new Error(
@@ -168,7 +197,8 @@ export class CommanderSpellbookClient {
 			params: { id },
 			id: '',
 			fn: async () => {
-				const response = await fetch(`${BASE_URL}/variants/${id}/`);
+				const url = `${this.baseUrl}/variants/${id}/`;
+				const response = await fetch(this.getCorsUrl(url));
 
 				if (response.status === 404) {
 					return null;
@@ -198,7 +228,8 @@ export class CommanderSpellbookClient {
 			params: {},
 			id: '',
 			fn: async () => {
-				const response = await fetch(`${BASE_URL}/find-my-combos/`, {
+				const url = `${this.baseUrl}/find-my-combos/`;
+				const response = await fetch(this.getCorsUrl(url), {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
@@ -350,10 +381,16 @@ let clientInstance: CommanderSpellbookClient | null = null;
 
 /**
  * Get the shared Commander Spellbook API client instance
+ *
+ * IMPORTANT: CORS proxy is enabled by default because the Commander Spellbook API
+ * does not send proper CORS headers. This is required for browser deployments.
  */
 export function getCommanderSpellbookClient(): CommanderSpellbookClient {
 	if (!clientInstance) {
-		clientInstance = new CommanderSpellbookClient();
+		clientInstance = new CommanderSpellbookClient({
+			useCorsProxy: true, // Required for browser access - API has no CORS headers
+			corsProxyUrl: 'https://corsproxy.io/?' // Use same proxy as EDHREC
+		});
 	}
 	return clientInstance;
 }
