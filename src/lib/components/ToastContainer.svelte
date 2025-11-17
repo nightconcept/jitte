@@ -46,5 +46,5 @@
 	title="Error Details"
 	message={errorToast?.message || ''}
 	details={errorToast?.details || ''}
-	on:close={handleCloseModal}
+	onClose={handleCloseModal}
 />

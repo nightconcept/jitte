@@ -958,8 +958,9 @@
 {#if addMoreCard}
 	<AddQuantityModal
 		card={addMoreCard.card}
+		isOpen={true}
 		onConfirm={handleAddQuantity}
-		onClose={() => addMoreCard = null}
+		onClose={() => (addMoreCard = null)}
 	/>
 {/if}
 

@@ -614,8 +614,7 @@
 		showEditDecklistModal = true;
 	}
 
-	async function handleSaveDecklist(event: CustomEvent<{ decklist: string }>) {
-		const { decklist } = event.detail;
+	async function handleSaveDecklist(decklist: string) {
 
 		if (!$deckStore) {
 			toastStore.error('No deck loaded');
@@ -1046,8 +1045,8 @@
 <EditDecklistModal
 	isOpen={showEditDecklistModal}
 	currentDecklist={currentDecklistPlaintext}
-	on:save={handleSaveDecklist}
-	on:close={() => showEditDecklistModal = false}
+	onSave={handleSaveDecklist}
+	onClose={() => (showEditDecklistModal = false)}
 />
 
 <BuylistModal

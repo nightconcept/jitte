@@ -11,7 +11,10 @@
 		customSize,
 		height,
 		contentClass = '',
-		children
+		variant = 'default',
+		fadeDuration = 50,
+		children,
+		footer
 	}: {
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -21,7 +24,10 @@
 		customSize?: string;
 		height?: string;
 		contentClass?: string;
+		variant?: 'default' | 'error' | 'warning';
+		fadeDuration?: number;
 		children?: Snippet;
+		footer?: Snippet;
 	} = $props();
 
 	// Size mapping for Tailwind classes
@@ -36,6 +42,28 @@
 		'5xl': 'max-w-5xl',
 		full: 'max-w-full',
 		custom: ''
+	};
+
+	// Variant mapping for color theming
+	const variantClasses = {
+		default: {
+			border: 'border-[var(--color-border)]',
+			headerBorder: 'border-[var(--color-border)]',
+			titleText: 'text-[var(--color-text-primary)]',
+			subtitleText: 'text-[var(--color-text-secondary)]'
+		},
+		error: {
+			border: 'border-red-700',
+			headerBorder: 'border-red-700',
+			titleText: 'text-red-400',
+			subtitleText: 'text-red-300'
+		},
+		warning: {
+			border: 'border-yellow-700',
+			headerBorder: 'border-yellow-700',
+			titleText: 'text-yellow-400',
+			subtitleText: 'text-yellow-300'
+		}
 	};
 
 	function handleBackdropClick() {
@@ -75,19 +103,19 @@
 				handleBackdropClick();
 			}
 		}}
-		transition:fade={{ duration: 50 }}
+		transition:fade={{ duration: fadeDuration }}
 	>
 		<!-- Modal Content -->
 		<div
 			class="bg-[var(--color-surface)] rounded-lg shadow-xl {size === 'custom' && customSize
 				? customSize
-				: sizeClasses[size]} {size === 'custom' ? '' : 'w-full'} mx-4 border border-[var(--color-border)] relative flex flex-col {height || ''} {contentClass}"
+				: sizeClasses[size]} {size === 'custom' ? '' : 'w-full'} mx-4 border {variantClasses[variant].border} relative flex flex-col {height || ''} {contentClass}"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"
-			transition:fade={{ duration: 50, delay: 25 }}
+			transition:fade={{ duration: fadeDuration, delay: Math.floor(fadeDuration / 2) }}
 		>
 			<!-- Close Button (X) in top right -->
 			{#if onClose}
@@ -109,10 +137,10 @@
 
 			<!-- Header (if title provided) -->
 			{#if title}
-				<div class="px-6 py-4 border-b border-[var(--color-border)] pr-12">
-					<h2 class="text-xl font-bold text-[var(--color-text-primary)]">{title}</h2>
+				<div class="px-6 py-4 border-b {variantClasses[variant].headerBorder} pr-12">
+					<h2 class="text-xl font-bold {variantClasses[variant].titleText}">{title}</h2>
 					{#if subtitle}
-						<p class="text-sm text-[var(--color-text-secondary)] mt-1">{subtitle}</p>
+						<p class="text-sm {variantClasses[variant].subtitleText} mt-1">{subtitle}</p>
 					{/if}
 				</div>
 			{/if}
@@ -123,6 +151,13 @@
 					{@render children()}
 				{/if}
 			</div>
+
+			<!-- Footer (if provided) -->
+			{#if footer}
+				<div class="px-6 py-4 border-t {variantClasses[variant].headerBorder}">
+					{@render footer()}
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}
