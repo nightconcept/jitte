@@ -39,6 +39,24 @@ export class EDHRECService {
 	private readonly SALT_LIST_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days (aggressive)
 	private readonly SALT_API_FALLBACK_TTL = 90 * 24 * 60 * 60 * 1000; // 90 days (very aggressive for API-fetched rare cards)
 
+	/**
+	 * Extract front face name from split/transform cards
+	 * Scryfall uses " // " (with spaces) for split cards
+	 * Cards like "SP//dr" have no spaces, so they're not split cards
+	 *
+	 * @example
+	 * getFrontFaceName("Fire // Ice") → "Fire"
+	 * getFrontFaceName("SP//dr, Piloted by Peni") → "SP//dr, Piloted by Peni"
+	 */
+	private getFrontFaceName(cardName: string): string {
+		// Check for " // " with spaces (Scryfall's split card format)
+		if (cardName.includes(' // ')) {
+			return cardName.split(' // ')[0].trim();
+		}
+		// Not a split card, return full name
+		return cardName;
+	}
+
 	constructor() {
 		this.client = new EDHRECClient({
 			minDelayMs: 2000, // 30 requests per minute
@@ -128,8 +146,12 @@ export class EDHRECService {
 	 * 4. Aggressively cache API results
 	 */
 	async getSaltScore(cardName: string): Promise<EDHRECSaltScore | null> {
+		// Extract front face name for split/transform cards (e.g., "Fire // Ice" → "Fire")
+		// Cards like "SP//dr" (no spaces) are not split cards and use full name
+		const frontFaceName = this.getFrontFaceName(cardName);
+
 		// 1. Check local data first (instant, no network call)
-		const localScore = getLocalSaltScore(cardName);
+		const localScore = getLocalSaltScore(frontFaceName);
 		if (localScore) {
 			// Convert local format to service format
 			const saltScore: EDHRECSaltScore = {
@@ -140,14 +162,14 @@ export class EDHRECService {
 			};
 
 			// Cache it for consistency (but we'll always check local first anyway)
-			const cacheKey = `salt:${cardName.toLowerCase()}`;
+			const cacheKey = `salt:${frontFaceName.toLowerCase()}`;
 			this.cache.set(cacheKey, saltScore, this.SALT_TTL);
 
 			return saltScore;
 		}
 
 		// 2. Check cache for API-fetched scores (cards not in local top 100)
-		const cacheKey = `salt:${cardName.toLowerCase()}`;
+		const cacheKey = `salt:${frontFaceName.toLowerCase()}`;
 		const cached = this.cache.get<EDHRECSaltScore>(cacheKey);
 
 		if (cached) {
@@ -160,8 +182,8 @@ export class EDHRECService {
 
 		// 3. Card not in local top ${SALT_SCORES_COUNT} - try API as fallback
 		try {
-			// Try individual card page
-			const html = await this.client.fetchCardPage(cardName);
+			// Try individual card page (use front face name for split cards)
+			const html = await this.client.fetchCardPage(frontFaceName);
 			const saltScore = this.parser.parseCardSaltScore(html);
 
 			if (saltScore) {
@@ -172,7 +194,7 @@ export class EDHRECService {
 				// Card has no salt score - cache the null result to avoid re-fetching
 				// Use a special marker object to distinguish from cache miss
 				const noScoreMarker = {
-					cardName,
+					cardName: frontFaceName,
 					saltScore: -1, // Marker value
 					deckCount: 0,
 					rank: undefined
@@ -181,7 +203,7 @@ export class EDHRECService {
 				return null;
 			}
 		} catch (error) {
-			console.warn(`[EDHREC] Error fetching salt score for ${cardName}:`, error);
+			console.warn(`[EDHREC] Error fetching salt score for ${frontFaceName}:`, error);
 			return null; // Gracefully fail - salt score is optional data
 		}
 	}
