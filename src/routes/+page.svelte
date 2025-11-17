@@ -30,6 +30,7 @@
 	import { DeckFormat } from '$lib/formats/format-registry';
 	import { isAutoVersionEnabled } from '$lib/utils/auto-version-settings';
 	import { applyBump } from '$lib/utils/semver';
+	import { getInitialVersion } from '$lib/utils/versioning';
 
 	// 🚨 CRITICAL: Use $state() for all reactive variables in runes mode!
 	// Regular `let` variables are NOT reactive in Svelte 5 runes mode
@@ -170,11 +171,17 @@
 		if (isAutoVersionEnabled()) {
 			// Auto-version: calculate version and commit automatically
 			const currentVersion = $deckStore.deck.currentVersion;
+			const versioningScheme = $deckManager.activeManifest?.versioningScheme || 'semantic';
 
 			let newVersion: string;
 			let message: string;
 
-			if (hasDeckChanges) {
+			// Check if this is the first save (unsaved deck)
+			if (currentVersion === 'unsaved') {
+				// Use the initial version for the scheme
+				newVersion = getInitialVersion(versioningScheme);
+				message = 'Auto-save: initial version';
+			} else if (hasDeckChanges) {
 				// Main deck changes - use suggested bump
 				newVersion = applyBump(currentVersion, diff.suggestedBump);
 				const changeCount = diff.totalChanges;
