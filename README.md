@@ -15,8 +15,8 @@ A local-first web application for managing Magic: The Gathering Commander/EDH de
 
 ## Tech Stack
 
-- **SvelteKit** with Svelte 5 (Runes)
-- **Tailwind CSS 4** with Base16/Base24 theming
+- **SvelteKit** with Svelte 5
+- **Tailwind CSS 4**
 - **Scryfall API** for card data
 - **FileSystem Access API** + localStorage for storage
 - **Biome** for linting and formatting
@@ -34,36 +34,6 @@ pnpm dev
 pnpm build
 ```
 
-## Available Commands
-
-```sh
-pnpm dev              # Start dev server
-pnpm build            # Production build
-pnpm preview          # Preview production build
-pnpm check            # Type-check
-pnpm format           # Format code
-pnpm lint             # Lint code
-pnpm test             # Run tests
-pnpm theme:list       # List available themes
-pnpm theme:generate   # Apply theme from config
-```
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Project overview and architecture guide
-- **[theme/QUICK-REFERENCE.md](theme/QUICK-REFERENCE.md)** - Theme system color usage
-- **[project/PRD.md](project/PRD.md)** - Full product requirements
-- **[project/TASKS.md](project/TASKS.md)** - Development task tracking
-- **[project/VERIFICATION_GUIDE.md](project/VERIFICATION_GUIDE.md)** - Feature testing guide
-
-## Storage Format
-
-Decks are stored as `.zip` archives containing:
-- Version snapshots (JSON)
-- Branch metadata
-- Shared maybeboard
-- Per-version metadata
-
 ## Attribution
 
 Jitte is powered by data and resources from the following sources:
@@ -80,4 +50,4 @@ All card data, images, and Magic: The Gathering content are property of Wizards 
 
 ## License
 
-MIT
+[MIT](LICENSE)
