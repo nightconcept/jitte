@@ -21,7 +21,7 @@ export interface ScryfallClientConfig {
 	rateLimitMs?: number;
 	/** User agent string for requests */
 	userAgent?: string;
-	/** Maximum retry attempts for rate limit errors (default: 3) */
+	/** Maximum retry attempts for rate limit errors (default: 5) */
 	maxRetries?: number;
 }
 
@@ -49,7 +49,7 @@ export class ScryfallClient {
 	constructor(config: ScryfallClientConfig = {}) {
 		this.baseUrl = config.baseUrl ?? 'https://api.scryfall.com';
 		this.userAgent = config.userAgent ?? 'Jitte-MTG-Deck-Manager/1.0';
-		this.maxRetries = config.maxRetries ?? 3;
+		this.maxRetries = config.maxRetries ?? 5;
 
 		// Use custom rate limit if provided, otherwise use default from config
 		const queueConfig = { ...SCRYFALL_QUEUE_CONFIG };
@@ -106,7 +106,7 @@ export class ScryfallClient {
 			// Handle rate limiting (429)
 			if (response.status === 429) {
 				if (attempt < this.maxRetries) {
-					const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+					const delay = Math.pow(2, attempt) * 1500; // Exponential backoff: 1.5s, 3s, 6s, 12s, 24s
 					console.warn(
 						`Rate limited by Scryfall (429). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
 					);
@@ -131,7 +131,7 @@ export class ScryfallClient {
 			// Handle network errors (often caused by CORS issues from rate limiting)
 			if (error instanceof TypeError && error.message.includes('fetch')) {
 				if (attempt < this.maxRetries) {
-					const delay = Math.pow(2, attempt) * 1000;
+					const delay = Math.pow(2, attempt) * 1500;
 					console.warn(
 						`Network error (likely rate limit). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
 					);
@@ -192,7 +192,7 @@ export class ScryfallClient {
 			// Handle rate limiting (429)
 			if (response.status === 429) {
 				if (attempt < this.maxRetries) {
-					const delay = Math.pow(2, attempt) * 1000;
+					const delay = Math.pow(2, attempt) * 1500; // Exponential backoff: 1.5s, 3s, 6s, 12s, 24s
 					console.warn(
 						`Rate limited by Scryfall (429). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
 					);
@@ -217,7 +217,7 @@ export class ScryfallClient {
 			// Handle network errors (often caused by CORS issues from rate limiting)
 			if (error instanceof TypeError && error.message.includes('fetch')) {
 				if (attempt < this.maxRetries) {
-					const delay = Math.pow(2, attempt) * 1000;
+					const delay = Math.pow(2, attempt) * 1500;
 					console.warn(
 						`Network error (likely rate limit). Retrying in ${delay}ms... (attempt ${attempt + 1}/${this.maxRetries})`
 					);

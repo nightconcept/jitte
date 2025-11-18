@@ -21,7 +21,7 @@ import type { QueueConfig } from './request-queue';
  */
 export const SCRYFALL_QUEUE_CONFIG: QueueConfig = {
 	name: 'scryfall',
-	rateLimitMs: 200, // Increased from 150ms to avoid rate limiting (Scryfall = 10 req/sec)
+	rateLimitMs: 350, // Conservative rate limit to avoid 429 errors (Scryfall = 10 req/sec theoretical, but burst limits apply)
 	maxConcurrent: 1,
 	maxQueueSize: 100,
 	requestTypes: {

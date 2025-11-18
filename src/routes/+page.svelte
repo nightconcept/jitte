@@ -373,7 +373,10 @@
 			console.log(`[handleImportDeck] Fetching ${cardsToImport.length} cards from Scryfall`);
 			console.log('[handleImportDeck] Cards to import:', cardsToImport.map(c => c.name).join(', '));
 			const batchResult = await cardService.getCardsBatch(cardsToImport);
-			console.log(`[handleImportDeck] Batch result: ${batchResult.cards.size} found, ${batchResult.notFound.length} not found`);
+
+			// Count unique cards (Map has multiple keys per card for different lookup strategies)
+			const uniqueCards = new Set(batchResult.cards.values());
+			console.log(`[handleImportDeck] Batch result: ${uniqueCards.size} unique cards found (${batchResult.cards.size} lookup keys), ${batchResult.notFound.length} not found`);
 			if (batchResult.notFound.length > 0) {
 				console.log('[handleImportDeck] Not found cards:', batchResult.notFound.map(c => c.name));
 			}
