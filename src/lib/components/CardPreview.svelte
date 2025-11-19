@@ -8,11 +8,13 @@
 	let {
 		hoveredCard = null,
 		showPricing = true,
-		className = ''
+		className = '',
+		collapsedByDefault = false
 	}: {
 		hoveredCard: Card | null;
 		showPricing?: boolean;
 		className?: string;
+		collapsedByDefault?: boolean;
 	} = $props();
 
 	// Store subscription using Svelte 5 runes pattern
@@ -24,6 +26,13 @@
 		});
 		return unsubscribe;
 	});
+
+	// Collapse state
+	let isCollapsed = $state(collapsedByDefault);
+
+	function toggleCollapsed() {
+		isCollapsed = !isCollapsed;
+	}
 
 	// Derived values
 	let deck = $derived(deckStoreState?.deck);
@@ -114,9 +123,65 @@
 	}
 </script>
 
-<aside class="{className || 'w-80 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] p-4 flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)]'}">
-	<!-- Card Image -->
-	<div class="flex-shrink-0 mb-2 perspective-container">
+<aside
+	class="{isCollapsed
+		? 'w-12'
+		: className || 'w-[28rem]'} bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)] relative transition-all duration-200"
+>
+	<!-- Collapsible Header -->
+	<button
+		onclick={toggleCollapsed}
+		class="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors {isCollapsed
+			? 'writing-mode-vertical px-2'
+			: ''}"
+		title={isCollapsed ? 'Expand Card Preview' : 'Collapse Card Preview'}
+	>
+		{#if isCollapsed}
+			<!-- Collapsed state: vertical text -->
+			<div class="flex flex-col items-center gap-2 w-full">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform -rotate-90"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 5l7 7-7 7"
+					/>
+				</svg>
+				<span class="text-sm font-bold text-[var(--color-text-primary)] vertical-text">
+					Card Preview
+				</span>
+			</div>
+		{:else}
+			<!-- Expanded state: horizontal layout -->
+			<div class="flex items-center gap-2">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform rotate-180"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 5l7 7-7 7"
+					/>
+				</svg>
+				<h2 class="text-lg font-bold text-[var(--color-text-primary)]">Card Preview</h2>
+			</div>
+		{/if}
+	</button>
+
+	{#if !isCollapsed}
+		<!-- Card Image -->
+		<div class="flex-shrink-0 mb-2 mt-4 px-4 perspective-container">
 		<div class="flip-card" class:is-flipped={currentFaceIndex === 1}>
 			<!-- Front Face -->
 			<div class="card-face card-face--front">
@@ -180,6 +245,7 @@
 
 	<!-- Flip button for double-faced cards -->
 	{#if isDoubleFaced}
+		<div class="px-4">
 		<button
 			type="button"
 			onclick={toggleFace}
@@ -204,11 +270,12 @@
 			</svg>
 			<span>Turn Over</span>
 		</button>
+		</div>
 	{/if}
 
 	<!-- Vendor Pricing (Non-Foil) -->
 	{#if showPricing && displayCard?.prices}
-		<div class="pt-4 border-t border-[var(--color-border)]">
+		<div class="pt-4 px-4 border-t border-[var(--color-border)]">
 			<div class="text-xs font-semibold text-[var(--color-text-primary)] mb-3">Prices</div>
 			<div class="space-y-2">
 				{#if displayCard.prices.cardkingdom !== undefined}
@@ -247,6 +314,7 @@
 			</div>
 		</div>
 	{/if}
+	{/if}
 </aside>
 
 <style>
@@ -282,5 +350,10 @@
 	.card-face--back {
 		/* Back face is pre-rotated 180 degrees */
 		transform: rotateY(180deg);
+	}
+
+	.vertical-text {
+		writing-mode: vertical-rl;
+		text-orientation: mixed;
 	}
 </style>
