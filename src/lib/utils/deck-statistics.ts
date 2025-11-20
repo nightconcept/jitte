@@ -3,7 +3,7 @@
  */
 
 import type { Deck, DeckStatistics } from '$lib/types/deck';
-import type { Card, CardCategory, ManaColor } from '$lib/types/card';
+import type { Card, ManaColor } from '$lib/types/card';
 import { validateDeck } from './deck-validation';
 import {
 	countGameChangers,
@@ -51,8 +51,8 @@ export function calculateStatistics(deck: Deck): DeckStatistics {
  */
 function getAllCards(deck: Deck): Card[] {
 	const cards: Card[] = [];
-	for (const category of Object.keys(deck.cards) as CardCategory[]) {
-		for (const card of deck.cards[category]) {
+	for (const categoryCards of Object.values(deck.cards)) {
+		for (const card of categoryCards) {
 			// Expand cards by quantity
 			for (let i = 0; i < card.quantity; i++) {
 				cards.push(card);
@@ -67,8 +67,8 @@ function getAllCards(deck: Deck): Card[] {
  */
 function getUniqueCardNames(deck: Deck): string[] {
 	const names: string[] = [];
-	for (const category of Object.keys(deck.cards) as CardCategory[]) {
-		for (const card of deck.cards[category]) {
+	for (const categoryCards of Object.values(deck.cards)) {
+		for (const card of categoryCards) {
 			names.push(card.name);
 		}
 	}
@@ -238,8 +238,8 @@ function calculateManaProduction(cards: Card[]): Record<string, number> {
 function calculateTypeDistribution(deck: Deck): Record<string, number> {
 	const distribution: Record<string, number> = {};
 
-	for (const category of Object.keys(deck.cards) as CardCategory[]) {
-		const count = deck.cards[category].reduce((sum, card) => sum + card.quantity, 0);
+	for (const [category, cards] of Object.entries(deck.cards)) {
+		const count = cards.reduce((sum, card) => sum + card.quantity, 0);
 		if (count > 0) {
 			distribution[category] = count;
 		}
@@ -316,7 +316,15 @@ function calculateTotalManaValue(cards: Card[]): number {
  * Count total lands in deck
  */
 function countLands(deck: Deck): number {
-	return deck.cards.land.reduce((sum, card) => sum + card.quantity, 0);
+	let landCount = 0;
+	for (const categoryCards of Object.values(deck.cards)) {
+		for (const card of categoryCards) {
+			if (card.types?.some((t) => t.toLowerCase() === 'land')) {
+				landCount += card.quantity;
+			}
+		}
+	}
+	return landCount;
 }
 
 /**

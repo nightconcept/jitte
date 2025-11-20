@@ -3,13 +3,14 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
 	import type { Deck } from '$lib/types/deck';
+	import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
 	import type { DeckSaltScore } from '$lib/types/edhrec';
 	import { DeckFormat } from '$lib/formats/format-registry';
 	import { getBracketLabel, isGameChanger } from '$lib/utils/game-changers';
 	import BracketTooltip from './BracketTooltip.svelte';
 	import SaltTooltip from './SaltTooltip.svelte';
 	import { calculateDeckSaltScore } from '$lib/utils/salt-calculator';
-	import { CubeCardCategory, type CubeCategorizedCards } from '$lib/types/card';
+	import { CubeCardCategory } from '$lib/types/card';
 
 	// Store subscriptions using Svelte 5 runes
 	let deckStoreState = $state($deckStore);
@@ -31,19 +32,19 @@
 	// Derived values
 	let deck = $derived(deckStoreState?.deck);
 	let statistics = $derived(deckStoreState?.statistics);
-	let commander = $derived(deck?.cards.commander?.[0]);
+	let commander = $derived(deck && isCommanderDeck(deck) ? deck.cards['commander']?.[0] : undefined);
 	let commanderImageUrl = $derived(commander?.imageUrls?.artCrop || commander?.imageUrls?.large);
 	let bracketLabel = $derived(
 		statistics?.bracketLevel ? getBracketLabel(statistics.bracketLevel) : 'Unknown'
 	);
-	let isCommanderFormat = $derived(deck?.format === DeckFormat.Commander);
-	let isCubeFormat = $derived(deck?.format === DeckFormat.Cube);
+	let isCommanderFormat = $derived(deck ? isCommanderDeck(deck) : false);
+	let isCubeFormat = $derived(deck ? isCubeDeck(deck) : false);
 	let gameChangersInDeck = $derived(isCommanderFormat && deck ? getAllGameChangers(deck) : []);
 
 	// Cube-specific stats
 	let cubeColorCounts = $derived.by(() => {
 		if (!isCubeFormat || !deck) return null;
-		const cards = deck.cards as CubeCategorizedCards;
+		const cards = deck.cards;
 		return {
 			white: cards[CubeCardCategory.White]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
 			blue: cards[CubeCardCategory.Blue]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
@@ -84,8 +85,8 @@
 	function getAllGameChangers(deck: Deck | undefined): string[] {
 		if (!deck) return [];
 		const gameChangers: string[] = [];
-		for (const category of Object.keys(deck.cards) as (keyof typeof deck.cards)[]) {
-			for (const card of deck.cards[category]) {
+		for (const categoryCards of Object.values(deck.cards)) {
+			for (const card of categoryCards) {
 				if (isGameChanger(card.name)) {
 					gameChangers.push(card.name);
 				}

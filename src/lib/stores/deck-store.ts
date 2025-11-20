@@ -172,7 +172,7 @@ function createDeckStore() {
 		/**
 		 * Remove a card from the deck
 		 */
-		removeCard(cardName: string, category: CardCategory): void {
+		removeCard(cardName: string, category: string): void {
 			update((state) => {
 				if (!state) return state;
 
@@ -411,7 +411,7 @@ function createDeckStore() {
 		/**
 		 * Update card quantity
 		 */
-		updateCardQuantity(cardName: string, category: CardCategory, delta: number): void {
+		updateCardQuantity(cardName: string, category: string, delta: number): void {
 			update((state) => {
 				if (!state) return state;
 
@@ -465,7 +465,7 @@ function createDeckStore() {
 		/**
 		 * Switch card printing (set code)
 		 */
-		switchPrinting(cardName: string, category: CardCategory, newCard: Card): void {
+		switchPrinting(cardName: string, category: string, newCard: Card): void {
 			update((state) => {
 				if (!state) return state;
 
@@ -508,7 +508,7 @@ function createDeckStore() {
 		 * Enrich a card with additional data (e.g., cardFaces for double-faced cards)
 		 * This merges the enrichment data into the existing card without replacing it
 		 */
-		enrichCard(cardName: string, category: CardCategory, enrichmentData: Partial<Card>): void {
+		enrichCard(cardName: string, category: string, enrichmentData: Partial<Card>): void {
 			update((state) => {
 				if (!state) return state;
 
@@ -716,7 +716,7 @@ function createDeckStore() {
 		/**
 		 * Move a card from deck to maybeboard
 		 */
-		moveToMaybeboard(cardName: string, category: CardCategory, categoryId?: string): void {
+		moveToMaybeboard(cardName: string, category: string, categoryId?: string): void {
 			update((state) => {
 				if (!state) return state;
 

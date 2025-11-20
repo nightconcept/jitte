@@ -32,7 +32,7 @@
 		style = ''
 	}: {
 		card: Card;
-		category: CardCategory;
+		category: string;
 		isEditing?: boolean;
 		showPricing?: boolean;
 		pricingPosition?: 'below' | 'overlay';
@@ -43,7 +43,7 @@
 		onClick?: (card: Card) => void;
 		onInfoClick?: (card: Card) => void;
 		onHover?: (card: Card | null) => void;
-		onDragStart?: (event: DragEvent, card: Card, category: CardCategory) => void;
+		onDragStart?: (event: DragEvent, card: Card, category: string) => void;
 		onDragEnd?: () => void;
 		class?: string;
 		style?: string;

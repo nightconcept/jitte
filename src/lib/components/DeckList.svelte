@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
 	import { viewSettingsStore, type ViewMode } from '$lib/stores/viewSettingsStore';
-	import { CardCategory } from '$lib/types/card';
 	import type { Card } from '$lib/types/card';
 	import { DeckFormat } from '$lib/formats/format-registry';
+	import { getFormatService } from '$lib/formats/services/format-service-factory';
 	import AddQuantityModal from './AddQuantityModal.svelte';
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
@@ -61,8 +61,7 @@
 
 		// Get all cards from the deck (excluding maybeboard)
 		const allCards: Card[] = [];
-		for (const category of Object.values(CardCategory)) {
-			const categoryCards = deck.cards[category] || [];
+		for (const categoryCards of Object.values(deck.cards)) {
 			allCards.push(...categoryCards);
 		}
 
@@ -157,7 +156,7 @@
 	let openCardMenu = $state<string | null>(null);
 	let openCardMenuRef = $state<HTMLDivElement>();
 
-	function toggleCardMenu(cardName: string, category: CardCategory) {
+	function toggleCardMenu(cardName: string, category: string) {
 		const menuKey = `${category}:${cardName}`;
 		openCardMenu = openCardMenu === menuKey ? null : menuKey;
 	}
@@ -166,7 +165,7 @@
 		openCardMenu = null;
 	}
 
-	function isCardMenuOpen(cardName: string, category: CardCategory): boolean {
+	function isCardMenuOpen(cardName: string, category: string): boolean {
 		return openCardMenu === `${category}:${cardName}`;
 	}
 
@@ -218,66 +217,42 @@
 		}
 	});
 
-	// Category display order (canonical order from requirements)
-	const categoryOrder: CardCategory[] = [
-		CardCategory.Commander,
-		CardCategory.Companion,
-		CardCategory.Planeswalker,
-		CardCategory.Creature,
-		CardCategory.Instant,
-		CardCategory.Sorcery,
-		CardCategory.Artifact,
-		CardCategory.Enchantment,
-		CardCategory.Land,
-		CardCategory.Other
-	];
-
-	const categoryLabels: Record<CardCategory, string> = {
-		[CardCategory.Commander]: 'Commander',
-		[CardCategory.Companion]: 'Companion',
-		[CardCategory.Planeswalker]: 'Planeswalkers',
-		[CardCategory.Creature]: 'Creatures',
-		[CardCategory.Instant]: 'Instants',
-		[CardCategory.Sorcery]: 'Sorceries',
-		[CardCategory.Artifact]: 'Artifacts',
-		[CardCategory.Enchantment]: 'Enchantments',
-		[CardCategory.Land]: 'Lands',
-		[CardCategory.Other]: 'Other'
-	};
-
-	// Map categories to Mana Font icon classes
-	const categoryIcons: Record<CardCategory, string> = {
-		[CardCategory.Commander]: '',  // TODO: Commander has no icon (intentionally left blank)
-		[CardCategory.Companion]: 'ms-planeswalker',  // Companion uses planeswalker icon
-		[CardCategory.Planeswalker]: 'ms-planeswalker',
-		[CardCategory.Creature]: 'ms-creature',
-		[CardCategory.Instant]: 'ms-instant',
-		[CardCategory.Sorcery]: 'ms-sorcery',
-		[CardCategory.Artifact]: 'ms-artifact',
-		[CardCategory.Enchantment]: 'ms-enchantment',
-		[CardCategory.Land]: 'ms-land',
-		[CardCategory.Other]: 'ms-artifact'  // Use artifact icon as fallback
-	};
-
-	// Collapsible sections state
-	let collapsed = $state<Record<string, boolean>>({
-		[CardCategory.Commander]: false,
-		[CardCategory.Companion]: false,
-		[CardCategory.Planeswalker]: false,
-		[CardCategory.Creature]: false,
-		[CardCategory.Instant]: false,
-		[CardCategory.Sorcery]: false,
-		[CardCategory.Artifact]: false,
-		[CardCategory.Enchantment]: false,
-		[CardCategory.Land]: false,
-		[CardCategory.Other]: false
+	// Get categories from FormatService based on deck format
+	let categoryOrder = $derived.by(() => {
+		if (!deck) return [];
+		const formatService = getFormatService(deck.format);
+		return formatService.getCategoriesInDisplayOrder().map(c => c.id);
 	});
 
-	function toggleCategory(category: CardCategory) {
+	let categoryLabels = $derived.by(() => {
+		if (!deck) return {};
+		const formatService = getFormatService(deck.format);
+		const labels: Record<string, string> = {};
+		for (const category of formatService.getAllCategories()) {
+			labels[category.id] = category.label;
+		}
+		return labels;
+	});
+
+	// Map categories to Mana Font icon classes
+	let categoryIcons = $derived.by(() => {
+		if (!deck) return {};
+		const formatService = getFormatService(deck.format);
+		const icons: Record<string, string> = {};
+		for (const category of formatService.getAllCategories()) {
+			icons[category.id] = category.icon || '';
+		}
+		return icons;
+	});
+
+	// Collapsible sections state - initialize dynamically
+	let collapsed = $state<Record<string, boolean>>({});
+
+	function toggleCategory(category: string) {
 		collapsed[category] = !collapsed[category];
 	}
 
-	function getCategoryCards(category: CardCategory): Card[] {
+	function getCategoryCards(category: string): Card[] {
 		const cards = deck?.cards[category] || [];
 
 		// Sort cards based on sortMode
@@ -288,7 +263,7 @@
 		}
 
 		// Log when returning cards for debugging
-		if (category === CardCategory.Creature && cards.some(c => c.name.includes('Gwen Stacy'))) {
+		if (category === 'creature' && cards.some(c => c.name.includes('Gwen Stacy'))) {
 			const gwenCard = cards.find(c => c.name.includes('Gwen Stacy'));
 			console.log('[DeckList] getCategoryCards for Creature - Gwen Stacy scryfallId:', gwenCard?.scryfallId);
 		}
@@ -296,31 +271,31 @@
 		return cards;
 	}
 
-	function getCategoryCount(category: CardCategory): number {
+	function getCategoryCount(category: string): number {
 		const cards = getCategoryCards(category);
 		return cards.reduce((sum, card) => sum + card.quantity, 0);
 	}
 
-	function handleCardClick(card: Card, category: CardCategory) {
+	function handleCardClick(card: Card, category: string) {
 		if (!isEditing) return;
 		// TODO: Show card menu
 	}
 
 	// Card menu actions
-	function handleAddOne(card: Card, category: CardCategory) {
+	function handleAddOne(card: Card, category: string) {
 		deckStore.updateCardQuantity(card.name, category, 1);
 		closeCardMenu();
 	}
 
-	function handleRemove(card: Card, category: CardCategory) {
+	function handleRemove(card: Card, category: string) {
 		deckStore.removeCard(card.name, category);
 		closeCardMenu();
 	}
 
 	// Modal states
-	let addMoreCard = $state<{ card: Card; category: CardCategory } | null>(null);
-	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
-	let detailModalCard = $state<{ name: string; category: CardCategory } | null>(null);
+	let addMoreCard = $state<{ card: Card; category: string } | null>(null);
+	let changePrintingCard = $state<{ card: Card; category: string } | null>(null);
+	let detailModalCard = $state<{ name: string; category: string } | null>(null);
 	let isChangeCommanderModalOpen = $state(false);
 	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
 	let commanderToReplaceIndex = $state<number>(0);
@@ -334,12 +309,12 @@
 		return cards.find(c => c.name === cardInfo.name) || null;
 	});
 
-	function showAddMoreModal(card: Card, category: CardCategory) {
+	function showAddMoreModal(card: Card, category: string) {
 		addMoreCard = { card, category };
 		closeCardMenu();
 	}
 
-	function showChangePrintingModal(card: Card, category: CardCategory) {
+	function showChangePrintingModal(card: Card, category: string) {
 		changePrintingCard = { card, category };
 		closeCardMenu();
 	}
@@ -358,7 +333,7 @@
 		}
 	}
 
-	function handleMoveToMaybeboard(card: Card, category: CardCategory) {
+	function handleMoveToMaybeboard(card: Card, category: string) {
 		deckStore.moveToMaybeboard(card.name, category);
 		closeCardMenu();
 	}
@@ -395,7 +370,7 @@
 	}
 
 	// Drag and drop handlers
-	let draggedCard = $state<{ card: Card; category: CardCategory } | null>(null);
+	let draggedCard = $state<{ card: Card; category: string } | null>(null);
 	let isDragging = $state(false);
 
 	// Dynamic layout mode for stacks view
@@ -461,8 +436,8 @@
 		return () => window.removeEventListener('resize', handleResize);
 	});
 
-	function handleDragStart(event: DragEvent, card: Card, category: CardCategory) {
-		if (!isEditing || category === CardCategory.Commander) return;
+	function handleDragStart(event: DragEvent, card: Card, category: string) {
+		if (!isEditing || category === 'commander') return;
 
 		draggedCard = { card, category };
 		isDragging = true;
@@ -734,8 +709,8 @@
 								<div class="responsive-card-grid overflow-visible">
 								{#each cards as card}
 											<div
-												class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== CardCategory.Commander ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
-												draggable={isEditing && category !== CardCategory.Commander}
+												class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== 'commander' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
+												draggable={isEditing && category !== 'commander'}
 												ondragstart={(e) => handleDragStart(e, card, category)}
 												ondragend={handleDragEnd}
 												onmouseenter={() => {
@@ -829,9 +804,9 @@
 															bind:this={openCardMenuRef}
 															class="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]"
 														>
-															{#if category === CardCategory.Commander}
-																{@const hasPartner = deck && deck.cards.commander.length === 2}
-																{@const canHavePartner = deck && deck.cards.commander.length === 1 && canAddPartner(deck.cards.commander[0])}
+															{#if category === 'commander'}
+																{@const hasPartner = deck && deck.cards['commander'].length === 2}
+																{@const canHavePartner = deck && deck.cards['commander'].length === 1 && canAddPartner(deck.cards['commander'][0])}
 																{@const commanderIndex = getCommanderIndex(card.name)}
 
 																<!-- Commander-specific menu -->

@@ -20,13 +20,13 @@
 		onDragEnd = undefined
 	}: {
 		cards: Card[];
-		category: CardCategory;
+		category: string;
 		categoryLabel: string;
 		categoryIcon: string;
 		isEditing?: boolean;
 		onCardClick?: (card: Card) => void;
 		onCardHover?: (card: Card | null) => void;
-		onDragStart?: (event: DragEvent, card: Card, category: CardCategory) => void;
+		onDragStart?: (event: DragEvent, card: Card, category: string) => void;
 		onDragEnd?: () => void;
 	} = $props();
 
@@ -47,8 +47,8 @@
 	let menuRef = $state<HTMLDivElement>();
 
 	// Modal states
-	let addMoreCard = $state<{ card: Card; category: CardCategory } | null>(null);
-	let changePrintingCard = $state<{ card: Card; category: CardCategory } | null>(null);
+	let addMoreCard = $state<{ card: Card; category: string } | null>(null);
+	let changePrintingCard = $state<{ card: Card; category: string } | null>(null);
 	let isChangeCommanderModalOpen = $state(false);
 	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
 	let commanderToReplaceIndex = $state<number>(0);
@@ -82,7 +82,7 @@
 	}
 
 	function handleCardDragStart(event: DragEvent, card: Card) {
-		if (!isEditing || category === CardCategory.Commander) return;
+		if (!isEditing || category === 'commander') return;
 		onDragStart?.(event, card, category);
 	}
 
@@ -345,7 +345,7 @@
 		class="context-menu"
 		style="left: {openCardMenu.x}px; top: {openCardMenu.y}px;"
 	>
-		{#if category === CardCategory.Commander}
+		{#if category === 'commander'}
 			{@const hasPartner = deck && deck.cards.commander.length === 2}
 			{@const canHavePartner = deck && deck.cards.commander.length === 1 && canAddPartner(deck.cards.commander[0])}
 			{@const commanderIndex = getCommanderIndex(openCardMenu!.card.name)}
