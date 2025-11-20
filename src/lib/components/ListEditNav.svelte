@@ -7,7 +7,9 @@
 	import CardSearch from './CardSearch.svelte';
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
+	import ChangelogModal from './ChangelogModal.svelte';
 	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
+	import { deckManager } from '$lib/stores/deck-manager';
 	import { CardCategory, CubeCardCategory } from '$lib/types/card';
 	import { DeckFormat } from '$lib/formats/format-registry';
 
@@ -48,6 +50,7 @@
 	// Store subscriptions using Svelte 5 runes
 	let deckStoreState = $state($deckStore);
 	let validationWarningsState = $state($validationWarnings);
+	let deckManagerState = $state($deckManager);
 
 	$effect(() => {
 		const unsubscribeDeckStore = deckStore.subscribe((value) => {
@@ -56,9 +59,13 @@
 		const unsubscribeValidations = validationWarnings.subscribe((value) => {
 			validationWarningsState = value;
 		});
+		const unsubscribeManager = deckManager.subscribe((value) => {
+			deckManagerState = value;
+		});
 		return () => {
 			unsubscribeDeckStore();
 			unsubscribeValidations();
+			unsubscribeManager();
 		};
 	});
 
@@ -67,6 +74,7 @@
 	let statistics = $derived(deckStoreState?.statistics);
 	let deckWideWarnings = $derived(validationWarningsState.filter((w) => !w.cardName));
 	let isCubeFormat = $derived(format === DeckFormat.Cube);
+	let manifest = $derived(deckManagerState?.activeManifest);
 
 	let typeDistribution = $derived({
 		planeswalker:
@@ -106,6 +114,7 @@
 	// Dropdown state
 	let versionDropdownOpen = $state(false);
 	let branchDropdownOpen = $state(false);
+	let changelogOpen = $state(false);
 
 	// Dropdown refs
 	let versionDropdownRef = $state<HTMLDivElement>();
@@ -260,6 +269,24 @@
 						/>
 					</svg>
 				</button>
+
+				<!-- Changelog Button -->
+				{#if manifest}
+					<button
+						onclick={() => (changelogOpen = true)}
+						class="px-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-tertiary)] hover:text-[var(--color-brand-primary)] h-[38px]"
+						title="View Changelog"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+					</button>
+				{/if}
 
 				<!-- Version Dropdown -->
 				{#if versionDropdownOpen && availableVersions.length > 0}
@@ -465,3 +492,12 @@
 		</div>
 	</div>
 </nav>
+
+<!-- Changelog Modal -->
+{#if manifest}
+	<ChangelogModal
+		isOpen={changelogOpen}
+		manifest={manifest}
+		onClose={() => (changelogOpen = false)}
+	/>
+{/if}
