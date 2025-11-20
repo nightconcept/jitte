@@ -294,7 +294,8 @@ export async function extractDeckFromArchive(archive: DeckArchive): Promise<{
 		currentVersion: manifest.currentVersion,
 		createdAt: manifest.createdAt,
 		updatedAt: manifest.updatedAt,
-		categorizationMode: 'default' // Default mode for backward compatibility
+		categorizationMode: manifest.categorizationMode || 'default', // Default mode for backward compatibility
+		customCategories: manifest.customCategories
 	} as Deck;
 
 	// Set color identity for Commander decks only

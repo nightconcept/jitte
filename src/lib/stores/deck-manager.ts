@@ -435,7 +435,8 @@ function createDeckManager() {
 				currentVersion: version,
 				createdAt: archive.manifest.createdAt,
 				updatedAt: new Date().toISOString(),
-				categorizationMode: 'default' // Default mode for backward compatibility
+				categorizationMode: archive.manifest.categorizationMode || 'default', // Default mode for backward compatibility
+			customCategories: archive.manifest.customCategories
 			} as Deck;
 
 			// Set color identity for Commander decks only
@@ -638,7 +639,8 @@ function createDeckManager() {
 				currentVersion: version,
 				createdAt: archive.manifest.createdAt,
 				updatedAt: new Date().toISOString(),
-				categorizationMode: 'default' // Default mode for backward compatibility
+				categorizationMode: archive.manifest.categorizationMode || 'default', // Default mode for backward compatibility
+			customCategories: archive.manifest.customCategories
 			} as Deck;
 
 			// Set color identity for Commander decks only

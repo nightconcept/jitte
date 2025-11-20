@@ -93,6 +93,8 @@ export function createDeckManifest(deck: Deck): DeckManifest {
 		format: deck.format,
 		createdAt: deck.createdAt,
 		updatedAt: deck.updatedAt,
+		categorizationMode: deck.categorizationMode,
+		customCategories: deck.customCategories,
 		currentBranch: 'main',
 		currentVersion: 'unsaved',
 		branches: [mainBranch],

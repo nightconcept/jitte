@@ -9,12 +9,13 @@ import type {
 	WorkingDeck,
 	DeckManifest,
 	DeckStatistics,
-	CreateBranchOptions
+	CreateBranchOptions,
+	CategorizationMode
 } from '$lib/types/deck';
 import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
-import type { Card, CategorizedCards, CardsByCategory } from '$lib/types/card';
-import { CardCategory } from '$lib/types/card';
+import type { Card, CategorizedCards, CardsByCategory, CategoryDefinition } from '$lib/types/card';
+import { CardCategory, UNCATEGORIZED_CATEGORY_ID } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
 import { getFormatService } from '$lib/formats/services/format-service-factory';
@@ -1256,6 +1257,301 @@ function createDeckStore() {
 				return {
 					...state,
 					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Create a new custom category
+		 */
+		createCustomCategory(definition: Omit<CategoryDefinition, 'order'>): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Get the next order number
+				const maxOrder = state.deck.customCategories
+					? Math.max(...state.deck.customCategories.map((c) => c.order), -1)
+					: -1;
+
+				const newCategory: CategoryDefinition = {
+					...definition,
+					order: maxOrder + 1
+				};
+
+				// Add category to the deck
+				const customCategories = [...(state.deck.customCategories || []), newCategory];
+
+				// Initialize an empty array for this category in deck.cards if needed
+				const updatedCards: CardsByCategory = {
+					...state.deck.cards,
+					[newCategory.id]: state.deck.cards[newCategory.id] || []
+				};
+
+				const newDeck: Deck = {
+					...state.deck,
+					customCategories,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Delete a custom category
+		 * Moves all cards from the deleted category to uncategorized
+		 */
+		deleteCustomCategory(categoryId: string): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Can't delete uncategorized category
+				if (categoryId === UNCATEGORIZED_CATEGORY_ID) {
+					console.warn('Cannot delete the uncategorized category');
+					return state;
+				}
+
+				// Get cards from the category being deleted
+				const categoryCards = state.deck.cards[categoryId] || [];
+
+				// Move cards to uncategorized
+				const uncategorizedCards = state.deck.cards[UNCATEGORIZED_CATEGORY_ID] || [];
+				const updatedUncategorized = [...uncategorizedCards, ...categoryCards];
+
+				// Remove the category
+				const customCategories = (state.deck.customCategories || []).filter(
+					(c) => c.id !== categoryId
+				);
+
+				// Update cards object - remove the deleted category and update uncategorized
+				const updatedCards: CardsByCategory = { ...state.deck.cards };
+				delete updatedCards[categoryId];
+				updatedCards[UNCATEGORIZED_CATEGORY_ID] = updatedUncategorized;
+
+				const newDeck: Deck = {
+					...state.deck,
+					customCategories,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Update a custom category definition
+		 */
+		updateCustomCategory(
+			categoryId: string,
+			updates: Partial<Omit<CategoryDefinition, 'id' | 'order'>>
+		): void {
+			update((state) => {
+				if (!state) return state;
+
+				const categoryIndex = (state.deck.customCategories || []).findIndex(
+					(c) => c.id === categoryId
+				);
+
+				if (categoryIndex === -1) {
+					console.warn(`Category "${categoryId}" not found`);
+					return state;
+				}
+
+				const customCategories = [...(state.deck.customCategories || [])];
+				customCategories[categoryIndex] = {
+					...customCategories[categoryIndex],
+					...updates
+				};
+
+				const newDeck: Deck = {
+					...state.deck,
+					customCategories,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Reorder custom categories
+		 */
+		reorderCustomCategories(categoryIds: string[]): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Create a map of categoryId to new order
+				const orderMap = new Map(categoryIds.map((id, index) => [id, index]));
+
+				// Update the order field for each category
+				const customCategories = (state.deck.customCategories || [])
+					.map((category) => ({
+						...category,
+						order: orderMap.get(category.id) ?? category.order
+					}))
+					.sort((a, b) => a.order - b.order);
+
+				const newDeck: Deck = {
+					...state.deck,
+					customCategories,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Switch between default and custom categorization modes
+		 */
+		switchCategorizationMode(mode: CategorizationMode): void {
+			update((state) => {
+				if (!state) return state;
+
+				// If already in this mode, do nothing
+				if (state.deck.categorizationMode === mode) return state;
+
+				const formatService = getFormatService(state.deck.format);
+
+				// Collect all cards from all categories
+				const allCards: Card[] = [];
+				for (const categoryCards of Object.values(state.deck.cards)) {
+					allCards.push(...categoryCards);
+				}
+
+				let updatedCards: CardsByCategory;
+				let customCategories = state.deck.customCategories;
+
+				if (mode === 'custom') {
+					// Switching to custom mode - move all cards to uncategorized
+					// Initialize custom categories if not present
+					if (!customCategories || customCategories.length === 0) {
+						customCategories = [];
+					}
+
+					// Create empty card structure with uncategorized containing all cards
+					updatedCards = formatService.createEmptyCardsByCategory(customCategories);
+					updatedCards[UNCATEGORIZED_CATEGORY_ID] = allCards;
+				} else {
+					// Switching to default mode - recategorize all cards by type/color
+					updatedCards = formatService.createEmptyCardsByCategory();
+
+					// Categorize each card using default logic
+					for (const card of allCards) {
+						const category = formatService.categorizeCard(card, 'default');
+						if (!updatedCards[category]) {
+							updatedCards[category] = [];
+						}
+						updatedCards[category].push(card);
+					}
+				}
+
+				const newDeck: Deck = {
+					...state.deck,
+					categorizationMode: mode,
+					customCategories,
+					cards: updatedCards,
+					cardCount: calculateTotalCards(updatedCards),
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Move a card between custom categories
+		 */
+		moveCardToCustomCategory(
+			cardName: string,
+			fromCategoryId: string,
+			toCategoryId: string
+		): void {
+			update((state) => {
+				if (!state) return state;
+
+				// Can't move to the same category
+				if (fromCategoryId === toCategoryId) return state;
+
+				// Find the card in the source category
+				const fromCards = state.deck.cards[fromCategoryId] || [];
+				const cardIndex = fromCards.findIndex((c) => c.name === cardName);
+
+				if (cardIndex === -1) {
+					console.warn(`Card "${cardName}" not found in category "${fromCategoryId}"`);
+					return state;
+				}
+
+				const card = fromCards[cardIndex];
+
+				// Remove from source category
+				const updatedFromCards = [
+					...fromCards.slice(0, cardIndex),
+					...fromCards.slice(cardIndex + 1)
+				];
+
+				// Add to target category (check for duplicates and merge quantities)
+				const toCards = state.deck.cards[toCategoryId] || [];
+				const existingIndex = toCards.findIndex((c) => c.name === cardName);
+
+				let updatedToCards: Card[];
+				if (existingIndex !== -1) {
+					// Card already exists in target - merge quantities
+					updatedToCards = [
+						...toCards.slice(0, existingIndex),
+						{
+							...toCards[existingIndex],
+							quantity: toCards[existingIndex].quantity + card.quantity
+						},
+						...toCards.slice(existingIndex + 1)
+					];
+				} else {
+					// New card in target category
+					updatedToCards = [...toCards, card];
+				}
+
+				// Update cards object
+				const updatedCards: CardsByCategory = {
+					...state.deck.cards,
+					[fromCategoryId]: updatedFromCards,
+					[toCategoryId]: updatedToCards
+				};
+
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
 					hasUnsavedChanges: true
 				};
 			});

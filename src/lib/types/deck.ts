@@ -135,6 +135,10 @@ export interface DeckManifest {
 	createdAt: string;
 	updatedAt: string;
 
+	/** Categorization settings */
+	categorizationMode?: CategorizationMode;
+	customCategories?: CategoryDefinition[];
+
 	/** Current working state */
 	currentBranch: string;
 	currentVersion: string;

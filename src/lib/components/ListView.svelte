@@ -1,1157 +1,1675 @@
 <script lang="ts">
-	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
-	import { viewSettingsStore, type ViewMode } from '$lib/stores/viewSettingsStore';
-	import type { Card } from '$lib/types/card';
-	import { DeckFormat } from '$lib/formats/format-registry';
-	import { getFormatService } from '$lib/formats/services/format-service-factory';
-	import type { FormatService } from '$lib/formats/services/format-service';
-	import AddQuantityModal from './AddQuantityModal.svelte';
-	import ChangePrintingModal from './ChangePrintingModal.svelte';
-	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
-	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
-	import CardDetailModal from './CardDetailModal.svelte';
-	import ManaSymbol from './ManaSymbol.svelte';
-	import { isGameChanger } from '$lib/utils/game-changers';
-	import { isCardBanned } from '$lib/utils/deck-validation';
-	import { canAddPartner } from '$lib/utils/partner-detection';
-	import TokensSection from './TokensSection.svelte';
-	import { detectTokensInDeck } from '$lib/utils/token-detector';
-	import type { TokenInfo } from '$lib/utils/token-detector';
-	import VisualSpoilerView from './VisualSpoilerView.svelte';
-	import StacksView from './StacksView.svelte';
-
-	let { 
-		onCardHover = undefined,
-		onImport = undefined
-	}: { 
-		onCardHover?: ((card: Card | null) => void) | undefined;
-		onImport?: (() => void) | undefined;
-	} = $props();
-
-	let deckStoreState = $state($deckStore);
-
-	// Subscribe to store updates
-	$effect(() => {
-		const unsubscribe = deckStore.subscribe(value => {
-			deckStoreState = value;
-		});
-		return unsubscribe;
-	});
-
-	let deck = $derived(deckStoreState?.deck);
-	let isEditing = $derived(deckStoreState?.isEditing ?? false);
-
-	// EDHREC data - check if deck is Commander format
-	let isCommander = $derived(deck?.format === DeckFormat.Commander);
-	let commanderName = $derived.by(() => {
-		if (!deck || !isCommander) return '';
-		const commanders = deck.cards?.commander || [];
-		return commanders.length > 0 ? commanders[0].name : '';
-	});
-
-	// Get format service for current deck
-	let formatService = $derived.by(() => {
-		if (!deck) return null;
-		return getFormatService(deck.format);
-	});
-
-	// Token detection - dynamically calculate tokens from deck cards
-	let tokens = $state<TokenInfo[]>([]);
-	let isLoadingTokens = $state(false);
-
-	// Detect tokens when deck changes
-	$effect(() => {
-		if (!deck) {
-			tokens = [];
-			return;
-		}
-
-		// Get all cards from the deck (excluding maybeboard)
-		const allCards: Card[] = [];
-		for (const categoryCards of Object.values(deck.cards)) {
-			allCards.push(...categoryCards);
-		}
-
-		if (allCards.length === 0) {
-			tokens = [];
-			return;
-		}
-
-		// Detect tokens asynchronously
-		isLoadingTokens = true;
-		detectTokensInDeck(allCards)
-			.then(detectedTokens => {
-				tokens = detectedTokens;
-				isLoadingTokens = false;
-			})
-			.catch(error => {
-				console.error('Failed to detect tokens:', error);
-				tokens = [];
-				isLoadingTokens = false;
-			});
-	});
-
-	// Validation warnings subscription
-	let warnings = $state($validationWarnings);
-
-	$effect(() => {
-		const unsubscribe = validationWarnings.subscribe(value => {
-			warnings = value;
-		});
-		return unsubscribe;
-	});
-
-	// View settings subscription
-	let viewSettingsState = $state($viewSettingsStore);
-
-	$effect(() => {
-		const unsubscribe = viewSettingsStore.subscribe(value => {
-			viewSettingsState = value;
-		});
-		return unsubscribe;
-	});
-
-	// Helper function to get warnings for a specific card
-	function getCardWarnings(cardName: string) {
-		return warnings.filter(w => w.cardName === cardName);
-	}
-
-	// Check if a card is outside commander's color identity
-	function isOutsideColorIdentity(card: Card): boolean {
-		const commanders = deck?.cards?.commander || [];
-		if (commanders.length === 0) return false;
-
-		// Get commander's combined color identity
-		const commanderColors = new Set<string>();
-		for (const commander of commanders) {
-			if (commander.colorIdentity) {
-				for (const color of commander.colorIdentity) {
-					commanderColors.add(color);
-				}
-			}
-		}
-
-		// If card has no color identity, it's colorless and valid
-		if (!card.colorIdentity || card.colorIdentity.length === 0) return false;
-
-		// Check if any color in card's identity is not in commander's identity
-		for (const color of card.colorIdentity) {
-			if (!commanderColors.has(color)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	// View options
-	type GroupMode = 'type';
-	type SortMode = 'name' | 'mana_value';
-
-	// Derive viewMode from store
-	let viewMode = $derived(viewSettingsState?.viewMode || 'text');
-	let groupMode = $state<GroupMode>('type');
-	let sortMode = $state<SortMode>('name');
-
-	// Dropdown states
-	let viewDropdownOpen = $state(false);
-	let groupDropdownOpen = $state(false);
-	let sortDropdownOpen = $state(false);
-
-	// Card menu state (track which card's menu is open)
-	// Use composite key: "category:cardName" to handle duplicate card names across categories
-	let openCardMenu = $state<string | null>(null);
-	let openCardMenuRef = $state<HTMLDivElement>();
-
-	function toggleCardMenu(cardName: string, category: string) {
-		const menuKey = `${category}:${cardName}`;
-		openCardMenu = openCardMenu === menuKey ? null : menuKey;
-	}
-
-	function closeCardMenu() {
-		openCardMenu = null;
-	}
-
-	function isCardMenuOpen(cardName: string, category: string): boolean {
-		return openCardMenu === `${category}:${cardName}`;
-	}
-
-	// Close card menu when switching out of edit mode
-	$effect(() => {
-		if (!isEditing) {
-			closeCardMenu();
-		}
-	});
-
-	// Click outside handler for card menu
-	$effect(() => {
-		function handleClickOutside(event: MouseEvent) {
-			const target = event.target as Node;
-
-			if (openCardMenu && openCardMenuRef && !openCardMenuRef.contains(target)) {
-				closeCardMenu();
-			}
-		}
-
-		if (openCardMenu) {
-			document.addEventListener('mousedown', handleClickOutside);
-			return () => {
-				document.removeEventListener('mousedown', handleClickOutside);
-			};
-		}
-	});
-
-	// Click outside handler for view/group/sort dropdowns
-	$effect(() => {
-		function handleClickOutside(event: MouseEvent) {
-			const target = event.target as HTMLElement;
-
-			// Check if click is outside all dropdown menus and their buttons
-			const isClickInsideDropdown = target.closest('.dropdown-container');
-
-			if (!isClickInsideDropdown) {
-				viewDropdownOpen = false;
-				groupDropdownOpen = false;
-				sortDropdownOpen = false;
-			}
-		}
-
-		if (viewDropdownOpen || groupDropdownOpen || sortDropdownOpen) {
-			document.addEventListener('mousedown', handleClickOutside);
-			return () => {
-				document.removeEventListener('mousedown', handleClickOutside);
-			};
-		}
-	});
-
-	// Get categories from FormatService based on deck format
-	let categoryOrder = $derived.by(() => {
-		if (!deck) return [];
-		const formatService = getFormatService(deck.format);
-		return formatService.getCategoriesInDisplayOrder().map(c => c.id);
-	});
-
-	let categoryLabels = $derived.by(() => {
-		if (!deck) return {};
-		const formatService = getFormatService(deck.format);
-		const labels: Record<string, string> = {};
-		for (const category of formatService.getAllCategories()) {
-			labels[category.id] = category.label;
-		}
-		return labels;
-	});
-
-	// Map categories to Mana Font icon classes
-	let categoryIcons = $derived.by(() => {
-		if (!deck) return {};
-		const formatService = getFormatService(deck.format);
-		const icons: Record<string, string> = {};
-		for (const category of formatService.getAllCategories()) {
-			icons[category.id] = category.icon || '';
-		}
-		return icons;
-	});
-
-	// Collapsible sections state - initialize dynamically
-	let collapsed = $state<Record<string, boolean>>({});
-
-	// Dynamic title based on format
-	let decklistTitle = $derived.by(() => {
-		if (!deck) return 'Decklist';
-		return deck.format === DeckFormat.Cube ? 'Cube List' : 'Decklist';
-	});
-
-	function toggleCategory(category: string) {
-		collapsed[category] = !collapsed[category];
-	}
-
-	function getCategoryCards(category: string): Card[] {
-		const cards = deck?.cards[category] || [];
-
-		// Sort cards based on sortMode
-		if (sortMode === 'name') {
-			return [...cards].sort((a, b) => a.name.localeCompare(b.name));
-		} else if (sortMode === 'mana_value') {
-			return [...cards].sort((a, b) => (a.cmc || 0) - (b.cmc || 0));
-		}
-
-		// Log when returning cards for debugging
-		if (category === 'creature' && cards.some(c => c.name.includes('Gwen Stacy'))) {
-			const gwenCard = cards.find(c => c.name.includes('Gwen Stacy'));
-			console.log('[ListView] getCategoryCards for Creature - Gwen Stacy scryfallId:', gwenCard?.scryfallId);
-		}
-
-		return cards;
-	}
-
-	function getCategoryCount(category: string): number {
-		const cards = getCategoryCards(category);
-		return cards.reduce((sum, card) => sum + card.quantity, 0);
-	}
-
-	function handleCardClick(card: Card, category: string) {
-		if (!isEditing) return;
-		// TODO: Show card menu
-	}
-
-	// Card menu actions
-	function handleAddOne(card: Card, category: string) {
-		deckStore.updateCardQuantity(card.name, category, 1);
-		closeCardMenu();
-	}
-
-	function handleRemove(card: Card, category: string) {
-		deckStore.removeCard(card.name, category);
-		closeCardMenu();
-	}
-
-	// Modal states
-	let addMoreCard = $state<{ card: Card; category: string } | null>(null);
-	let changePrintingCard = $state<{ card: Card; category: string } | null>(null);
-	let detailModalCard = $state<{ name: string; category: string } | null>(null);
-	let isChangeCommanderModalOpen = $state(false);
-	let commanderModalMode = $state<'replace_all' | 'replace_partner' | 'add_partner'>('replace_all');
-	let commanderToReplaceIndex = $state<number>(0);
-
-	// Look up the current card from the store when modal is open
-	// This ensures we always get the latest card data including printing changes
-	let detailModalCardObject = $derived.by(() => {
-		if (!detailModalCard || !deck) return null;
-		const cardInfo = detailModalCard; // Capture to satisfy TypeScript
-		const cards = deck.cards[cardInfo.category];
-		return cards.find(c => c.name === cardInfo.name) || null;
-	});
-
-	function showAddMoreModal(card: Card, category: string) {
-		addMoreCard = { card, category };
-		closeCardMenu();
-	}
-
-	function showChangePrintingModal(card: Card, category: string) {
-		changePrintingCard = { card, category };
-		closeCardMenu();
-	}
-
-	function handleAddQuantity(quantity: number) {
-		if (addMoreCard) {
-			deckStore.updateCardQuantity(addMoreCard.card.name, addMoreCard.category, quantity);
-			addMoreCard = null;
-		}
-	}
-
-	function handleChangePrinting(newCard: Card) {
-		if (changePrintingCard) {
-			deckStore.switchPrinting(changePrintingCard.card.name, changePrintingCard.category, newCard);
-			changePrintingCard = null;
-		}
-	}
-
-	function handleMoveToMaybeboard(card: Card, category: string) {
-		deckStore.moveToMaybeboard(card.name, category);
-		closeCardMenu();
-	}
-
-	function showChangeCommanderModal(mode: 'replace_all' | 'replace_partner' | 'add_partner' = 'replace_all', index: number = 0) {
-		commanderModalMode = mode;
-		commanderToReplaceIndex = index;
-		isChangeCommanderModalOpen = true;
-		closeCardMenu();
-	}
-
-	function handleCommanderSelect(event: CustomEvent<Card>) {
-		const newCommander = event.detail;
-
-		if (commanderModalMode === 'replace_all') {
-			deckStore.setCommanders([newCommander]);
-		} else if (commanderModalMode === 'replace_partner') {
-			deckStore.replaceCommander(commanderToReplaceIndex, newCommander);
-		} else if (commanderModalMode === 'add_partner') {
-			deckStore.addPartner(newCommander);
-		}
-
-		isChangeCommanderModalOpen = false;
-	}
-
-	function handleRemovePartner(commanderName: string) {
-		deckStore.removePartner(commanderName);
-		closeCardMenu();
-	}
-
-	function getCommanderIndex(commanderName: string): number {
-		if (!deck) return -1;
-		return deck.cards.commander.findIndex(c => c.name === commanderName);
-	}
-
-	// Drag and drop handlers
-	let draggedCard = $state<{ card: Card; category: string } | null>(null);
-	let isDragging = $state(false);
-
-	// Dynamic layout mode for stacks view
-	let useMasonryLayout = $state(false);
-	let stacksContainerRef = $state<HTMLDivElement>();
-
-	// Calculate card width based on viewport breakpoints
-	function getCardWidth(width: number): number {
-		if (width >= 2560) return 220;
-		if (width >= 1024) return 200;
-		if (width >= 768) return 180;
-		return 165;
-	}
-
-	// Calculate gap size based on viewport breakpoints
-	function getGapSize(width: number): number {
-		if (width >= 2560) return 20; // 1.25rem
-		if (width >= 1536) return 16; // 1rem
-		if (width >= 1024) return 12; // 0.75rem
-		if (width >= 768) return 10; // 0.625rem
-		return 8; // 0.5rem
-	}
-
-	// Dynamically determine if we should use grid or masonry based on available space
-	function updateStacksLayout() {
-		if (viewMode !== 'stacks' || !stacksContainerRef) return;
-
-		const nonEmptyCategories = categoryOrder.filter(cat => {
-			const cards = deck?.cards[cat] || [];
-			return cards.length > 0;
-		});
-		const stackCount = nonEmptyCategories.length;
-
-		// Measure actual container width
-		const containerWidth = stacksContainerRef.clientWidth;
-		const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
-
-		const cardWidth = getCardWidth(viewportWidth);
-		const gap = getGapSize(viewportWidth);
-
-		// Calculate how many columns can fit in the actual container width
-		// Formula: (containerWidth + gap) / (cardWidth + gap)
-		const columnsFit = Math.floor((containerWidth + gap) / (cardWidth + gap));
-
-		// Use masonry if we can't fit all stacks in available columns
-		useMasonryLayout = columnsFit < stackCount;
-	}
-
-	// Update layout when dependencies change
-	$effect(() => {
-		updateStacksLayout();
-	});
-
-	// Update layout on resize
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-
-		function handleResize() {
-			updateStacksLayout();
-		}
-
-		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	});
-
-	function handleDragStart(event: DragEvent, card: Card, category: string) {
-		if (!isEditing || category === 'commander') return;
-
-		draggedCard = { card, category };
-		isDragging = true;
-
-		// Set drag data
-		event.dataTransfer!.effectAllowed = 'move';
-		event.dataTransfer!.setData('application/json', JSON.stringify({ card, category, source: 'decklist' }));
-
-		// Create custom drag image with card image
-		if (card.imageUrls?.small) {
-			const dragImage = new Image();
-			dragImage.src = card.imageUrls.small;
-			dragImage.style.width = '146px';
-			dragImage.style.height = '204px';
-			dragImage.style.borderRadius = '8px';
-			dragImage.style.position = 'absolute';
-			dragImage.style.top = '-9999px';
-			document.body.appendChild(dragImage);
-
-			// Set drag image after a brief delay to ensure image is loaded
-			setTimeout(() => {
-				event.dataTransfer!.setDragImage(dragImage, 73, 102);
-				setTimeout(() => document.body.removeChild(dragImage), 0);
-			}, 0);
-		}
-	}
-
-	function handleDragEnd() {
-		draggedCard = null;
-		isDragging = false;
-	}
-
-	function handleDragOver(event: DragEvent) {
-		if (!isEditing) return;
-		event.preventDefault();
-		event.dataTransfer!.dropEffect = 'move';
-	}
-
-	function handleDrop(event: DragEvent) {
-		if (!isEditing) return;
-		event.preventDefault();
-
-		try {
-			const data = JSON.parse(event.dataTransfer!.getData('application/json'));
-			if (data.source === 'maybeboard') {
-				// Card dropped from maybeboard to decklist
-				deckStore.moveToDeck(data.card.name, data.categoryId);
-			}
-		} catch (e) {
-			console.error('Failed to parse drag data:', e);
-		}
-
-		draggedCard = null;
-		isDragging = false;
-	}
+  import { deckStore, validationWarnings } from "$lib/stores/deck-store";
+  import {
+    viewSettingsStore,
+    type ViewMode,
+  } from "$lib/stores/viewSettingsStore";
+  import type { Card } from "$lib/types/card";
+  import { UNCATEGORIZED_CATEGORY_ID } from "$lib/types/card";
+  import { DeckFormat } from "$lib/formats/format-registry";
+  import { getFormatService } from "$lib/formats/services/format-service-factory";
+  import type { FormatService } from "$lib/formats/services/format-service";
+  import AddQuantityModal from "./AddQuantityModal.svelte";
+  import ChangePrintingModal from "./ChangePrintingModal.svelte";
+  import ChangeCommanderModal from "./ChangeCommanderModal.svelte";
+  import ValidationWarningIcon from "./ValidationWarningIcon.svelte";
+  import CardDetailModal from "./CardDetailModal.svelte";
+  import ManaSymbol from "./ManaSymbol.svelte";
+  import { isGameChanger } from "$lib/utils/game-changers";
+  import { isCardBanned } from "$lib/utils/deck-validation";
+  import { canAddPartner } from "$lib/utils/partner-detection";
+  import TokensSection from "./TokensSection.svelte";
+  import { detectTokensInDeck } from "$lib/utils/token-detector";
+  import type { TokenInfo } from "$lib/utils/token-detector";
+  import VisualSpoilerView from "./VisualSpoilerView.svelte";
+  import StacksView from "./StacksView.svelte";
+  import CustomCategoryManager from "./CustomCategoryManager.svelte";
+
+  let {
+    onCardHover = undefined,
+    onImport = undefined,
+  }: {
+    onCardHover?: ((card: Card | null) => void) | undefined;
+    onImport?: (() => void) | undefined;
+  } = $props();
+
+  let deckStoreState = $state($deckStore);
+
+  // Subscribe to store updates
+  $effect(() => {
+    const unsubscribe = deckStore.subscribe((value) => {
+      deckStoreState = value;
+    });
+    return unsubscribe;
+  });
+
+  let deck = $derived(deckStoreState?.deck);
+  let isEditing = $derived(deckStoreState?.isEditing ?? false);
+
+  // EDHREC data - check if deck is Commander format
+  let isCommander = $derived(deck?.format === DeckFormat.Commander);
+  let commanderName = $derived.by(() => {
+    if (!deck || !isCommander) return "";
+    const commanders = deck.cards?.commander || [];
+    return commanders.length > 0 ? commanders[0].name : "";
+  });
+
+  // Get format service for current deck
+  let formatService = $derived.by(() => {
+    if (!deck) return null;
+    return getFormatService(deck.format);
+  });
+
+  // Token detection - dynamically calculate tokens from deck cards
+  let tokens = $state<TokenInfo[]>([]);
+  let isLoadingTokens = $state(false);
+
+  // Detect tokens when deck changes
+  $effect(() => {
+    if (!deck) {
+      tokens = [];
+      return;
+    }
+
+    // Get all cards from the deck (excluding maybeboard)
+    const allCards: Card[] = [];
+    for (const categoryCards of Object.values(deck.cards)) {
+      allCards.push(...categoryCards);
+    }
+
+    if (allCards.length === 0) {
+      tokens = [];
+      return;
+    }
+
+    // Detect tokens asynchronously
+    isLoadingTokens = true;
+    detectTokensInDeck(allCards)
+      .then((detectedTokens) => {
+        tokens = detectedTokens;
+        isLoadingTokens = false;
+      })
+      .catch((error) => {
+        console.error("Failed to detect tokens:", error);
+        tokens = [];
+        isLoadingTokens = false;
+      });
+  });
+
+  // Validation warnings subscription
+  let warnings = $state($validationWarnings);
+
+  $effect(() => {
+    const unsubscribe = validationWarnings.subscribe((value) => {
+      warnings = value;
+    });
+    return unsubscribe;
+  });
+
+  // View settings subscription
+  let viewSettingsState = $state($viewSettingsStore);
+
+  $effect(() => {
+    const unsubscribe = viewSettingsStore.subscribe((value) => {
+      viewSettingsState = value;
+    });
+    return unsubscribe;
+  });
+
+  // Helper function to get warnings for a specific card
+  function getCardWarnings(cardName: string) {
+    return warnings.filter((w) => w.cardName === cardName);
+  }
+
+  // Check if a card is outside commander's color identity
+  function isOutsideColorIdentity(card: Card): boolean {
+    const commanders = deck?.cards?.commander || [];
+    if (commanders.length === 0) return false;
+
+    // Get commander's combined color identity
+    const commanderColors = new Set<string>();
+    for (const commander of commanders) {
+      if (commander.colorIdentity) {
+        for (const color of commander.colorIdentity) {
+          commanderColors.add(color);
+        }
+      }
+    }
+
+    // If card has no color identity, it's colorless and valid
+    if (!card.colorIdentity || card.colorIdentity.length === 0) return false;
+
+    // Check if any color in card's identity is not in commander's identity
+    for (const color of card.colorIdentity) {
+      if (!commanderColors.has(color)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // View options
+  type GroupMode = "type";
+  type SortMode = "name" | "mana_value";
+
+  // Derive viewMode from store
+  let viewMode = $derived(viewSettingsState?.viewMode || "text");
+  let groupMode = $state<GroupMode>("type");
+  let sortMode = $state<SortMode>("name");
+
+  // Derive current categorization mode
+  let categorizationMode = $derived(deck?.categorizationMode || 'default');
+
+  // Derive group mode label
+  let groupModeLabel = $derived.by(() => {
+    if (categorizationMode === 'custom') {
+      return 'Custom';
+    } else if (deck?.format === DeckFormat.Cube) {
+      return 'Color';
+    } else {
+      return 'Type';
+    }
+  });
+
+  // Dropdown states
+  let viewDropdownOpen = $state(false);
+  let groupDropdownOpen = $state(false);
+  let sortDropdownOpen = $state(false);
+
+  // Card menu state (track which card's menu is open)
+  // Use composite key: "category:cardName" to handle duplicate card names across categories
+  let openCardMenu = $state<string | null>(null);
+  let openCardMenuRef = $state<HTMLDivElement>();
+
+  function toggleCardMenu(cardName: string, category: string) {
+    const menuKey = `${category}:${cardName}`;
+    openCardMenu = openCardMenu === menuKey ? null : menuKey;
+  }
+
+  function closeCardMenu() {
+    openCardMenu = null;
+  }
+
+  function isCardMenuOpen(cardName: string, category: string): boolean {
+    return openCardMenu === `${category}:${cardName}`;
+  }
+
+  // Close card menu when switching out of edit mode
+  $effect(() => {
+    if (!isEditing) {
+      closeCardMenu();
+    }
+  });
+
+  // Click outside handler for card menu
+  $effect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (
+        openCardMenu &&
+        openCardMenuRef &&
+        !openCardMenuRef.contains(target)
+      ) {
+        closeCardMenu();
+      }
+    }
+
+    if (openCardMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  });
+
+  // Click outside handler for view/group/sort dropdowns
+  $effect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+
+      // Check if click is outside all dropdown menus and their buttons
+      const isClickInsideDropdown = target.closest(".dropdown-container");
+
+      if (!isClickInsideDropdown) {
+        viewDropdownOpen = false;
+        groupDropdownOpen = false;
+        sortDropdownOpen = false;
+      }
+    }
+
+    if (viewDropdownOpen || groupDropdownOpen || sortDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  });
+
+  // Get categories from FormatService based on deck format or custom categories
+  let categoryOrder = $derived.by(() => {
+    if (!deck) return [];
+
+    if (categorizationMode === 'custom') {
+      // Custom mode: uncategorized first, then custom categories sorted by order
+      const customCats = (deck.customCategories || [])
+        .sort((a, b) => a.order - b.order)
+        .map(c => c.id);
+      return [UNCATEGORIZED_CATEGORY_ID, ...customCats];
+    } else {
+      // Default mode: use format service
+      const formatService = getFormatService(deck.format);
+      return formatService.getCategoriesInDisplayOrder().map((c) => c.id);
+    }
+  });
+
+  let categoryLabels = $derived.by(() => {
+    if (!deck) return {};
+
+    if (categorizationMode === 'custom') {
+      // Custom mode: build labels from custom categories
+      const labels: Record<string, string> = {
+        [UNCATEGORIZED_CATEGORY_ID]: 'Uncategorized'
+      };
+      for (const category of deck.customCategories || []) {
+        labels[category.id] = category.label;
+      }
+      return labels;
+    } else {
+      // Default mode: use format service
+      const formatService = getFormatService(deck.format);
+      const labels: Record<string, string> = {};
+      for (const category of formatService.getAllCategories()) {
+        labels[category.id] = category.label;
+      }
+      return labels;
+    }
+  });
+
+  // Map categories to Mana Font icon classes
+  let categoryIcons = $derived.by(() => {
+    if (!deck) return {};
+
+    if (categorizationMode === 'custom') {
+      // Custom mode: build icons from custom categories
+      const icons: Record<string, string> = {
+        [UNCATEGORIZED_CATEGORY_ID]: ''
+      };
+      for (const category of deck.customCategories || []) {
+        icons[category.id] = category.icon || "";
+      }
+      return icons;
+    } else {
+      // Default mode: use format service
+      const formatService = getFormatService(deck.format);
+      const icons: Record<string, string> = {};
+      for (const category of formatService.getAllCategories()) {
+        icons[category.id] = category.icon || "";
+      }
+      return icons;
+    }
+  });
+
+  // Collapsible sections state - initialize dynamically
+  let collapsed = $state<Record<string, boolean>>({});
+
+  // Dynamic title based on format
+  let decklistTitle = $derived.by(() => {
+    if (!deck) return "Decklist";
+    return deck.format === DeckFormat.Cube ? "Cube List" : "Decklist";
+  });
+
+  function toggleCategory(category: string) {
+    collapsed[category] = !collapsed[category];
+  }
+
+  function getCategoryCards(category: string): Card[] {
+    const cards = deck?.cards[category] || [];
+
+    // Sort cards based on sortMode
+    if (sortMode === "name") {
+      return [...cards].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortMode === "mana_value") {
+      return [...cards].sort((a, b) => (a.cmc || 0) - (b.cmc || 0));
+    }
+
+    return cards;
+  }
+
+  function getCategoryCount(category: string): number {
+    const cards = getCategoryCards(category);
+    return cards.reduce((sum, card) => sum + card.quantity, 0);
+  }
+
+  function handleCardClick(card: Card, category: string) {
+    if (!isEditing) return;
+    // TODO: Show card menu
+  }
+
+  // Card menu actions
+  function handleAddOne(card: Card, category: string) {
+    deckStore.updateCardQuantity(card.name, category, 1);
+    closeCardMenu();
+  }
+
+  function handleRemove(card: Card, category: string) {
+    deckStore.removeCard(card.name, category);
+    closeCardMenu();
+  }
+
+  // Modal states
+  let addMoreCard = $state<{ card: Card; category: string } | null>(null);
+  let changePrintingCard = $state<{ card: Card; category: string } | null>(
+    null,
+  );
+  let detailModalCard = $state<{ name: string; category: string } | null>(null);
+  let isChangeCommanderModalOpen = $state(false);
+  let commanderModalMode = $state<
+    "replace_all" | "replace_partner" | "add_partner"
+  >("replace_all");
+  let commanderToReplaceIndex = $state<number>(0);
+  let isCustomCategoryManagerOpen = $state(false);
+
+  // Look up the current card from the store when modal is open
+  // This ensures we always get the latest card data including printing changes
+  let detailModalCardObject = $derived.by(() => {
+    if (!detailModalCard || !deck) return null;
+    const cardInfo = detailModalCard; // Capture to satisfy TypeScript
+    const cards = deck.cards[cardInfo.category];
+    return cards.find((c) => c.name === cardInfo.name) || null;
+  });
+
+  function showAddMoreModal(card: Card, category: string) {
+    addMoreCard = { card, category };
+    closeCardMenu();
+  }
+
+  function showChangePrintingModal(card: Card, category: string) {
+    changePrintingCard = { card, category };
+    closeCardMenu();
+  }
+
+  function handleAddQuantity(quantity: number) {
+    if (addMoreCard) {
+      deckStore.updateCardQuantity(
+        addMoreCard.card.name,
+        addMoreCard.category,
+        quantity,
+      );
+      addMoreCard = null;
+    }
+  }
+
+  function handleChangePrinting(newCard: Card) {
+    if (changePrintingCard) {
+      deckStore.switchPrinting(
+        changePrintingCard.card.name,
+        changePrintingCard.category,
+        newCard,
+      );
+      changePrintingCard = null;
+    }
+  }
+
+  function handleMoveToMaybeboard(card: Card, category: string) {
+    deckStore.moveToMaybeboard(card.name, category);
+    closeCardMenu();
+  }
+
+  function showChangeCommanderModal(
+    mode: "replace_all" | "replace_partner" | "add_partner" = "replace_all",
+    index: number = 0,
+  ) {
+    commanderModalMode = mode;
+    commanderToReplaceIndex = index;
+    isChangeCommanderModalOpen = true;
+    closeCardMenu();
+  }
+
+  function handleCommanderSelect(event: CustomEvent<Card>) {
+    const newCommander = event.detail;
+
+    if (commanderModalMode === "replace_all") {
+      deckStore.setCommanders([newCommander]);
+    } else if (commanderModalMode === "replace_partner") {
+      deckStore.replaceCommander(commanderToReplaceIndex, newCommander);
+    } else if (commanderModalMode === "add_partner") {
+      deckStore.addPartner(newCommander);
+    }
+
+    isChangeCommanderModalOpen = false;
+  }
+
+  function handleRemovePartner(commanderName: string) {
+    deckStore.removePartner(commanderName);
+    closeCardMenu();
+  }
+
+  function getCommanderIndex(commanderName: string): number {
+    if (!deck) return -1;
+    return deck.cards.commander.findIndex((c) => c.name === commanderName);
+  }
+
+  // Drag and drop handlers
+  let draggedCard = $state<{ card: Card; category: string } | null>(null);
+  let isDragging = $state(false);
+  let dragOverCategory = $state<string | null>(null);
+
+  // Dynamic layout mode for stacks view
+  let useMasonryLayout = $state(false);
+  let stacksContainerRef = $state<HTMLDivElement>();
+
+  // Calculate card width based on viewport breakpoints
+  function getCardWidth(width: number): number {
+    if (width >= 2560) return 220;
+    if (width >= 1024) return 200;
+    if (width >= 768) return 180;
+    return 165;
+  }
+
+  // Calculate gap size based on viewport breakpoints
+  function getGapSize(width: number): number {
+    if (width >= 2560) return 20; // 1.25rem
+    if (width >= 1536) return 16; // 1rem
+    if (width >= 1024) return 12; // 0.75rem
+    if (width >= 768) return 10; // 0.625rem
+    return 8; // 0.5rem
+  }
+
+  // Dynamically determine if we should use grid or masonry based on available space
+  function updateStacksLayout() {
+    if (viewMode !== "stacks" || !stacksContainerRef) return;
+
+    const nonEmptyCategories = categoryOrder.filter((cat) => {
+      const cards = deck?.cards[cat] || [];
+      return cards.length > 0;
+    });
+    const stackCount = nonEmptyCategories.length;
+
+    // Measure actual container width
+    const containerWidth = stacksContainerRef.clientWidth;
+    const viewportWidth =
+      typeof window !== "undefined" ? window.innerWidth : 1920;
+
+    const cardWidth = getCardWidth(viewportWidth);
+    const gap = getGapSize(viewportWidth);
+
+    // Calculate how many columns can fit in the actual container width
+    // Formula: (containerWidth + gap) / (cardWidth + gap)
+    const columnsFit = Math.floor((containerWidth + gap) / (cardWidth + gap));
+
+    // Use masonry if we can't fit all stacks in available columns
+    useMasonryLayout = columnsFit < stackCount;
+  }
+
+  // Update layout when dependencies change
+  $effect(() => {
+    updateStacksLayout();
+  });
+
+  // Update layout on resize
+  $effect(() => {
+    if (typeof window === "undefined") return;
+
+    function handleResize() {
+      updateStacksLayout();
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  });
+
+  function handleDragStart(event: DragEvent, card: Card, category: string) {
+    if (!isEditing || category === "commander") return;
+
+    draggedCard = { card, category };
+    isDragging = true;
+
+    // Set drag data
+    event.dataTransfer!.effectAllowed = "move";
+    event.dataTransfer!.setData(
+      "application/json",
+      JSON.stringify({ card, category, source: "decklist" }),
+    );
+
+    // Create custom drag image with card image
+    if (card.imageUrls?.small) {
+      const dragImage = new Image();
+      dragImage.src = card.imageUrls.small;
+      dragImage.style.width = "146px";
+      dragImage.style.height = "204px";
+      dragImage.style.borderRadius = "8px";
+      dragImage.style.position = "absolute";
+      dragImage.style.top = "-9999px";
+      document.body.appendChild(dragImage);
+
+      // Set drag image after a brief delay to ensure image is loaded
+      setTimeout(() => {
+        event.dataTransfer!.setDragImage(dragImage, 73, 102);
+        setTimeout(() => document.body.removeChild(dragImage), 0);
+      }, 0);
+    }
+  }
+
+  function handleDragEnd() {
+    draggedCard = null;
+    isDragging = false;
+    dragOverCategory = null;
+  }
+
+  function handleDragOver(event: DragEvent) {
+    if (!isEditing) return;
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = "move";
+  }
+
+  function handleDragOverCategory(event: DragEvent, category: string) {
+    if (!isEditing) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer!.dropEffect = "move";
+    dragOverCategory = category;
+  }
+
+  function handleDragLeaveCategory(event: DragEvent) {
+    // Only clear if we're actually leaving the category container
+    const relatedTarget = event.relatedTarget as HTMLElement;
+    const currentTarget = event.currentTarget as HTMLElement;
+
+    if (!currentTarget.contains(relatedTarget)) {
+      dragOverCategory = null;
+    }
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (!isEditing) return;
+    event.preventDefault();
+
+    try {
+      const data = JSON.parse(event.dataTransfer!.getData("application/json"));
+      if (data.source === "maybeboard") {
+        // Card dropped from maybeboard to decklist
+        deckStore.moveToDeck(data.card.name, data.categoryId);
+      }
+    } catch (e) {
+      console.error("Failed to parse drag data:", e);
+    }
+
+    draggedCard = null;
+    isDragging = false;
+    dragOverCategory = null;
+  }
+
+  function handleDropOnCategory(event: DragEvent, targetCategory: string) {
+    if (!isEditing) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      const data = JSON.parse(event.dataTransfer!.getData("application/json"));
+
+      if (data.source === "maybeboard") {
+        // Card dropped from maybeboard to specific category
+        deckStore.moveToDeck(data.card.name, data.categoryId, targetCategory);
+      } else if (data.source === "decklist" && categorizationMode === 'custom') {
+        // Card dropped between custom categories
+        const fromCategory = data.category;
+        if (fromCategory !== targetCategory) {
+          deckStore.moveCardToCustomCategory(data.card.name, fromCategory, targetCategory);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse drag data:", e);
+    }
+
+    draggedCard = null;
+    isDragging = false;
+    dragOverCategory = null;
+  }
 </script>
 
-<div class="flex-1 px-6 pt-6 pb-2 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
-	<!-- Header with dropdowns -->
-	<div class="flex items-center justify-between mb-4">
-		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">{decklistTitle}</h2>
+<div
+  class="flex-1 px-6 pt-6 pb-2 overflow-visible"
+  onkeydown={(e) => e.key === "Escape" && closeCardMenu()}
+  role="button"
+  tabindex="-1"
+>
+  <!-- Header with dropdowns -->
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-bold text-[var(--color-text-primary)]">
+      {decklistTitle}
+    </h2>
 
-		<div class="flex items-center gap-3">
-			<!-- Bulk Edit Button -->
-			{#if isEditing && onImport}
-				<button
-					onclick={onImport}
-					class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2"
-					title="Bulk Edit Decklist as Plaintext"
-				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-					</svg>
-					Bulk Edit
-				</button>
-			{/if}
+    <div class="flex items-center gap-3">
+      <!-- Bulk Edit Button -->
+      {#if isEditing && onImport}
+        <button
+          onclick={onImport}
+          class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2"
+          title="Bulk Edit Decklist as Plaintext"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          Bulk Edit
+        </button>
+      {/if}
 
-			<!-- View Dropdown -->
-			<div class="relative dropdown-container">
-				<button
-					onclick={() => { viewDropdownOpen = !viewDropdownOpen; groupDropdownOpen = false; sortDropdownOpen = false; }}
-					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
-				>
-					<span class="text-[var(--color-text-tertiary)]">View:</span>
-					<span>{viewMode === 'text' ? 'Text' : viewMode === 'condensed' ? 'Condensed Text' : viewMode === 'stacks' ? 'Stacks' : 'Visual Spoiler'}</span>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				</button>
-				{#if viewDropdownOpen}
-					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
-						<button
-							onclick={() => { viewSettingsStore.setViewMode('text'); viewDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'text' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Text
-						</button>
-						<button
-							onclick={() => { viewSettingsStore.setViewMode('condensed'); viewDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'condensed' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Condensed Text
-						</button>
-						<button
-							onclick={() => { viewSettingsStore.setViewMode('stacks'); viewDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'stacks' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Stacks
-						</button>
-						<button
-							onclick={() => { viewSettingsStore.setViewMode('visual'); viewDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode === 'visual' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Visual Spoiler
-						</button>
-					</div>
-				{/if}
-			</div>
+      <!-- View Dropdown -->
+      <div class="relative dropdown-container">
+        <button
+          onclick={() => {
+            viewDropdownOpen = !viewDropdownOpen;
+            groupDropdownOpen = false;
+            sortDropdownOpen = false;
+          }}
+          class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
+        >
+          <span class="text-[var(--color-text-tertiary)]">View:</span>
+          <span
+            >{viewMode === "text"
+              ? "Text"
+              : viewMode === "condensed"
+                ? "Condensed Text"
+                : viewMode === "stacks"
+                  ? "Stacks"
+                  : "Visual Spoiler"}</span
+          >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {#if viewDropdownOpen}
+          <div
+            class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10"
+          >
+            <button
+              onclick={() => {
+                viewSettingsStore.setViewMode("text");
+                viewDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode ===
+              'text'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Text
+            </button>
+            <button
+              onclick={() => {
+                viewSettingsStore.setViewMode("condensed");
+                viewDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode ===
+              'condensed'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Condensed Text
+            </button>
+            <button
+              onclick={() => {
+                viewSettingsStore.setViewMode("stacks");
+                viewDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode ===
+              'stacks'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Stacks
+            </button>
+            <button
+              onclick={() => {
+                viewSettingsStore.setViewMode("visual");
+                viewDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {viewMode ===
+              'visual'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Visual Spoiler
+            </button>
+          </div>
+        {/if}
+      </div>
 
-			<!-- Group Dropdown -->
-			<div class="relative dropdown-container">
-				<button
-					onclick={() => { groupDropdownOpen = !groupDropdownOpen; viewDropdownOpen = false; sortDropdownOpen = false; }}
-					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
-				>
-					<span class="text-[var(--color-text-tertiary)]">Group:</span>
-					<span>Type</span>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				</button>
-				{#if groupDropdownOpen}
-					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
-						<button
-							onclick={() => { groupMode = 'type'; groupDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-brand-primary)]"
-						>
-							Type
-						</button>
-					</div>
-				{/if}
-			</div>
+      <!-- Group Dropdown -->
+      <div class="relative dropdown-container">
+        <button
+          onclick={() => {
+            groupDropdownOpen = !groupDropdownOpen;
+            viewDropdownOpen = false;
+            sortDropdownOpen = false;
+          }}
+          class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
+        >
+          <span class="text-[var(--color-text-tertiary)]">Group:</span>
+          <span>{groupModeLabel}</span>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {#if groupDropdownOpen}
+          <div
+            class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10"
+          >
+            <button
+              onclick={() => {
+                deckStore.switchCategorizationMode('default');
+                groupDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {categorizationMode === 'default'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              {deck?.format === DeckFormat.Cube ? 'Color' : 'Type'}
+            </button>
+            <button
+              onclick={() => {
+                deckStore.switchCategorizationMode('custom');
+                groupDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {categorizationMode === 'custom'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Custom
+            </button>
+          </div>
+        {/if}
+      </div>
 
-			<!-- Sort Dropdown -->
-			<div class="relative dropdown-container">
-				<button
-					onclick={() => { sortDropdownOpen = !sortDropdownOpen; viewDropdownOpen = false; groupDropdownOpen = false; }}
-					class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
-				>
-					<span class="text-[var(--color-text-tertiary)]">Sort:</span>
-					<span>{sortMode === 'name' ? 'Name' : 'Mana Value'}</span>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				</button>
-				{#if sortDropdownOpen}
-					<div class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10">
-						<button
-							onclick={() => { sortMode = 'name'; sortDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode === 'name' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Name
-						</button>
-						<button
-							onclick={() => { sortMode = 'mana_value'; sortDropdownOpen = false; }}
-							class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode === 'mana_value' ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}"
-						>
-							Mana Value
-						</button>
-					</div>
-				{/if}
-			</div>
-		</div>
-	</div>
+      <!-- Manage Categories Button (Custom mode only) -->
+      {#if categorizationMode === 'custom' && isEditing}
+        <button
+          onclick={() => isCustomCategoryManagerOpen = true}
+          class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2"
+          title="Manage Custom Categories"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+            />
+          </svg>
+          Manage
+        </button>
+      {/if}
 
-	<!-- Card List -->
-	{#if viewMode === 'visual'}
-		<!-- Visual Spoiler View -->
-		<div class="space-y-6 overflow-visible" ondragover={handleDragOver} ondrop={handleDrop} role="region" aria-label="Visual deck view">
-			{#each categoryOrder as category}
-				{@const cards = getCategoryCards(category)}
-				{#if cards.length > 0}
-					<VisualSpoilerView
-						{cards}
-						{category}
-						categoryLabel={categoryLabels[category]}
-						categoryIcon={categoryIcons[category]}
-						isEditing={isEditing}
-						onCardClick={(card) => { detailModalCard = { name: card.name, category }; }}
-						onCardHover={onCardHover}
-						onDragStart={handleDragStart}
-						onDragEnd={handleDragEnd}
-					/>
-				{/if}
-			{/each}
-		</div>
-	{:else if viewMode === 'stacks'}
-		<!-- Stacks View - Dynamic Grid/Masonry based on available space -->
-		<div
-			bind:this={stacksContainerRef}
-			class="stacks-view-container {useMasonryLayout ? 'stacks-view-masonry' : 'stacks-view-grid'}"
-			ondragover={handleDragOver}
-			ondrop={handleDrop}
-			role="region"
-			aria-label="Stacks deck view"
-		>
-			{#each categoryOrder as category}
-				{@const cards = getCategoryCards(category)}
-				{#if cards.length > 0}
-					<StacksView
-						{cards}
-						{category}
-						categoryLabel={categoryLabels[category]}
-						categoryIcon={categoryIcons[category]}
-						isEditing={isEditing}
-						onCardClick={(card) => { detailModalCard = { name: card.name, category }; }}
-						onCardHover={onCardHover}
-						onDragStart={handleDragStart}
-						onDragEnd={handleDragEnd}
-					/>
-				{/if}
-			{/each}
-		</div>
-	{:else}
-		<!-- Text Views -->
-		<div class="space-y-2 overflow-visible">
-			{#each categoryOrder as category}
-				{@const cards = getCategoryCards(category)}
-				{@const count = getCategoryCount(category)}
+      <!-- Sort Dropdown -->
+      <div class="relative dropdown-container">
+        <button
+          onclick={() => {
+            sortDropdownOpen = !sortDropdownOpen;
+            viewDropdownOpen = false;
+            groupDropdownOpen = false;
+          }}
+          class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
+        >
+          <span class="text-[var(--color-text-tertiary)]">Sort:</span>
+          <span>{sortMode === "name" ? "Name" : "Mana Value"}</span>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+        {#if sortDropdownOpen}
+          <div
+            class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10"
+          >
+            <button
+              onclick={() => {
+                sortMode = "name";
+                sortDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode ===
+              'name'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Name
+            </button>
+            <button
+              onclick={() => {
+                sortMode = "mana_value";
+                sortDropdownOpen = false;
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] {sortMode ===
+              'mana_value'
+                ? 'text-[var(--color-brand-primary)]'
+                : 'text-[var(--color-text-primary)]'}"
+            >
+              Mana Value
+            </button>
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
 
-				{#if cards.length > 0}
-					<div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
-						<!-- Category Header -->
-						<button
-							onclick={() => toggleCategory(category)}
-							class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
-						>
-							<div class="flex items-center gap-3">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform {collapsed[category] ? '-rotate-90' : ''}"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-								</svg>
-								{#if categoryIcons[category]}
-									<i class="ms {categoryIcons[category]} text-base text-[var(--color-text-primary)]"></i>
-								{/if}
-								<span class="font-semibold text-[var(--color-brand-primary)] transition-colors group-hover:text-[var(--color-brand-secondary)]">
-									{categoryLabels[category]}
-								</span>
-								<span class="text-sm text-[var(--color-text-tertiary)]">
-									({count})
-								</span>
-							</div>
-						</button>
+  <!-- Card List -->
+  {#if viewMode === "visual"}
+    <!-- Visual Spoiler View -->
+    <div
+      class="space-y-6 overflow-visible"
+      ondragover={handleDragOver}
+      ondrop={handleDrop}
+      role="region"
+      aria-label="Visual deck view"
+    >
+      {#each categoryOrder as category}
+        {@const cards = getCategoryCards(category)}
+        {#if cards.length > 0 || categorizationMode === 'custom'}
+          <div
+            class="transition-all duration-200 {isDragging && dragOverCategory === category
+              ? 'ring-4 ring-[var(--color-brand-primary)]/50 rounded-lg bg-[var(--color-brand-primary)]/5'
+              : ''}"
+            ondragover={(e) => handleDragOverCategory(e, category)}
+            ondragleave={handleDragLeaveCategory}
+            ondrop={(e) => handleDropOnCategory(e, category)}
+          >
+            <VisualSpoilerView
+              {cards}
+              {category}
+              categoryLabel={categoryLabels[category]}
+              categoryIcon={categoryIcons[category]}
+              {isEditing}
+              onCardClick={(card) => {
+                detailModalCard = { name: card.name, category };
+              }}
+              {onCardHover}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            />
+          </div>
+        {/if}
+      {/each}
+    </div>
+  {:else if viewMode === "stacks"}
+    <!-- Stacks View - Dynamic Grid/Masonry based on available space -->
+    <div
+      bind:this={stacksContainerRef}
+      class="stacks-view-container {useMasonryLayout
+        ? 'stacks-view-masonry'
+        : 'stacks-view-grid'}"
+      ondragover={handleDragOver}
+      ondrop={handleDrop}
+      role="region"
+      aria-label="Stacks deck view"
+    >
+      {#each categoryOrder as category}
+        {@const cards = getCategoryCards(category)}
+        {#if cards.length > 0 || categorizationMode === 'custom'}
+          <div
+            class="transition-all duration-200 {isDragging && dragOverCategory === category
+              ? 'ring-4 ring-[var(--color-brand-primary)]/50 rounded-lg bg-[var(--color-brand-primary)]/5'
+              : ''}"
+            ondragover={(e) => handleDragOverCategory(e, category)}
+            ondragleave={handleDragLeaveCategory}
+            ondrop={(e) => handleDropOnCategory(e, category)}
+          >
+            <StacksView
+              {cards}
+              {category}
+              categoryLabel={categoryLabels[category]}
+              categoryIcon={categoryIcons[category]}
+              {isEditing}
+              onCardClick={(card) => {
+                detailModalCard = { name: card.name, category };
+              }}
+              {onCardHover}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            />
+          </div>
+        {/if}
+      {/each}
+    </div>
+  {:else}
+    <!-- Text Views -->
+    <div class="space-y-2 overflow-visible">
+      {#each categoryOrder as category}
+        {@const cards = getCategoryCards(category)}
+        {@const count = getCategoryCount(category)}
 
-						<!-- Card List in Responsive Columns -->
-						{#if !collapsed[category]}
-							<div
-								class="px-4 pb-2 rounded-b-lg overflow-visible"
-								ondragover={handleDragOver}
-								ondrop={handleDrop}
-								role="region"
-								aria-label={`${categoryLabels[category]} cards`}
-							>
-								<div class="responsive-card-grid overflow-visible">
-								{#each cards as card}
-											<div
-												class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode === 'condensed' ? 'py-0.5 px-2' : 'py-1.5 px-2'} {isEditing && category !== 'commander' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
-												draggable={isEditing && category !== 'commander'}
-												ondragstart={(e) => handleDragStart(e, card, category)}
-												ondragend={handleDragEnd}
-												onmouseenter={() => {
-													onCardHover?.(card);
-												}}
-												onclick={() => { detailModalCard = { name: card.name, category }; }}
-												onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = { name: card.name, category }; } }}
-												role="button"
-												tabindex="0"
-											>
-												<div class="flex items-center gap-2 flex-1 min-w-0">
-													<!-- Quantity -->
-													<span class="text-[var(--color-text-primary)] text-sm font-semibold flex-shrink-0 min-w-[1.5rem]">
-														{card.quantity}
-													</span>
+        {#if cards.length > 0 || categorizationMode === 'custom'}
+          <div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
+            <!-- Category Header -->
+            <button
+              onclick={() => toggleCategory(category)}
+              class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
+            >
+              <div class="flex items-center gap-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4 text-[var(--color-text-tertiary)] transition-transform {collapsed[
+                    category
+                  ]
+                    ? '-rotate-90'
+                    : ''}"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+                {#if categoryIcons[category]}
+                  <i
+                    class="ms {categoryIcons[
+                      category
+                    ]} text-base text-[var(--color-text-primary)]"
+                  ></i>
+                {/if}
+                <span
+                  class="font-semibold text-[var(--color-brand-primary)] transition-colors group-hover:text-[var(--color-brand-secondary)]"
+                >
+                  {categoryLabels[category]}
+                </span>
+                <span class="text-sm text-[var(--color-text-tertiary)]">
+                  ({count})
+                </span>
+              </div>
+            </button>
 
-													<!-- Card Name -->
-													<span class="text-[var(--color-text-primary)] text-sm truncate card-name">
-														{card.name}
-													</span>
+            <!-- Card List in Responsive Columns -->
+            {#if !collapsed[category]}
+              <div
+                class="px-4 pb-2 rounded-b-lg overflow-visible transition-colors {isDragging && dragOverCategory === category
+                  ? 'bg-[var(--color-brand-primary)]/10 ring-2 ring-[var(--color-brand-primary)]/50 ring-inset'
+                  : ''}"
+                ondragover={(e) => handleDragOverCategory(e, category)}
+                ondragleave={handleDragLeaveCategory}
+                ondrop={(e) => handleDropOnCategory(e, category)}
+                role="region"
+                aria-label={`${categoryLabels[category]} cards`}
+              >
+                <div class="responsive-card-grid overflow-visible">
+                  {#each cards as card}
+                    <div
+                      class="relative flex items-center justify-between hover:bg-[var(--color-brand-primary)]/5 rounded transition-colors group {viewMode ===
+                      'condensed'
+                        ? 'py-0.5 px-2'
+                        : 'py-1.5 px-2'} {isEditing && category !== 'commander'
+                        ? 'cursor-grab active:cursor-grabbing'
+                        : 'cursor-pointer'}"
+                      draggable={isEditing && category !== "commander"}
+                      ondragstart={(e) => handleDragStart(e, card, category)}
+                      ondragend={handleDragEnd}
+                      onmouseenter={() => {
+                        onCardHover?.(card);
+                      }}
+                      onclick={() => {
+                        detailModalCard = { name: card.name, category };
+                      }}
+                      onkeydown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          detailModalCard = { name: card.name, category };
+                        }
+                      }}
+                      role="button"
+                      tabindex="0"
+                    >
+                      <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <!-- Quantity -->
+                        <span
+                          class="text-[var(--color-text-primary)] text-sm font-semibold flex-shrink-0 min-w-[1.5rem]"
+                        >
+                          {card.quantity}
+                        </span>
 
-													<!-- Mana Cost -->
-													{#if card.manaCost}
-														<span class="flex-shrink-0">
-															<ManaSymbol cost={card.manaCost} size="xxs" />
-														</span>
-													{/if}
+                        <!-- Card Name -->
+                        <span
+                          class="text-[var(--color-text-primary)] text-sm truncate card-name"
+                        >
+                          {card.name}
+                        </span>
 
+                        <!-- Mana Cost -->
+                        {#if card.manaCost}
+                          <span class="flex-shrink-0">
+                            <ManaSymbol cost={card.manaCost} size="xxs" />
+                          </span>
+                        {/if}
 
-													<!-- Banned Icon -->
-													{#if formatService && formatService.isCardBanned(card)}
-														<span
-															class="flex-shrink-0 text-red-600 font-bold text-xs"
-															title="Banned in Commander"
-														>
-															<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-																<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-																<path d="M11.854 4.146a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708-.708l7-7a.5.5 0 0 1 .708 0z"/>
-															</svg>
-														</span>
-													{/if}
+                        <!-- Banned Icon -->
+                        {#if formatService && formatService.isCardBanned(card)}
+                          <span
+                            class="flex-shrink-0 text-red-600 font-bold text-xs"
+                            title="Banned in Commander"
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path
+                                d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"
+                              />
+                              <path
+                                d="M11.854 4.146a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708-.708l7-7a.5.5 0 0 1 .708 0z"
+                              />
+                            </svg>
+                          </span>
+                        {/if}
 
-													<!-- Game Changer Badge -->
-													{#if formatService && formatService.isSpecialCard(card.name)}
-														<span
-															class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/40"
-															title="Game Changer - This card affects your deck's bracket level"
-														>
-															<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
-																<path d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
-															</svg>
-															GC
-														</span>
-													{/if}
+                        <!-- Game Changer Badge -->
+                        {#if formatService && formatService.isSpecialCard(card.name)}
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/40"
+                            title="Game Changer - This card affects your deck's bracket level"
+                          >
+                            <svg
+                              class="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path
+                                d="M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm3.854 1.146a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 1 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0zm-7.708 0a.5.5 0 0 1 .708 0l1.5 1.5a.5.5 0 1 1-.708.708l-1.5-1.5a.5.5 0 0 1 0-.708zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
+                              />
+                            </svg>
+                            GC
+                          </span>
+                        {/if}
 
-													<!-- Color Identity Violation Icon -->
-													{#if isOutsideColorIdentity(card)}
-														<span
-															class="flex-shrink-0 text-red-500 font-bold text-sm"
-															title="Outside commander's color identity"
-														>
-															!
-														</span>
-													{/if}
+                        <!-- Color Identity Violation Icon -->
+                        {#if isOutsideColorIdentity(card)}
+                          <span
+                            class="flex-shrink-0 text-red-500 font-bold text-sm"
+                            title="Outside commander's color identity"
+                          >
+                            !
+                          </span>
+                        {/if}
 
-													<!-- Validation Warnings -->
-													{#each getCardWarnings(card.name) as warning}
-														<ValidationWarningIcon {warning} position="below" />
-													{/each}
-												</div>
+                        <!-- Validation Warnings -->
+                        {#each getCardWarnings(card.name) as warning}
+                          <ValidationWarningIcon {warning} position="below" />
+                        {/each}
+                      </div>
 
-												<!-- Card Menu Icon -->
-												{#if isEditing}
-												<div class="flex-shrink-0">
-												<button
-												 class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-border)] rounded"
-												 onmousedown={(e) => e.stopPropagation()}
-												 onclick={(e) => { e.stopPropagation(); toggleCardMenu(card.name, category); }}
-												  title="Card options"
-												>
-												<svg class="w-4 h-4 text-[var(--color-text-secondary)]" fill="currentColor" viewBox="0 0 16 16">
-												  <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-												  </svg>
-												  </button>
-											</div>
-										{/if}
+                      <!-- Card Menu Icon -->
+                      {#if isEditing}
+                        <div class="flex-shrink-0">
+                          <button
+                            class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-border)] rounded"
+                            onmousedown={(e) => e.stopPropagation()}
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              toggleCardMenu(card.name, category);
+                            }}
+                            title="Card options"
+                          >
+                            <svg
+                              class="w-4 h-4 text-[var(--color-text-secondary)]"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path
+                                d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      {/if}
 
-												<!-- Card Menu Dropdown (positioned relative to card row) -->
-												{#if isCardMenuOpen(card.name, category)}
-														<div
-															bind:this={openCardMenuRef}
-															class="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]"
-														>
-															{#if category === 'commander'}
-																{@const hasPartner = deck && deck.cards['commander'].length === 2}
-																{@const canHavePartner = deck && deck.cards['commander'].length === 1 && canAddPartner(deck.cards['commander'][0])}
-																{@const commanderIndex = getCommanderIndex(card.name)}
+                      <!-- Card Menu Dropdown (positioned relative to card row) -->
+                      {#if isCardMenuOpen(card.name, category)}
+                        <div
+                          bind:this={openCardMenuRef}
+                          class="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]"
+                        >
+                          {#if category === "commander"}
+                            {@const hasPartner =
+                              deck && deck.cards["commander"].length === 2}
+                            {@const canHavePartner =
+                              deck &&
+                              deck.cards["commander"].length === 1 &&
+                              canAddPartner(deck.cards["commander"][0])}
+                            {@const commanderIndex = getCommanderIndex(
+                              card.name,
+                            )}
 
-																<!-- Commander-specific menu -->
-																<button
-																	onclick={(e) => { e.stopPropagation(); showChangePrintingModal(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-																	</svg>
-																	Change printing
-																</button>
+                            <!-- Commander-specific menu -->
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                showChangePrintingModal(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              Change printing
+                            </button>
 
-																{#if hasPartner}
-																	<!-- Partner commander options -->
-																	<button
-																		onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('replace_partner', commanderIndex); }}
-																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																	>
-																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-																		</svg>
-																		Replace this partner
-																	</button>
-																	<button
-																		onclick={(e) => { e.stopPropagation(); handleRemovePartner(card.name); }}
-																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-400 flex items-center gap-2"
-																	>
-																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-																		</svg>
-																		Remove this partner
-																	</button>
-																{:else}
-																	<!-- Single commander options -->
-																	<button
-																		onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('replace_all', 0); }}
-																		class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																	>
-																		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-																		</svg>
-																		Change commander
-																	</button>
-																	{#if canHavePartner}
-																		<button
-																			onclick={(e) => { e.stopPropagation(); showChangeCommanderModal('add_partner', 0); }}
-																			class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-green-400 flex items-center gap-2"
-																		>
-																			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-																			</svg>
-																			Add partner commander
-																		</button>
-																	{/if}
-																{/if}
-															{:else}
-																<!-- Regular card menu -->
-																<button
-																	onclick={(e) => { e.stopPropagation(); handleAddOne(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-																	</svg>
-																	Add one
-																</button>
-																<button
-																	onclick={(e) => { e.stopPropagation(); showAddMoreModal(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-																	</svg>
-																	Add more...
-																</button>
-																<button
-																	onclick={(e) => { e.stopPropagation(); handleRemove(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-																	</svg>
-																	Remove
-																</button>
-																<div class="border-t border-[var(--color-border)] my-1"></div>
-																<button
-																	onclick={(e) => { e.stopPropagation(); showChangePrintingModal(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-																	</svg>
-																	Change printing
-																</button>
-																<button
-																	onclick={(e) => { e.stopPropagation(); handleMoveToMaybeboard(card, category); }}
-																	class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-																>
-																	<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																		<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-																	</svg>
-																	Move to Maybeboard
-																</button>
-															{/if}
-														</div>
-													{/if}
-											</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				</div>
-			{/if}
-			{/each}
+                            {#if hasPartner}
+                              <!-- Partner commander options -->
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  showChangeCommanderModal(
+                                    "replace_partner",
+                                    commanderIndex,
+                                  );
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                  />
+                                </svg>
+                                Replace this partner
+                              </button>
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePartner(card.name);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-400 flex items-center gap-2"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                                Remove this partner
+                              </button>
+                            {:else}
+                              <!-- Single commander options -->
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  showChangeCommanderModal("replace_all", 0);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                  />
+                                </svg>
+                                Change commander
+                              </button>
+                              {#if canHavePartner}
+                                <button
+                                  onclick={(e) => {
+                                    e.stopPropagation();
+                                    showChangeCommanderModal("add_partner", 0);
+                                  }}
+                                  class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-green-400 flex items-center gap-2"
+                                >
+                                  <svg
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                    />
+                                  </svg>
+                                  Add partner commander
+                                </button>
+                              {/if}
+                            {/if}
+                          {:else}
+                            <!-- Regular card menu -->
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                handleAddOne(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                              </svg>
+                              Add one
+                            </button>
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                showAddMoreModal(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                              </svg>
+                              Add more...
+                            </button>
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                handleRemove(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M20 12H4"
+                                />
+                              </svg>
+                              Remove
+                            </button>
+                            <div
+                              class="border-t border-[var(--color-border)] my-1"
+                            ></div>
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                showChangePrintingModal(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              Change printing
+                            </button>
+                            <button
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                handleMoveToMaybeboard(card, category);
+                              }}
+                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                                />
+                              </svg>
+                              Move to Maybeboard
+                            </button>
+                          {/if}
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
 
-			<!-- Tokens & Extras Section -->
-			<TokensSection {tokens} onCardHover={onCardHover} />
-		</div>
-	{/if}
+                  <!-- Empty state for custom categories -->
+                  {#if cards.length === 0 && categorizationMode === 'custom'}
+                    <div class="py-8 text-center text-[var(--color-text-tertiary)] italic">
+                      <svg class="w-12 h-12 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Drag cards here
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      {/each}
+
+      <!-- Tokens & Extras Section -->
+      <TokensSection {tokens} {onCardHover} />
+    </div>
+  {/if}
 </div>
 
 <!-- Modals -->
 {#if addMoreCard}
-	<AddQuantityModal
-		card={addMoreCard.card}
-		isOpen={true}
-		onConfirm={handleAddQuantity}
-		onClose={() => (addMoreCard = null)}
-	/>
+  <AddQuantityModal
+    card={addMoreCard.card}
+    isOpen={true}
+    onConfirm={handleAddQuantity}
+    onClose={() => (addMoreCard = null)}
+  />
 {/if}
 
 {#if changePrintingCard}
-	<ChangePrintingModal
-		card={changePrintingCard.card}
-		onConfirm={handleChangePrinting}
-		onClose={() => changePrintingCard = null}
-	/>
+  <ChangePrintingModal
+    card={changePrintingCard.card}
+    onConfirm={handleChangePrinting}
+    onClose={() => (changePrintingCard = null)}
+  />
 {/if}
 
 {#if detailModalCardObject}
-	<CardDetailModal
-		card={detailModalCardObject}
-		isOpen={detailModalCardObject !== null}
-		onClose={() => detailModalCard = null}
-		{isCommander}
-		{commanderName}
-		onPrintingChange={(cardName, printingData) => {
-			console.log('[ListView] onPrintingChange called:', {
-				cardName,
-				printingData: {
-					id: printingData.id,
-					set: printingData.set,
-					collector_number: printingData.collector_number,
-					image_uris: printingData.image_uris ? 'present' : 'missing',
-					card_faces: printingData.card_faces ? 'present' : 'missing'
-				}
-			});
+  <CardDetailModal
+    card={detailModalCardObject}
+    isOpen={detailModalCardObject !== null}
+    onClose={() => (detailModalCard = null)}
+    {isCommander}
+    {commanderName}
+    onPrintingChange={(cardName, printingData) => {
+      console.log("[ListView] onPrintingChange called:", {
+        cardName,
+        printingData: {
+          id: printingData.id,
+          set: printingData.set,
+          collector_number: printingData.collector_number,
+          image_uris: printingData.image_uris ? "present" : "missing",
+          card_faces: printingData.card_faces ? "present" : "missing",
+        },
+      });
 
-			// For double-faced cards, image_uris might be on card_faces[0] instead of top level
-			let imageUrls = undefined;
-			let cardFaces = undefined;
+      // For double-faced cards, image_uris might be on card_faces[0] instead of top level
+      let imageUrls = undefined;
+      let cardFaces = undefined;
 
-			if (printingData.image_uris) {
-				imageUrls = {
-					small: printingData.image_uris.small,
-					normal: printingData.image_uris.normal,
-					large: printingData.image_uris.large,
-					png: printingData.image_uris.png,
-					artCrop: printingData.image_uris.art_crop,
-					borderCrop: printingData.image_uris.border_crop
-				};
-			} else if (printingData.card_faces?.[0]?.image_uris) {
-				// For double-faced cards, extract image from first face for top-level
-				imageUrls = {
-					small: printingData.card_faces[0].image_uris.small,
-					normal: printingData.card_faces[0].image_uris.normal,
-					large: printingData.card_faces[0].image_uris.large,
-					png: printingData.card_faces[0].image_uris.png,
-					artCrop: printingData.card_faces[0].image_uris.art_crop,
-					borderCrop: printingData.card_faces[0].image_uris.border_crop
-				};
-			}
+      if (printingData.image_uris) {
+        imageUrls = {
+          small: printingData.image_uris.small,
+          normal: printingData.image_uris.normal,
+          large: printingData.image_uris.large,
+          png: printingData.image_uris.png,
+          artCrop: printingData.image_uris.art_crop,
+          borderCrop: printingData.image_uris.border_crop,
+        };
+      } else if (printingData.card_faces?.[0]?.image_uris) {
+        // For double-faced cards, extract image from first face for top-level
+        imageUrls = {
+          small: printingData.card_faces[0].image_uris.small,
+          normal: printingData.card_faces[0].image_uris.normal,
+          large: printingData.card_faces[0].image_uris.large,
+          png: printingData.card_faces[0].image_uris.png,
+          artCrop: printingData.card_faces[0].image_uris.art_crop,
+          borderCrop: printingData.card_faces[0].image_uris.border_crop,
+        };
+      }
 
-			// If card has multiple faces, update the cardFaces array too
-			if (printingData.card_faces && printingData.card_faces.length > 1) {
-				cardFaces = printingData.card_faces.map(face => ({
-					name: face.name,
-					manaCost: face.mana_cost,
-					typeLine: face.type_line,
-					oracleText: face.oracle_text,
-					imageUrls: face.image_uris ? {
-						small: face.image_uris.small,
-						normal: face.image_uris.normal,
-						large: face.image_uris.large,
-						png: face.image_uris.png,
-						artCrop: face.image_uris.art_crop,
-						borderCrop: face.image_uris.border_crop
-					} : undefined,
-					colors: face.colors,
-					power: face.power,
-					toughness: face.toughness,
-					loyalty: face.loyalty
-				}));
-			}
+      // If card has multiple faces, update the cardFaces array too
+      if (printingData.card_faces && printingData.card_faces.length > 1) {
+        cardFaces = printingData.card_faces.map((face) => ({
+          name: face.name,
+          manaCost: face.mana_cost,
+          typeLine: face.type_line,
+          oracleText: face.oracle_text,
+          imageUrls: face.image_uris
+            ? {
+                small: face.image_uris.small,
+                normal: face.image_uris.normal,
+                large: face.image_uris.large,
+                png: face.image_uris.png,
+                artCrop: face.image_uris.art_crop,
+                borderCrop: face.image_uris.border_crop,
+              }
+            : undefined,
+          colors: face.colors,
+          power: face.power,
+          toughness: face.toughness,
+          loyalty: face.loyalty,
+        }));
+      }
 
-			const updateData = {
-				scryfallId: printingData.id,
-				setCode: printingData.set,
-				collectorNumber: printingData.collector_number,
-				imageUrls,
-				cardFaces
-			};
+      const updateData = {
+        scryfallId: printingData.id,
+        setCode: printingData.set,
+        collectorNumber: printingData.collector_number,
+        imageUrls,
+        cardFaces,
+      };
 
-			console.log('[ListView] Calling deckStore.updateCardPrinting with:', cardName, updateData);
-			deckStore.updateCardPrinting(cardName, updateData);
-		}}
-	/>
+      console.log(
+        "[ListView] Calling deckStore.updateCardPrinting with:",
+        cardName,
+        updateData,
+      );
+      deckStore.updateCardPrinting(cardName, updateData);
+    }}
+  />
 {/if}
 
 <ChangeCommanderModal
-	isOpen={isChangeCommanderModalOpen}
-	mode={commanderModalMode}
-	existingCommanders={deck?.cards.commander || []}
-	on:select={handleCommanderSelect}
-	on:close={() => isChangeCommanderModalOpen = false}
+  isOpen={isChangeCommanderModalOpen}
+  mode={commanderModalMode}
+  existingCommanders={deck?.cards.commander || []}
+  on:select={handleCommanderSelect}
+  on:close={() => (isChangeCommanderModalOpen = false)}
+/>
+
+<CustomCategoryManager
+  bind:isOpen={isCustomCategoryManagerOpen}
+  onClose={() => (isCustomCategoryManagerOpen = false)}
 />
 
 <style>
-	.card-name {
-		font-family: 'Roboto Condensed', sans-serif;
-		font-weight: 500;
-		letter-spacing: -0.01em;
-	}
+  .card-name {
+    font-family: "Roboto Condensed", sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
 
-	.responsive-card-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		column-gap: 1rem;
-	}
+  .responsive-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    column-gap: 1rem;
+  }
 
-	/* At larger screens (1920px), aim for approximately 4 columns */
-	@media (min-width: 1536px) {
-		.responsive-card-grid {
-			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-		}
-	}
+  /* At larger screens (1920px), aim for approximately 4 columns */
+  @media (min-width: 1536px) {
+    .responsive-card-grid {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+  }
 
-	/* At smaller screens, allow fewer columns */
-	@media (max-width: 1024px) {
-		.responsive-card-grid {
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		}
-	}
+  /* At smaller screens, allow fewer columns */
+  @media (max-width: 1024px) {
+    .responsive-card-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+  }
 
-	@media (max-width: 768px) {
-		.responsive-card-grid {
-			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		}
-	}
+  @media (max-width: 768px) {
+    .responsive-card-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+  }
 
-	/* Stacks View Layout - Base Container */
-	.stacks-view-container {
-		padding: 0;
-		margin-bottom: 0.5rem;
-		overflow: visible;
-	}
+  /* Stacks View Layout - Base Container */
+  .stacks-view-container {
+    padding: 0;
+    margin-bottom: 0.5rem;
+    overflow: visible;
+  }
 
-	/* Grid Mode: Clean columns for 8 or fewer stacks (no masonry breaking) */
-	.stacks-view-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
-		gap: 0.5rem;
-	}
+  /* Grid Mode: Clean columns for 8 or fewer stacks (no masonry breaking) */
+  .stacks-view-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 0.5rem;
+  }
 
-	@media (min-width: 768px) {
-		.stacks-view-grid {
-			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-			gap: 0.625rem;
-		}
-	}
+  @media (min-width: 768px) {
+    .stacks-view-grid {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.625rem;
+    }
+  }
 
-	@media (min-width: 1024px) {
-		.stacks-view-grid {
-			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-			gap: 0.75rem;
-		}
-	}
+  @media (min-width: 1024px) {
+    .stacks-view-grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+  }
 
-	@media (min-width: 1536px) {
-		.stacks-view-grid {
-			gap: 1rem;
-		}
-	}
+  @media (min-width: 1536px) {
+    .stacks-view-grid {
+      gap: 1rem;
+    }
+  }
 
-	@media (min-width: 2560px) {
-		.stacks-view-grid {
-			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-			gap: 1.25rem;
-		}
-	}
+  @media (min-width: 2560px) {
+    .stacks-view-grid {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+  }
 
-	/* Masonry Mode: Efficient packing for 9+ stacks (allows column breaking) */
-	.stacks-view-masonry {
-		column-width: 165px;
-		column-gap: 0.5rem;
-	}
+  /* Masonry Mode: Efficient packing for 9+ stacks (allows column breaking) */
+  .stacks-view-masonry {
+    column-width: 165px;
+    column-gap: 0.5rem;
+  }
 
-	@media (min-width: 768px) {
-		.stacks-view-masonry {
-			column-width: 180px;
-			column-gap: 0.625rem;
-		}
-	}
+  @media (min-width: 768px) {
+    .stacks-view-masonry {
+      column-width: 180px;
+      column-gap: 0.625rem;
+    }
+  }
 
-	@media (min-width: 1024px) {
-		.stacks-view-masonry {
-			column-width: 200px;
-			column-gap: 0.75rem;
-		}
-	}
+  @media (min-width: 1024px) {
+    .stacks-view-masonry {
+      column-width: 200px;
+      column-gap: 0.75rem;
+    }
+  }
 
-	@media (min-width: 1536px) {
-		.stacks-view-masonry {
-			column-gap: 1rem;
-		}
-	}
+  @media (min-width: 1536px) {
+    .stacks-view-masonry {
+      column-gap: 1rem;
+    }
+  }
 
-	@media (min-width: 2560px) {
-		.stacks-view-masonry {
-			column-width: 220px;
-			column-gap: 1.25rem;
-		}
-	}
+  @media (min-width: 2560px) {
+    .stacks-view-masonry {
+      column-width: 220px;
+      column-gap: 1.25rem;
+    }
+  }
 </style>
