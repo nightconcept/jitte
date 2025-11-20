@@ -796,7 +796,7 @@
           class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
         >
           <span class="text-[var(--color-text-tertiary)]">Group:</span>
-          <span>{categorizationMode === 'custom' ? 'Custom Categories' : `Default (${groupModeLabel})`}</span>
+          <span>{categorizationMode === 'custom' ? 'Custom Categories' : groupModeLabel}</span>
           <svg
             class="w-4 h-4"
             fill="none"
@@ -824,7 +824,7 @@
                 ? 'text-[var(--color-brand-primary)]'
                 : 'text-[var(--color-text-primary)]'}"
             >
-              Default ({deck?.format === DeckFormat.Cube ? 'Color' : 'Type'})
+              {deck?.format === DeckFormat.Cube ? 'Color' : 'Type'}
             </button>
             <button
               onclick={() => {
