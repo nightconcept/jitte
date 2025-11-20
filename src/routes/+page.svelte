@@ -11,7 +11,7 @@
 	import Maybeboard from '$lib/components/Maybeboard.svelte';
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CommitModal from '$lib/components/CommitModal.svelte';
-	import NewDeckModal from '$lib/components/NewDeckModal.svelte';
+	import NewListModal from '$lib/components/NewListModal.svelte';
 	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
@@ -127,6 +127,9 @@
 
 	// Check if current deck is Commander format
 	const isCommander = $derived($deckStore?.deck?.format === DeckFormat.Commander);
+
+	// Check if current deck is Cube format
+	const isCube = $derived($deckStore?.deck?.format === DeckFormat.Cube);
 
 	// Get commander name for EDHREC recommendations
 	const commanderName = $derived.by(() => {
@@ -318,19 +321,8 @@
 			// Build a map of existing cards (commander) for fast lookup
 			const existingCardsMap = new Map<string, Card>();
 			if ($deckStore) {
-				const categories: CardCategory[] = [
-					CardCategory.Commander,
-					CardCategory.Companion,
-					CardCategory.Planeswalker,
-					CardCategory.Creature,
-					CardCategory.Instant,
-					CardCategory.Sorcery,
-					CardCategory.Artifact,
-					CardCategory.Enchantment,
-					CardCategory.Land
-				];
-				for (const category of categories) {
-					const categoryCards = $deckStore.deck.cards[category] || [];
+				// Get all cards from all categories in the deck
+				for (const categoryCards of Object.values($deckStore.deck.cards)) {
 					for (const card of categoryCards) {
 						existingCardsMap.set(card.name.toLowerCase(), card);
 					}
@@ -381,6 +373,14 @@
 				console.log('[handleImportDeck] Not found cards:', batchResult.notFound.map(c => c.name));
 			}
 
+			// Log all card names returned by Scryfall
+			console.log('[handleImportDeck] All Scryfall card names:',
+				Array.from(uniqueCards).map(c => c.name).join(', ')
+			);
+
+			// Log all lookup keys in the map
+			console.log('[handleImportDeck] All lookup keys:', Array.from(batchResult.cards.keys()));
+
 			// Process found cards
 			for (const parsedCard of cardsToImport) {
 				// Try to find by set+collector first, fallback to name
@@ -389,6 +389,8 @@
 					: parsedCard.name.toLowerCase();
 
 				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
+
+				console.log(`[handleImportDeck] Processing: "${parsedCard.name}", lookupKey: "${lookupKey}", found: ${!!scryfallCard}${scryfallCard ? `, scryfall name: "${scryfallCard.name}"` : ''}`);
 
 				if (scryfallCard) {
 					// Convert to our Card type
@@ -406,14 +408,61 @@
 				}
 			}
 
-			// Add any cards from the not_found array
+			// Retry not_found cards individually (handles alternate/serialized names)
+			console.log('[handleImportDeck] Retrying not_found cards individually...', {
+				notFoundCount: batchResult.notFound.length,
+				notFoundNames: batchResult.notFound.map(c => c.name)
+			});
 			for (const notFoundCard of batchResult.notFound) {
-				const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
-					? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
-					: notFoundCard.name;
+				try {
+					console.log(`[handleImportDeck] Retrying: "${notFoundCard.name}"`);
+					// Try individual lookup with fuzzy matching - supports alternate names like "Mina Harker"
+					const scryfallCard = await cardService.getCardByName(notFoundCard.name, 'import-retry', false);
 
-				if (!failedCards.includes(displayName)) {
-					failedCards.push(displayName);
+					if (scryfallCard) {
+						console.log(`[handleImportDeck] ✓ Found via retry: "${notFoundCard.name}" → "${scryfallCard.name}"`);
+						// Find the original parsed card to get quantity
+						const originalCard = cardsToImport.find(c => c.name.toLowerCase() === notFoundCard.name.toLowerCase());
+						console.log(`[handleImportDeck]   Original card lookup:`, {
+							searchingFor: notFoundCard.name.toLowerCase(),
+							found: !!originalCard,
+							originalCard: originalCard ? { name: originalCard.name, quantity: originalCard.quantity } : null
+						});
+						if (originalCard) {
+							const fullCard = scryfallToCard(scryfallCard, originalCard.quantity, {
+								setCode: originalCard.setCode,
+								collectorNumber: originalCard.collectorNumber
+							});
+							console.log(`[handleImportDeck]   Converted card:`, {
+								name: fullCard.name,
+								quantity: fullCard.quantity,
+								imageUrls: !!fullCard.imageUrls,
+								cardFaces: fullCard.cardFaces?.length
+							});
+							finalCards.push(fullCard);
+							successCount++;
+						} else {
+							console.warn(`[handleImportDeck]   Could not find original card for "${notFoundCard.name}"`);
+						}
+					} else {
+						console.log(`[handleImportDeck] ✗ Still not found after retry: "${notFoundCard.name}"`);
+
+						// Still not found after retry
+						const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
+							? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
+							: notFoundCard.name;
+						if (!failedCards.includes(displayName)) {
+							failedCards.push(displayName);
+						}
+					}
+				} catch (error) {
+					console.error(`[handleImportDeck] Error retrying ${notFoundCard.name}:`, error);
+					const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
+						? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
+						: notFoundCard.name;
+					if (!failedCards.includes(displayName)) {
+						failedCards.push(displayName);
+					}
 				}
 			}
 
@@ -956,8 +1005,10 @@
 				<!-- Deck List -->
 				<DeckList onCardHover={handleCardHover} onImport={handleImport} />
 
-				<!-- Statistics Section -->
-				<Statistics onCardHover={handleCardHover} />
+				<!-- Statistics Section (Hidden for Cube) -->
+				{#if !isCube}
+					<Statistics onCardHover={handleCardHover} />
+				{/if}
 			</div>
 
 			<!-- Maybeboard Sidebar (Right, Sticky) -->
@@ -975,7 +1026,7 @@
 	onCancel={() => showCommitModal = false}
 />
 
-<NewDeckModal
+<NewListModal
 	isOpen={showNewDeckModal}
 	on:create={handleCreateDeck}
 	on:close={() => showNewDeckModal = false}

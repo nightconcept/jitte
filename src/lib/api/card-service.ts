@@ -143,16 +143,21 @@ export class CardService {
 	}
 
 	/**
-	 * Get a card by exact name, with caching
+	 * Get a card by name, with caching
 	 * @param name - Card name
 	 * @param requestType - Request type for queue manager (default: 'general')
+	 * @param exact - If true, use exact matching. If false, use fuzzy matching (supports alternate names) (default: true)
 	 */
 	async getCardByName(
 		name: string,
-		requestType: string = 'general'
+		requestType: string = 'general',
+		exact: boolean = true
 	): Promise<ScryfallCard | null> {
 		try {
-			const card = await scryfallClient.getCardNamed(name, true, requestType);
+			// For split/adventure cards with " // ", try front face first
+			// Scryfall's named endpoint handles front face lookups better
+			const cardName = name.includes(' // ') ? name.split(' // ')[0].trim() : name;
+			const card = await scryfallClient.getCardNamed(cardName, exact, requestType);
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
@@ -214,7 +219,12 @@ export class CardService {
 		// Process each batch
 		for (const batch of batches) {
 			try {
-				const identifiers = batch.map((name) => ({ name }));
+				const identifiers = batch.map((name) => {
+					// For split/adventure cards with " // ", send just the front face
+					// Scryfall's collection endpoint handles front face lookups better
+					const cardName = name.includes(' // ') ? name.split(' // ')[0].trim() : name;
+					return { name: cardName };
+				});
 				const result = await scryfallClient.getCardCollection(identifiers);
 
 				// Add found cards to map (keyed by lowercase name for easy lookup)
@@ -290,7 +300,12 @@ export class CardService {
 							collector_number: card.collectorNumber
 						};
 					}
-					return { name: card.name };
+					// For split/adventure cards with " // ", send just the front face
+					// Scryfall's collection endpoint handles front face lookups better
+					const cardName = card.name.includes(' // ')
+						? card.name.split(' // ')[0].trim()
+						: card.name;
+					return { name: cardName };
 				});
 
 				const result = await scryfallClient.getCardCollection(identifiers);
@@ -303,6 +318,17 @@ export class CardService {
 					cards.set(key, card);
 					// Also add by name for fallback lookups
 					cards.set(card.name.toLowerCase(), card);
+
+					// Log card details for debugging split/adventure cards
+					if (card.name.includes(' // ') || card.layout === 'split' || card.layout === 'adventure') {
+						console.log(`[getCardsBatch] Split/Adventure card: "${card.name}", layout: ${card.layout}, has card_faces: ${!!card.card_faces}`);
+						if (card.card_faces && card.card_faces.length > 0) {
+							console.log(`[getCardsBatch]   Face 0: "${card.card_faces[0].name}"`);
+							if (card.card_faces.length > 1) {
+								console.log(`[getCardsBatch]   Face 1: "${card.card_faces[1].name}"`);
+							}
+						}
+					}
 
 					// For double-faced cards, also store by front face name only
 					// This handles cases where decklist has "Growing Rites of Itlimoc"
