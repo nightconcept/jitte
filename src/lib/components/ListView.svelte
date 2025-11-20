@@ -4,6 +4,7 @@
 	import type { Card } from '$lib/types/card';
 	import { DeckFormat } from '$lib/formats/format-registry';
 	import { getFormatService } from '$lib/formats/services/format-service-factory';
+	import type { FormatService } from '$lib/formats/services/format-service';
 	import AddQuantityModal from './AddQuantityModal.svelte';
 	import ChangePrintingModal from './ChangePrintingModal.svelte';
 	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
@@ -46,6 +47,12 @@
 		if (!deck || !isCommander) return '';
 		const commanders = deck.cards?.commander || [];
 		return commanders.length > 0 ? commanders[0].name : '';
+	});
+
+	// Get format service for current deck
+	let formatService = $derived.by(() => {
+		if (!deck) return null;
+		return getFormatService(deck.format);
 	});
 
 	// Token detection - dynamically calculate tokens from deck cards
@@ -248,6 +255,12 @@
 	// Collapsible sections state - initialize dynamically
 	let collapsed = $state<Record<string, boolean>>({});
 
+	// Dynamic title based on format
+	let decklistTitle = $derived.by(() => {
+		if (!deck) return 'Decklist';
+		return deck.format === DeckFormat.Cube ? 'Cube List' : 'Decklist';
+	});
+
 	function toggleCategory(category: string) {
 		collapsed[category] = !collapsed[category];
 	}
@@ -265,7 +278,7 @@
 		// Log when returning cards for debugging
 		if (category === 'creature' && cards.some(c => c.name.includes('Gwen Stacy'))) {
 			const gwenCard = cards.find(c => c.name.includes('Gwen Stacy'));
-			console.log('[DeckList] getCategoryCards for Creature - Gwen Stacy scryfallId:', gwenCard?.scryfallId);
+			console.log('[ListView] getCategoryCards for Creature - Gwen Stacy scryfallId:', gwenCard?.scryfallId);
 		}
 
 		return cards;
@@ -498,7 +511,7 @@
 <div class="flex-1 px-6 pt-6 pb-2 overflow-visible" onkeydown={(e) => e.key === 'Escape' && closeCardMenu()} role="button" tabindex="-1">
 	<!-- Header with dropdowns -->
 	<div class="flex items-center justify-between mb-4">
-		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">Decklist</h2>
+		<h2 class="text-xl font-bold text-[var(--color-text-primary)]">{decklistTitle}</h2>
 
 		<div class="flex items-center gap-3">
 			<!-- Bulk Edit Button -->
@@ -741,7 +754,7 @@
 
 
 													<!-- Banned Icon -->
-													{#if isCardBanned(card)}
+													{#if formatService && formatService.isCardBanned(card)}
 														<span
 															class="flex-shrink-0 text-red-600 font-bold text-xs"
 															title="Banned in Commander"
@@ -754,7 +767,7 @@
 													{/if}
 
 													<!-- Game Changer Badge -->
-													{#if isGameChanger(card.name)}
+													{#if formatService && formatService.isSpecialCard(card.name)}
 														<span
 															class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-amber-500/20 text-amber-400 border-amber-500/40"
 															title="Game Changer - This card affects your deck's bracket level"
@@ -955,7 +968,7 @@
 		{isCommander}
 		{commanderName}
 		onPrintingChange={(cardName, printingData) => {
-			console.log('[DeckList] onPrintingChange called:', {
+			console.log('[ListView] onPrintingChange called:', {
 				cardName,
 				printingData: {
 					id: printingData.id,
@@ -1021,7 +1034,7 @@
 				cardFaces
 			};
 
-			console.log('[DeckList] Calling deckStore.updateCardPrinting with:', cardName, updateData);
+			console.log('[ListView] Calling deckStore.updateCardPrinting with:', cardName, updateData);
 			deckStore.updateCardPrinting(cardName, updateData);
 		}}
 	/>

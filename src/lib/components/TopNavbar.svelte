@@ -128,11 +128,11 @@
         <!-- Divider -->
         <div class="h-6 w-px bg-[var(--color-border)]"></div>
 
-        <!-- New Deck -->
+        <!-- New List -->
         <button
           onclick={onNewDeck}
           class="px-3 py-2 text-sm rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white font-medium flex items-center gap-2 h-[38px]"
-          title="Create New Deck"
+          title="Create New List"
         >
           <svg
             class="w-4 h-4"
@@ -147,14 +147,14 @@
               d="M12 4v16m8-8H4"
             />
           </svg>
-          New Deck
+          New List
         </button>
 
-        <!-- Load Deck -->
+        <!-- Load List -->
         <button
           onclick={onLoadDeck}
           class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
-          title="Load Existing Deck"
+          title="Load Existing List"
         >
           <svg
             class="w-4 h-4"
@@ -169,7 +169,7 @@
               d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"
             />
           </svg>
-          Load Deck
+          Load List
         </button>
       {/if}
 
@@ -177,12 +177,12 @@
         <!-- Divider -->
         <div class="h-6 w-px bg-[var(--color-border)]"></div>
 
-        <!-- Export Deck Dropdown -->
+        <!-- Export List Dropdown -->
         <div class="relative" bind:this={exportDropdownRef}>
           <button
             onclick={() => (exportDropdownOpen = !exportDropdownOpen)}
             class="px-3 py-2 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-medium flex items-center gap-2 h-[38px]"
-            title="Export Deck"
+            title="Export List"
           >
             <svg
               class="w-4 h-4"

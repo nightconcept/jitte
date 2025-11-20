@@ -21,6 +21,8 @@ import {
 } from '../categorization/commander-categories';
 import { determineCategory } from '$lib/utils/deck-categorization';
 import { calculateStatistics as calculateDeckStatistics } from '$lib/utils/deck-statistics';
+import { isCardBanned as checkCardBanned } from '$lib/utils/deck-validation';
+import { isGameChanger } from '$lib/utils/game-changers';
 
 /**
  * Format service for Commander/EDH decks
@@ -148,5 +150,25 @@ export class CommanderFormatService implements FormatService {
 	getMaxCardsForCategory(categoryId: string): number | undefined {
 		const category = this.getCategory(categoryId);
 		return category?.maxCards;
+	}
+
+	isCardBanned(card: Card): boolean {
+		return checkCardBanned(card);
+	}
+
+	isSpecialCard(cardName: string): boolean {
+		return isGameChanger(cardName);
+	}
+
+	getSpecialCardsInDeck(deck: Deck): string[] {
+		const specialCards: string[] = [];
+		for (const categoryCards of Object.values(deck.cards)) {
+			for (const card of categoryCards) {
+				if (this.isSpecialCard(card.name)) {
+					specialCards.push(card.name);
+				}
+			}
+		}
+		return specialCards.sort();
 	}
 }

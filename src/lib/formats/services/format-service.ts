@@ -92,4 +92,22 @@ export interface FormatService {
 	 * Get maximum allowed cards for a category
 	 */
 	getMaxCardsForCategory(categoryId: string): number | undefined;
+
+	/**
+	 * Check if a card is banned in this format
+	 * Each format has its own ban list
+	 */
+	isCardBanned(card: Card): boolean;
+
+	/**
+	 * Check if a card is a special card in this format
+	 * (e.g., Game Changers in Commander, nothing in Cube)
+	 */
+	isSpecialCard(cardName: string): boolean;
+
+	/**
+	 * Get all special cards in a deck
+	 * Returns array of card names
+	 */
+	getSpecialCardsInDeck(deck: Deck): string[];
 }

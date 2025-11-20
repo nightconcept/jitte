@@ -19,7 +19,8 @@
 		reorderDecks,
 		getOrderedDecks
 	} from '$lib/utils/folder-manager';
-	import { extractCommanderInfo, type CommanderInfo } from '$lib/utils/deck-info-extractor';
+	import { extractDeckInfo, type DeckInfo } from '$lib/utils/deck-info-extractor';
+	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
 	import { StorageManager } from '$lib/storage/storage-manager';
 
 	let {
@@ -42,7 +43,7 @@
 	let folderStructure = $state<FolderStructure>(loadFolderStructure());
 	let currentFolderId = $state<string | null>(null); // null = root
 	let browserItems = $state<BrowserItem[]>([]);
-	let commanderCache = $state<Map<string, CommanderInfo[]>>(new Map());
+	let deckInfoCache = $state<Map<string, DeckInfo>>(new Map());
 
 	// UI state
 	let deckToDelete = $state<string | null>(null);
@@ -71,25 +72,31 @@
 		isLoadingCommanders = false;
 	}
 
-	async function loadCommanderForDeck(deckName: string) {
+	async function loadDeckInfoForDeck(deckName: string) {
 		if (!storage) return;
 
-		console.log('[DeckPickerModal] loadCommanderForDeck() called for:', deckName);
+		console.log('[DeckPickerModal] loadDeckInfoForDeck() called for:', deckName);
 		try {
 			const result = await storage.loadDeck(deckName);
 			if (result.success && result.data) {
-				console.log('[DeckPickerModal] Extracting commander info for:', deckName);
-				const commanders = await extractCommanderInfo(result.data);
-				console.log('[DeckPickerModal] Commander info extracted:', commanders);
+				console.log('[DeckPickerModal] Extracting deck info for:', deckName);
+				const deckInfo = await extractDeckInfo(result.data);
+				console.log('[DeckPickerModal] Deck info extracted:', deckInfo);
 				// Create a new Map to trigger reactivity
-				commanderCache = new Map(commanderCache.set(deckName, commanders));
+				deckInfoCache = new Map(deckInfoCache.set(deckName, deckInfo));
 			} else {
 				console.log('[DeckPickerModal] Failed to load deck:', deckName);
-				commanderCache = new Map(commanderCache.set(deckName, []));
+				deckInfoCache = new Map(deckInfoCache.set(deckName, {
+					format: DeckFormat.Commander,
+					commanders: []
+				}));
 			}
 		} catch (error) {
-			console.error(`[DeckPickerModal] Failed to load commanders for ${deckName}:`, error);
-			commanderCache = new Map(commanderCache.set(deckName, []));
+			console.error(`[DeckPickerModal] Failed to load deck info for ${deckName}:`, error);
+			deckInfoCache = new Map(deckInfoCache.set(deckName, {
+				format: DeckFormat.Commander,
+				commanders: []
+			}));
 		}
 	}
 
@@ -105,7 +112,7 @@
 			return;
 		}
 
-		void loadCommanderForDeck(nextDeck).finally(() => {
+		void loadDeckInfoForDeck(nextDeck).finally(() => {
 			if (commanderLoadQueue.length === 0) {
 				stopCommanderLoading();
 				return;
@@ -122,24 +129,24 @@
 		stopCommanderLoading();
 
 		if (!isOpen || !storage || decks.length === 0) {
-			console.log('[DeckPickerModal] Skipping commander loading:', { isOpen, hasStorage: !!storage, decksLength: decks.length });
+			console.log('[DeckPickerModal] Skipping deck info loading:', { isOpen, hasStorage: !!storage, decksLength: decks.length });
 			return;
 		}
 
-		const pendingDecks = decks.filter((deck) => !commanderCache.has(deck.name));
+		const pendingDecks = decks.filter((deck) => !deckInfoCache.has(deck.name));
 		console.log('[DeckPickerModal] Pending decks to load:', pendingDecks.length, pendingDecks.map(d => d.name));
 
 		if (pendingDecks.length === 0) {
-			console.log('[DeckPickerModal] All commanders already cached');
+			console.log('[DeckPickerModal] All deck info already cached');
 			return;
 		}
 
 		commanderLoadQueue = pendingDecks.map((deck) => deck.name);
 		isLoadingCommanders = true;
 
-		console.log('[DeckPickerModal] Scheduling commander load queue with', commanderLoadQueue.length, 'decks');
+		console.log('[DeckPickerModal] Scheduling deck info load queue with', commanderLoadQueue.length, 'decks');
 		commanderLoadHandle = setTimeout(() => {
-			console.log('[DeckPickerModal] Starting commander queue processing');
+			console.log('[DeckPickerModal] Starting deck info queue processing');
 			processCommanderQueue();
 		}, COMMANDER_BATCH_DELAY);
 	}
@@ -739,18 +746,20 @@
 
 										<!-- Commander Names -->
 										<div class="min-w-0">
-											{#if commanderCache.has(item.deckName)}
-												{@const commanders = commanderCache.get(item.deckName)!}
-												{#if commanders.length > 0}
+											{#if deckInfoCache.has(item.deckName)}
+												{@const deckInfo = deckInfoCache.get(item.deckName)!}
+												{#if deckInfo.commanders.length > 0}
 													<div class="flex flex-col gap-0.5">
-														{#each commanders as commander}
+														{#each deckInfo.commanders as commander}
 															<span class="text-sm text-[var(--color-text-secondary)] truncate">
 																{commander.name}
 															</span>
 														{/each}
 													</div>
-												{:else}
+												{:else if deckInfo.format === DeckFormat.Commander}
 													<span class="text-sm text-[var(--color-text-tertiary)]">No commander</span>
+												{:else}
+													<span class="text-sm text-[var(--color-text-tertiary)]">—</span>
 												{/if}
 											{:else}
 												<span class="text-sm text-[var(--color-text-tertiary)]">Loading...</span>
@@ -759,10 +768,10 @@
 
 										<!-- Colors -->
 										<div class="flex items-center">
-											{#if commanderCache.has(item.deckName)}
-												{@const commanders = commanderCache.get(item.deckName)!}
-												{#if commanders.length > 0}
-													{@const allColors = [...new Set(commanders.flatMap(c => c.colorIdentity))]}
+											{#if deckInfoCache.has(item.deckName)}
+												{@const deckInfo = deckInfoCache.get(item.deckName)!}
+												{#if deckInfo.commanders.length > 0}
+													{@const allColors = [...new Set(deckInfo.commanders.flatMap(c => c.colorIdentity))]}
 													{#if allColors.length > 0}
 														<div class="flex gap-0.5">
 															{#each allColors.sort() as color}
@@ -777,16 +786,17 @@
 										</div>
 
 										<!-- Format with Bracket -->
-										<div class="text-sm text-[var(--color-text-secondary)]">
-											{#if commanderCache.has(item.deckName)}
-												{@const commanders = commanderCache.get(item.deckName)!}
-												{#if commanders.length > 0 && commanders[0].bracketLevel !== undefined}
-													Commander (Bracket {commanders[0].bracketLevel})
+										<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+											{#if deckInfoCache.has(item.deckName)}
+												{@const deckInfo = deckInfoCache.get(item.deckName)!}
+												{@const formatName = FORMAT_METADATA[deckInfo.format]?.displayName || deckInfo.format}
+												{#if deckInfo.format === DeckFormat.Commander && deckInfo.commanders.length > 0 && deckInfo.commanders[0].bracketLevel !== undefined}
+													{formatName} (Bracket {deckInfo.commanders[0].bracketLevel})
 												{:else}
-													Commander
+													{formatName}
 												{/if}
 											{:else}
-												Commander
+												Loading...
 											{/if}
 										</div>
 

@@ -8,6 +8,7 @@
   import type { Card } from "$lib/types/card";
   import { MIN_SEARCH_CHARACTERS } from "$lib/constants/search";
   import { scryfallToCard } from "$lib/utils/card-converter";
+  import { isCommanderDeck } from "$lib/types/deck";
 
   export let addToMaybeboard = false;
   export let maybeboardCategoryId: string | undefined = undefined;
@@ -20,9 +21,15 @@
   let searchInputRef: HTMLInputElement;
   let modalOpen = false;
 
-  // Get commander color identity for filtering
-  $: commanders = $deckStore?.deck?.cards?.commander || [];
+  // Get commander color identity for filtering (Commander format only)
+  $: isCommander = $deckStore?.deck ? isCommanderDeck($deckStore.deck) : false;
+  $: commanders = isCommander ? ($deckStore?.deck?.cards?.commander || []) : [];
   $: commanderColors = (() => {
+    // Only calculate for Commander decks
+    if (!isCommander) {
+      return [];
+    }
+
     console.log(
       "[CardSearch] Recalculating commander colors. Commanders:",
       commanders,

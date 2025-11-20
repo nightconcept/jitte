@@ -59,6 +59,16 @@
     ? checkPartnerAbility(selectedCommander)
     : false;
 
+  // Dynamic text based on selected format
+  $: deckNamePlaceholder = {
+    [DeckFormat.Commander]: "My Awesome Commander Deck",
+    [DeckFormat.Cube]: "My Draft Cube",
+    [DeckFormat.Standard]: "My Standard Deck",
+    [DeckFormat.Modern]: "My Modern Deck"
+  }[selectedFormat];
+
+  $: listTypeLabel = selectedFormat === DeckFormat.Cube ? "List" : "Deck";
+
   function checkPartnerAbility(commander: CardSearchResult): boolean {
     const oracleText = commander.oracle_text?.toLowerCase() || "";
     return (
@@ -393,7 +403,7 @@
       }
 
       const commanderNames = [];
-      if (selectedCommander) {
+      if (needsCommander && selectedCommander) {
         commanderNames.push(selectedCommander.name);
         if (selectedPartner) {
           commanderNames.push(selectedPartner.name);
@@ -471,10 +481,10 @@
 <BaseModal
   {isOpen}
   onClose={handleClose}
-  title="Create New Deck"
+  title={`Create New ${listTypeLabel}`}
   subtitle={mode === "empty"
-    ? "Start with an empty deck"
-    : "Import from decklist"}
+    ? "Start from scratch"
+    : `Import from ${selectedFormat === DeckFormat.Cube ? 'list' : 'decklist'}`}
   size={mode === "empty" ? "2xl" : "4xl"}
   height={mode === "import" ? "h-[85vh]" : undefined}
 >
@@ -506,7 +516,7 @@
               ? 'bg-[var(--color-brand-primary)] text-white'
               : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}"
           >
-            Import Decklist
+            Import List
           </button>
         </div>
       </div>
@@ -535,19 +545,19 @@
         </p>
       </div>
 
-      <!-- Deck Name -->
+      <!-- Deck/List Name -->
       <div class={mode === "import" ? "mb-4" : ""}>
         <label
           for="deck-name-input"
           class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
         >
-          Deck Name <span class="text-red-500">*</span>
+          {listTypeLabel} Name <span class="text-red-500">*</span>
         </label>
         <input
           id="deck-name-input"
           type="text"
           bind:value={deckName}
-          placeholder="My Awesome Commander Deck"
+          placeholder={deckNamePlaceholder}
           class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
         />
       </div>
@@ -704,14 +714,6 @@
             </div>
           </div>
         {/if}
-        {:else}
-          <!-- Non-Commander Format -->
-          <div class="p-4 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded">
-            <p class="text-sm text-[var(--color-text-secondary)]">
-              {FORMAT_METADATA[selectedFormat].displayName} decks don't require commanders.
-              Create your deck and start adding cards!
-            </p>
-          </div>
         {/if}
       {:else}
         <!-- Import Mode: Commander Search + Decklist -->
@@ -874,11 +876,11 @@
       <button
         onclick={handleCreate}
         disabled={mode === "empty"
-          ? !deckName.trim() || !selectedCommander
-          : !deckName.trim() || selectedCommanders.length === 0}
+          ? !deckName.trim() || (needsCommander && !selectedCommander)
+          : !deckName.trim() || (needsCommander && selectedCommanders.length === 0)}
         class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {mode === "empty" ? "Create Deck" : "Import Deck"}
+        {mode === "empty" ? `Create ${listTypeLabel}` : `Import ${listTypeLabel}`}
       </button>
     </div>
   {/snippet}

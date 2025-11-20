@@ -4,10 +4,10 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
-	import DeckHeader from '$lib/components/DeckHeader.svelte';
-	import DeckEditNav from '$lib/components/DeckEditNav.svelte';
+	import ListHeader from '$lib/components/ListHeader.svelte';
+	import ListEditNav from '$lib/components/ListEditNav.svelte';
 	import CardPreview from '$lib/components/CardPreview.svelte';
-	import DeckList from '$lib/components/DeckList.svelte';
+	import ListView from '$lib/components/ListView.svelte';
 	import Maybeboard from '$lib/components/Maybeboard.svelte';
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CommitModal from '$lib/components/CommitModal.svelte';
@@ -27,7 +27,7 @@
 	import { parsePlaintext } from '$lib/utils/decklist-parser';
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 	import { scryfallToCard } from '$lib/utils/card-converter';
-	import { DeckFormat } from '$lib/formats/format-registry';
+	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
 	import { isAutoVersionEnabled } from '$lib/utils/auto-version-settings';
 	import { applyBump } from '$lib/utils/semver';
 	import { getInitialVersion } from '$lib/utils/versioning';
@@ -130,6 +130,12 @@
 
 	// Check if current deck is Cube format
 	const isCube = $derived($deckStore?.deck?.format === DeckFormat.Cube);
+
+	// Get format-specific UI settings
+	const currentFormat = $derived($deckStore?.deck?.format ?? DeckFormat.Commander);
+	const formatMetadata = $derived(FORMAT_METADATA[currentFormat]);
+	const cardPreviewCollapsed = $derived(formatMetadata.ui.cardPreviewCollapsedByDefault);
+	const maybeboardCollapsed = $derived(formatMetadata.ui.maybeboardCollapsedByDefault);
 
 	// Get commander name for EDHREC recommendations
 	const commanderName = $derived.by(() => {
@@ -975,10 +981,10 @@
 		</div>
 	{:else}
 		<!-- Deck Header with Gradient -->
-		<DeckHeader />
+		<ListHeader />
 
-		<!-- Deck Edit Navigation (Sticky) -->
-		<DeckEditNav
+		<!-- List Edit Navigation (Sticky) -->
+		<ListEditNav
 			currentBranch={$deckStore?.deck.currentBranch ?? 'main'}
 			currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
 			availableVersions={availableVersions}
@@ -998,12 +1004,12 @@
 		<!-- Main Content -->
 		<div class="flex flex-1">
 			<!-- Card Preview Sidebar (Left, Sticky) -->
-			<CardPreview {hoveredCard} />
+			<CardPreview {hoveredCard} collapsedByDefault={cardPreviewCollapsed} />
 
 			<!-- Center Column -->
 			<div class="flex-1 flex flex-col">
-				<!-- Deck List -->
-				<DeckList onCardHover={handleCardHover} onImport={handleImport} />
+				<!-- List View -->
+				<ListView onCardHover={handleCardHover} onImport={handleImport} />
 
 				<!-- Statistics Section (Hidden for Cube) -->
 				{#if !isCube}
@@ -1012,7 +1018,7 @@
 			</div>
 
 			<!-- Maybeboard Sidebar (Right, Sticky) -->
-			<Maybeboard onCardHover={handleCardHover} />
+			<Maybeboard onCardHover={handleCardHover} collapsedByDefault={maybeboardCollapsed} />
 		</div>
 	{/if}
 </div>
@@ -1099,6 +1105,7 @@
 <EditDecklistModal
 	isOpen={showEditDecklistModal}
 	currentDecklist={currentDecklistPlaintext}
+	format={$deckStore?.deck?.format}
 	onSave={handleSaveDecklist}
 	onClose={() => (showEditDecklistModal = false)}
 />

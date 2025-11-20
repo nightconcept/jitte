@@ -17,6 +17,7 @@ import type { Card, CategorizedCards, CardsByCategory } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
+import { getFormatService } from '$lib/formats/services/format-service-factory';
 import { createEmptyDeck, calculateColorIdentity } from '$lib/utils/deck-factory';
 import { calculateStatistics } from '$lib/utils/deck-statistics';
 import { validateDeck } from '$lib/utils/deck-validation';
@@ -122,11 +123,19 @@ function createDeckStore() {
 		/**
 		 * Add a card to the deck
 		 */
-		addCard(card: Card, category?: CardCategory): void {
+		addCard(card: Card, category?: string): void {
 			update((state) => {
 				if (!state) return state;
 
-				const targetCategory = category || inferCategory(card);
+				const targetCategory = category || inferCategory(card, state.deck);
+				console.log('[deck-store] addCard:', {
+					cardName: card.name,
+					deckFormat: state.deck.format,
+					targetCategory,
+					providedCategory: category,
+					colorIdentity: card.colorIdentity,
+					types: card.types
+				});
 				const categoryCards = state.deck.cards[targetCategory] || [];
 
 				// Check if card already exists in this category
@@ -159,6 +168,10 @@ function createDeckStore() {
 					cardCount: calculateTotalCards(updatedCards),
 					updatedAt: new Date().toISOString()
 				};
+
+				console.log('[deck-store] addCard complete - deck categories:', Object.keys(newDeck.cards));
+				console.log('[deck-store] addCard complete - category counts:',
+					Object.entries(newDeck.cards).map(([cat, cards]) => `${cat}: ${cards.length}`).join(', '));
 
 				return {
 					...state,
@@ -805,7 +818,7 @@ function createDeckStore() {
 				if (mbCardIndex === -1) return state;
 
 				const card = mbCategory.cards[mbCardIndex];
-				const deckCategory = targetCategory || inferCategory(card);
+				const deckCategory = targetCategory || inferCategory(card, state.deck);
 
 				// Add to deck
 				const deckCategoryCards = state.deck.cards[deckCategory] || [];
@@ -1260,22 +1273,24 @@ function createDeckStore() {
 /**
  * Infer the category of a card based on its types
  */
-function inferCategory(card: Card): CardCategory {
-	if (!card.types || card.types.length === 0) {
-		return CardCategory.Other;
-	}
+function inferCategory(card: Card, deck: Deck): string {
+	// Get the format service for the deck's format
+	const formatService = getFormatService(deck.format);
 
-	const types = card.types.map((t) => t.toLowerCase());
+	// Use the format service to categorize the card
+	const categorizationMode = deck.categorizationMode || 'default';
+	const category = formatService.categorizeCard(card, categorizationMode);
 
-	if (types.includes('planeswalker')) return CardCategory.Planeswalker;
-	if (types.includes('creature')) return CardCategory.Creature;
-	if (types.includes('instant')) return CardCategory.Instant;
-	if (types.includes('sorcery')) return CardCategory.Sorcery;
-	if (types.includes('artifact')) return CardCategory.Artifact;
-	if (types.includes('enchantment')) return CardCategory.Enchantment;
-	if (types.includes('land')) return CardCategory.Land;
+	console.log('[inferCategory]:', {
+		cardName: card.name,
+		deckFormat: deck.format,
+		categorizationMode,
+		inferredCategory: category,
+		colorIdentity: card.colorIdentity,
+		types: card.types
+	});
 
-	return CardCategory.Other;
+	return category;
 }
 
 /**

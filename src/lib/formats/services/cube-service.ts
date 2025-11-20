@@ -204,4 +204,19 @@ export class CubeFormatService implements FormatService {
 		const category = this.getCategory(categoryId);
 		return category?.maxCards;
 	}
+
+	isCardBanned(card: Card): boolean {
+		// Cube has no ban list
+		return false;
+	}
+
+	isSpecialCard(cardName: string): boolean {
+		// Cube has no special cards
+		return false;
+	}
+
+	getSpecialCardsInDeck(deck: Deck): string[] {
+		// Cube has no special cards
+		return [];
+	}
 }

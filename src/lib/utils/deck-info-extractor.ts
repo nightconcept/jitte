@@ -5,6 +5,7 @@
 import type { Card, ManaColor } from '$lib/types/card';
 import type { DeckManifest } from '$lib/types/deck';
 import { CardCategory } from '$lib/types/card';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
  * Commander information with name and colors
@@ -13,6 +14,14 @@ export interface CommanderInfo {
 	name: string;
 	colorIdentity: ManaColor[];
 	bracketLevel?: number;
+}
+
+/**
+ * Deck information including format and commanders
+ */
+export interface DeckInfo {
+	format: DeckFormat;
+	commanders: CommanderInfo[];
 }
 
 /**
@@ -127,4 +136,33 @@ export async function batchExtractCommanderNames(
 	}
 
 	return result;
+}
+
+/**
+ * Extract full deck information including format and commanders
+ * @param zipBlob - The deck zip file
+ * @returns Deck info with format and commanders
+ */
+export async function extractDeckInfo(zipBlob: Blob): Promise<DeckInfo> {
+	try {
+		const { decompressDeckArchive } = await import('./zip');
+		const manifest = (await decompressDeckArchive(zipBlob)).manifest;
+
+		// Get the format from the manifest
+		const format = manifest.format || DeckFormat.Commander;
+
+		// Extract commanders (only relevant for Commander format)
+		const commanders = await extractCommanderInfo(zipBlob);
+
+		return {
+			format,
+			commanders
+		};
+	} catch (error) {
+		console.error('[extractDeckInfo] Error:', error);
+		return {
+			format: DeckFormat.Commander,
+			commanders: []
+		};
+	}
 }

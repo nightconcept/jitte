@@ -41,14 +41,16 @@
 		const merged: Card = { ...card };
 
 		// Update image URLs from the current printing
-		if (scryfallCard.image_uris) {
+		// For split/adventure cards, image_uris are on card_faces instead of top-level
+		const imageSource = scryfallCard.image_uris || scryfallCard.card_faces?.[0]?.image_uris;
+		if (imageSource) {
 			merged.imageUrls = {
-				small: scryfallCard.image_uris.small,
-				normal: scryfallCard.image_uris.normal,
-				large: scryfallCard.image_uris.large,
-				png: scryfallCard.image_uris.png,
-				artCrop: scryfallCard.image_uris.art_crop,
-				borderCrop: scryfallCard.image_uris.border_crop
+				small: imageSource.small,
+				normal: imageSource.normal,
+				large: imageSource.large,
+				png: imageSource.png,
+				artCrop: imageSource.art_crop,
+				borderCrop: imageSource.border_crop
 			};
 		}
 

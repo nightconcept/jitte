@@ -12,6 +12,8 @@
 	import QuantityBadge from './QuantityBadge.svelte';
 	import { cardService } from '$lib/api/card-service';
 	import { deckStore } from '$lib/stores/deck-store';
+	import { DeckFormat } from '$lib/formats/format-registry';
+	import { getFormatService } from '$lib/formats/services/format-service-factory';
 
 	let {
 		card,
@@ -124,8 +126,15 @@
 	}
 
 	const imageUrl = $derived(getCardImageUrl(card));
-	const isBanned = $derived(isCardBanned(card));
-	const isGC = $derived(isGameChanger(card.name));
+
+	// Get format service for current deck
+	const formatService = $derived.by(() => {
+		if (!$deckStore?.deck) return null;
+		return getFormatService($deckStore.deck.format);
+	});
+
+	const isBanned = $derived(formatService ? formatService.isCardBanned(card) : false);
+	const isGC = $derived(formatService ? formatService.isSpecialCard(card.name) : false);
 	const isDraggable = $derived(isEditing && category !== CardCategory.Commander);
 
 	// Reset to front face when card changes

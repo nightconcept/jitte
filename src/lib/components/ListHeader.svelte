@@ -7,6 +7,7 @@
 	import type { DeckSaltScore } from '$lib/types/edhrec';
 	import { DeckFormat } from '$lib/formats/format-registry';
 	import { getBracketLabel, isGameChanger } from '$lib/utils/game-changers';
+	import { getFormatService } from '$lib/formats/services/format-service-factory';
 	import BracketTooltip from './BracketTooltip.svelte';
 	import SaltTooltip from './SaltTooltip.svelte';
 	import { calculateDeckSaltScore } from '$lib/utils/salt-calculator';
@@ -84,15 +85,8 @@
 
 	function getAllGameChangers(deck: Deck | undefined): string[] {
 		if (!deck) return [];
-		const gameChangers: string[] = [];
-		for (const categoryCards of Object.values(deck.cards)) {
-			for (const card of categoryCards) {
-				if (isGameChanger(card.name)) {
-					gameChangers.push(card.name);
-				}
-			}
-		}
-		return gameChangers.sort();
+		const formatService = getFormatService(deck.format);
+		return formatService.getSpecialCardsInDeck(deck);
 	}
 
 	// Inline editing state

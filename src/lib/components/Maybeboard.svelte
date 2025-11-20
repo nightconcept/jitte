@@ -5,7 +5,11 @@
 
   let {
     onCardHover = undefined,
-  }: { onCardHover?: ((card: Card | null) => void) | undefined } = $props();
+    collapsedByDefault = false
+  }: {
+    onCardHover?: ((card: Card | null) => void) | undefined;
+    collapsedByDefault?: boolean;
+  } = $props();
 
   // Store subscription
   let deckStoreState = $state($deckStore);
@@ -38,7 +42,7 @@
 
   // Active category
   let activeCategory = $state("main");
-  let isCollapsed = $state(false);
+  let isCollapsed = $state(collapsedByDefault);
 
   // Dropdown state
   let categoryDropdownOpen = $state(false);

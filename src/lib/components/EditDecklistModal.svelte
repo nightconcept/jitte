@@ -1,15 +1,18 @@
 <script lang="ts">
 	import BaseModal from './BaseModal.svelte';
 	import { parsePlaintext, type ParseResult } from '$lib/utils/decklist-parser';
+	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
 
 	let {
 		isOpen = $bindable(false),
 		currentDecklist = '',
+		format = DeckFormat.Commander,
 		onSave,
 		onClose
 	}: {
 		isOpen?: boolean;
 		currentDecklist?: string;
+		format?: DeckFormat;
 		onSave: (decklist: string) => void;
 		onClose?: () => void;
 	} = $props();
@@ -54,6 +57,11 @@
 		onClose?.();
 	}
 
+	// Format-specific text from format metadata
+	let formatMetadata = $derived(FORMAT_METADATA[format]);
+	let subtitle = $derived(formatMetadata.ui.bulkEditSubtitle);
+	let placeholderText = $derived(formatMetadata.ui.bulkEditPlaceholder);
+
 	// Calculate summary stats
 	let totalCards = $derived(
 		parseResult?.cards.reduce((sum, card) => sum + card.quantity, 0) || 0
@@ -67,7 +75,7 @@
 	{isOpen}
 	onClose={handleClose}
 	title="Bulk Edit Decklist"
-	subtitle="Edit the 99 cards in plaintext format. Commander is not included and will be preserved."
+	subtitle={subtitle}
 	size="custom"
 	customSize="max-w-6xl"
 	height="h-[85vh]"
@@ -85,7 +93,7 @@
 				<textarea
 					id="edit-decklist-input"
 					bind:value={decklistInput}
-					placeholder={'1 Lightning Bolt\n1 Sol Ring (2XM) 97\n2x Counterspell\n1 Command Tower\n\n(Commander not shown here)'}
+					placeholder={placeholderText}
 					class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"
 				></textarea>
 
