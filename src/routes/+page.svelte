@@ -299,8 +299,8 @@
 		// Close modal immediately and show loading
 		showNewDeckModal = false;
 		isLoadingCards = true;
-		loadingMessage = 'Importing deck...';
-		toastStore.info('Importing deck from decklist...');
+		loadingMessage = 'Importing list...';
+		toastStore.info('Importing list from decklist...');
 
 		try {
 			console.log('[handleImportDeck] Starting deck import:', { deckName, commanderNames });

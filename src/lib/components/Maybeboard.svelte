@@ -44,6 +44,11 @@
   let activeCategory = $state("main");
   let isCollapsed = $state(collapsedByDefault);
 
+  // Force collapse/expand when collapsedByDefault changes (e.g., when format changes)
+  $effect(() => {
+    isCollapsed = collapsedByDefault;
+  });
+
   // Dropdown state
   let categoryDropdownOpen = $state(false);
   let categoryDropdownRef: HTMLDivElement | undefined = $state();

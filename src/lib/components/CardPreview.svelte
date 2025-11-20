@@ -30,6 +30,11 @@
   // Collapse state
   let isCollapsed = $state(collapsedByDefault);
 
+  // Force collapse/expand when collapsedByDefault changes (e.g., when format changes)
+  $effect(() => {
+    isCollapsed = collapsedByDefault;
+  });
+
   function toggleCollapsed() {
     isCollapsed = !isCollapsed;
   }
