@@ -1093,6 +1093,7 @@
 <CommitModal
 	isOpen={showCommitModal && $deckStore !== null}
 	currentVersion={$deckStore?.deck.currentVersion ?? '0.1.0'}
+	existingVersions={availableVersions}
 	diff={$currentDiff}
 	onCommit={handleCommit}
 	onCancel={() => showCommitModal = false}

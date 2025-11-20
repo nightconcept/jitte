@@ -1,30 +1,39 @@
 <script lang="ts">
 	import BaseModal from './BaseModal.svelte';
-	import { getNextVersion, applyBump, isValidVersion } from '$lib/utils/semver';
+	import { getNextVersion, applyBump, isValidVersion, getNextAvailableVersion } from '$lib/utils/semver';
 	import type { VersionDiff } from '$lib/types/version';
 
 	let {
 		isOpen = $bindable(false),
 		currentVersion,
+		existingVersions = [],
 		diff,
 		onCommit,
 		onCancel
 	}: {
 		isOpen?: boolean;
 		currentVersion: string;
+		existingVersions?: string[];
 		diff: VersionDiff | null;
 		onCommit: (version: string, message: string) => void;
 		onCancel?: () => void;
 	} = $props();
 
-	// Suggested version based on diff
-	let suggestedVersion = $derived(
-		currentVersion === 'unsaved'
-			? '0.0.1'
-			: diff
-				? getNextVersion(currentVersion, diff.totalChanges)
-				: applyBump(currentVersion, 'patch')
-	);
+	// Suggested version based on diff, ensuring no conflicts with existing versions
+	let suggestedVersion = $derived.by(() => {
+		let suggested: string;
+
+		if (currentVersion === 'unsaved') {
+			suggested = '0.0.1';
+		} else if (diff) {
+			suggested = getNextVersion(currentVersion, diff.totalChanges);
+		} else {
+			suggested = applyBump(currentVersion, 'patch');
+		}
+
+		// Ensure the suggested version doesn't conflict with existing versions
+		return getNextAvailableVersion(suggested, existingVersions);
+	});
 
 	let selectedVersion = $state('');
 	let customVersion = $state('');
@@ -53,18 +62,26 @@
 	}
 
 	function handleCustomVersionInput() {
-		if (isValidVersion(customVersion)) {
+		if (!isValidVersion(customVersion)) {
+			versionError = 'Invalid version format (must be X.Y.Z)';
+		} else if (existingVersions.includes(customVersion)) {
+			versionError = 'This version already exists';
+		} else {
 			selectedVersion = customVersion;
 			versionError = '';
-		} else {
-			versionError = 'Invalid version format (must be X.Y.Z)';
 		}
 	}
 
 	function handleSubmit() {
-		if (isCustom && !isValidVersion(customVersion)) {
-			versionError = 'Invalid version format (must be X.Y.Z)';
-			return;
+		if (isCustom) {
+			if (!isValidVersion(customVersion)) {
+				versionError = 'Invalid version format (must be X.Y.Z)';
+				return;
+			}
+			if (existingVersions.includes(customVersion)) {
+				versionError = 'This version already exists';
+				return;
+			}
 		}
 
 		onCommit(selectedVersion, commitMessage.trim());

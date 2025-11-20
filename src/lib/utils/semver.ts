@@ -149,3 +149,36 @@ export function getNextVersion(
 	const bumpType = suggestVersionBump(changeCount, thresholds);
 	return applyBump(currentVersion, bumpType);
 }
+
+/**
+ * Find the next available version that doesn't conflict with existing versions
+ * This is useful when checking out an old version and making new commits
+ */
+export function getNextAvailableVersion(
+	suggestedVersion: string,
+	existingVersions: string[]
+): string {
+	// If suggested version doesn't exist, use it
+	if (!existingVersions.includes(suggestedVersion)) {
+		return suggestedVersion;
+	}
+
+	// Keep bumping patch until we find an unused version
+	let version = parseVersion(suggestedVersion);
+	let attempts = 0;
+	const maxAttempts = 1000; // Safety limit
+
+	while (attempts < maxAttempts) {
+		version = bumpPatch(version);
+		const versionString = formatVersion(version);
+
+		if (!existingVersions.includes(versionString)) {
+			return versionString;
+		}
+
+		attempts++;
+	}
+
+	// Fallback: if we somehow can't find a version, throw an error
+	throw new Error('Unable to find an available version number');
+}

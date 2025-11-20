@@ -61,6 +61,14 @@ export function createVersion(
 		console.log('[createVersion] Bumping version from', manifest.currentVersion, 'to', newVersion);
 	}
 
+	// Validate that the version doesn't already exist in the current branch
+	if (branch.versions.some((v) => v.version === newVersion)) {
+		throw new Error(
+			`Version ${newVersion} already exists in branch ${manifest.currentBranch}. ` +
+			`Please choose a different version number.`
+		);
+	}
+
 	// Create version metadata
 	const versionMetadata: VersionMetadata = {
 		version: newVersion,
