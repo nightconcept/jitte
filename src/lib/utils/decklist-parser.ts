@@ -23,6 +23,9 @@ export interface ParseResult {
 
 	/** All commander card names (for partner support) */
 	commanderNames?: string[];
+
+	/** Maybeboard cards (if # Maybeboard section detected) */
+	maybeboardCards?: Card[];
 }
 
 /**
@@ -43,27 +46,43 @@ export interface ParseError {
  * - "2x Lightning Bolt"
  * - "Lightning Bolt" (assumes quantity 1)
  *
+ * Section headers (lines starting with #):
+ * - "# Blue", "# Creatures", etc. - skipped as category headers
+ * - "# Maybeboard" - switches to maybeboard parsing mode
+ *
  * @param text - The plaintext decklist
- * @returns ParseResult with cards and any errors
+ * @returns ParseResult with cards, maybeboardCards (if any), and any errors
  */
 export function parsePlaintext(text: string): ParseResult {
 	const lines = text.split('\n');
 	const cards: Card[] = [];
+	const maybeboardCards: Card[] = [];
 	const errors: ParseError[] = [];
 	let commanderName: string | undefined;
 	const commanderNames: string[] = [];
+	let inMaybeboardSection = false;
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i].trim();
 		const lineNumber = i + 1;
 
-		// Skip empty lines and comments
-		if (!line || line.startsWith('//') || line.startsWith('#')) {
+		// Skip empty lines
+		if (!line) {
 			continue;
 		}
 
-		// Skip section headers (e.g., "Commander:", "Deck:", "Sideboard:")
-		if (line.endsWith(':')) {
+		// Check for maybeboard section header
+		if (line.startsWith('#')) {
+			const headerText = line.substring(1).trim().toLowerCase();
+			if (headerText === 'maybeboard') {
+				inMaybeboardSection = true;
+			}
+			// Skip all comment lines (including section headers)
+			continue;
+		}
+
+		// Skip comment lines and section headers (e.g., "Commander:", "Deck:", "Sideboard:")
+		if (line.startsWith('//') || line.endsWith(':')) {
 			continue;
 		}
 
@@ -73,7 +92,13 @@ export function parsePlaintext(text: string): ParseResult {
 		try {
 			const card = parseLine(line);
 			if (card) {
-				cards.push(card);
+				// Add to appropriate array based on current section
+				if (inMaybeboardSection) {
+					maybeboardCards.push(card);
+				} else {
+					cards.push(card);
+				}
+
 				// If this is tagged as commander, save it
 				if (isCommander) {
 					// For backward compatibility, save the first commander
@@ -98,7 +123,8 @@ export function parsePlaintext(text: string): ParseResult {
 		errors,
 		totalLines: lines.length,
 		commanderName,
-		commanderNames: commanderNames.length > 0 ? commanderNames : undefined
+		commanderNames: commanderNames.length > 0 ? commanderNames : undefined,
+		maybeboardCards: maybeboardCards.length > 0 ? maybeboardCards : undefined
 	};
 }
 

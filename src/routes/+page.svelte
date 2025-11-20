@@ -15,7 +15,7 @@
 	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
-	import EditDecklistModal from '$lib/components/EditDecklistModal.svelte';
+	import BulkListEditModal from '$lib/components/BulkListEditModal.svelte';
 	import BuylistModal from '$lib/components/BuylistModal.svelte';
 	import RecommendationsModal from '$lib/components/RecommendationsModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
@@ -24,7 +24,7 @@
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
-	import { parsePlaintext } from '$lib/utils/decklist-parser';
+	import { parsePlaintext, type ParseResult } from '$lib/utils/decklist-parser';
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
 	import { scryfallToCard } from '$lib/utils/card-converter';
 	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
@@ -45,7 +45,6 @@
 	let showRecommendationsModal = $state(false);
 	let showUnsavedChangesModal = $state(false);
 	let pendingLoadAction = $state<(() => void) | null>(null);
-	let currentDecklistPlaintext = $state('');
 	let isLoadingCards = $state(false);
 	let loadingMessage = $state('Loading cards...');
 	let showOnboarding = $state(false);
@@ -666,13 +665,11 @@
 			return;
 		}
 
-		// Export current deck to plaintext (excluding commander)
-		const plaintext = deckStore.exportToPlaintext(true, true);
-		currentDecklistPlaintext = plaintext || '';
+		// Open the bulk edit modal (it will generate the plaintext from the deck)
 		showEditDecklistModal = true;
 	}
 
-	async function handleSaveDecklist(decklist: string) {
+	async function handleSaveDecklist(parseResult: ParseResult) {
 
 		if (!$deckStore) {
 			toastStore.error('No deck loaded');
@@ -684,9 +681,6 @@
 		isLoadingCards = true;
 		loadingMessage = 'Processing decklist...';
 		toastStore.info('Loading cards from Scryfall...');
-
-		// Parse the decklist
-		const parseResult = parsePlaintext(decklist);
 
 		if (parseResult.cards.length === 0) {
 			isLoadingCards = false;
@@ -786,6 +780,77 @@
 
 		// Replace the entire deck with the new cards
 		deckStore.replaceDeck(finalCards);
+
+		// Handle maybeboard cards if present
+		if (parseResult.maybeboardCards && parseResult.maybeboardCards.length > 0) {
+			const maybeboardFinalCards: Card[] = [];
+			const maybeboardExistingMap = new Map<string, Card>();
+
+			// Build map of existing maybeboard cards
+			if ($deckStore.maybeboard) {
+				for (const category of $deckStore.maybeboard.categories) {
+					for (const card of category.cards) {
+						maybeboardExistingMap.set(card.name.toLowerCase(), card);
+					}
+				}
+			}
+
+			let maybeboardNewCardsNeeded: typeof parseResult.maybeboardCards = [];
+
+			// First pass: reuse existing card data
+			for (const parsedCard of parseResult.maybeboardCards) {
+				const existingCard = maybeboardExistingMap.get(parsedCard.name.toLowerCase());
+
+				if (existingCard) {
+					maybeboardFinalCards.push({
+						...existingCard,
+						quantity: parsedCard.quantity,
+						...(parsedCard.setCode && { setCode: parsedCard.setCode }),
+						...(parsedCard.collectorNumber && { collectorNumber: parsedCard.collectorNumber })
+					});
+				} else {
+					maybeboardNewCardsNeeded.push(parsedCard);
+				}
+			}
+
+			// Second pass: fetch new maybeboard cards
+			if (maybeboardNewCardsNeeded.length > 0) {
+				const batchResult = await cardService.getCardsBatch(maybeboardNewCardsNeeded);
+
+				for (const parsedCard of maybeboardNewCardsNeeded) {
+					const lookupKey = parsedCard.setCode && parsedCard.collectorNumber
+						? `${parsedCard.setCode.toLowerCase()}|${parsedCard.collectorNumber}`
+						: parsedCard.name.toLowerCase();
+
+					const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
+
+					if (scryfallCard) {
+						const fullCard = scryfallToCard(scryfallCard, parsedCard.quantity, {
+							setCode: parsedCard.setCode,
+							collectorNumber: parsedCard.collectorNumber
+						});
+						maybeboardFinalCards.push(fullCard);
+					}
+				}
+			}
+
+			// Clear maybeboard and add all cards to default category
+			// First, remove all existing cards from all categories
+			if ($deckStore.maybeboard) {
+				for (const category of $deckStore.maybeboard.categories) {
+					const cardsToRemove = [...category.cards];
+					for (const card of cardsToRemove) {
+						deckStore.removeCardFromMaybeboard(card.name, category.id);
+					}
+				}
+			}
+
+			// Add all processed maybeboard cards to default category
+			const defaultCategoryId = $deckStore.maybeboard?.defaultCategoryId || 'main';
+			for (const card of maybeboardFinalCards) {
+				deckStore.addCardToMaybeboard(card, defaultCategoryId);
+			}
+		}
 
 		// Hide loading
 		isLoadingCards = false;
@@ -1103,13 +1168,15 @@
 	on:close={() => showNewBranchModal = false}
 />
 
-<EditDecklistModal
-	isOpen={showEditDecklistModal}
-	currentDecklist={currentDecklistPlaintext}
-	format={$deckStore?.deck?.format}
-	onSave={handleSaveDecklist}
-	onClose={() => (showEditDecklistModal = false)}
-/>
+{#if $deckStore?.deck}
+	<BulkListEditModal
+		isOpen={showEditDecklistModal}
+		deck={$deckStore.deck}
+		maybeboard={$deckStore.maybeboard}
+		onSave={handleSaveDecklist}
+		onClose={() => (showEditDecklistModal = false)}
+	/>
+{/if}
 
 <BuylistModal
 	isOpen={showBuylistModal}

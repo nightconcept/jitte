@@ -2,29 +2,32 @@
 	import BaseModal from './BaseModal.svelte';
 	import { parsePlaintext, type ParseResult } from '$lib/utils/decklist-parser';
 	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
+	import { deckToSortedPlaintext } from '$lib/utils/deck-to-plaintext';
+	import type { Deck } from '$lib/types/deck';
+	import type { Maybeboard } from '$lib/types/maybeboard';
 
 	let {
 		isOpen = $bindable(false),
-		currentDecklist = '',
-		format = DeckFormat.Commander,
+		deck,
+		maybeboard,
 		onSave,
 		onClose
 	}: {
 		isOpen?: boolean;
-		currentDecklist?: string;
-		format?: DeckFormat;
-		onSave: (decklist: string) => void;
+		deck: Deck;
+		maybeboard?: Maybeboard;
+		onSave: (parseResult: ParseResult) => void;
 		onClose?: () => void;
 	} = $props();
 
-	let decklistInput = $state(currentDecklist);
+	let decklistInput = $state('');
 	let parseResult = $state<ParseResult | null>(null);
 	let showErrors = $state(false);
 
-	// Update input when modal opens
+	// Update input when modal opens - generate sorted plaintext from deck
 	$effect(() => {
-		if (isOpen) {
-			decklistInput = currentDecklist;
+		if (isOpen && deck) {
+			decklistInput = deckToSortedPlaintext(deck, maybeboard);
 			parseResult = null;
 			showErrors = false;
 		}
@@ -46,7 +49,7 @@
 
 		// If we got here, no errors - proceed with save
 		showErrors = false;
-		onSave(decklistInput);
+		onSave(parseResult);
 		handleClose();
 	}
 
@@ -58,7 +61,7 @@
 	}
 
 	// Format-specific text from format metadata
-	let formatMetadata = $derived(FORMAT_METADATA[format]);
+	let formatMetadata = $derived(FORMAT_METADATA[deck.format]);
 	let subtitle = $derived(formatMetadata.ui.bulkEditSubtitle);
 	let placeholderText = $derived(formatMetadata.ui.bulkEditPlaceholder);
 
@@ -74,24 +77,24 @@
 <BaseModal
 	{isOpen}
 	onClose={handleClose}
-	title="Bulk Edit Decklist"
+	title="Bulk Edit List"
 	subtitle={subtitle}
 	size="custom"
 	customSize="max-w-6xl"
-	height="h-[85vh]"
+	height="h-[90vh]"
 >
 	{#snippet children()}
 		<!-- Body - Full height textarea -->
 		<div class="px-6 py-4 flex-1 flex flex-col min-h-0">
 			<div class="flex-1 flex flex-col">
 				<label
-					for="edit-decklist-input"
+					for="edit-list-input"
 					class="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
 				>
-					Decklist
+					List
 				</label>
 				<textarea
-					id="edit-decklist-input"
+					id="edit-list-input"
 					bind:value={decklistInput}
 					placeholder={placeholderText}
 					class="flex-1 px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] font-mono text-sm resize-none"
@@ -100,7 +103,8 @@
 				<!-- Status Bar -->
 				<div class="flex justify-between items-center mt-2">
 					<p class="text-xs text-[var(--color-text-tertiary)]">
-						Formats: "1 Card Name", "2x Card", "1 Card (SET) 123"
+						Formats: "1 Card Name", "2x Card", "1 Card (SET) 123" • Category headers (# Blue) are
+						optional
 					</p>
 					<p class="text-xs text-[var(--color-text-secondary)]">{lineCount} lines</p>
 				</div>
