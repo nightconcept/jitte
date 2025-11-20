@@ -8,7 +8,8 @@
 	import ManaSymbolIcon from './ManaSymbolIcon.svelte';
 	import ValidationWarningIcon from './ValidationWarningIcon.svelte';
 	import { deckStore, validationWarnings } from '$lib/stores/deck-store';
-	import { CardCategory } from '$lib/types/card';
+	import { CardCategory, CubeCardCategory } from '$lib/types/card';
+	import { DeckFormat } from '$lib/formats/format-registry';
 
 	let {
 		currentBranch = 'main',
@@ -18,6 +19,7 @@
 		hasUnsavedChanges = false,
 		isNewDeck = false,
 		isCommander = false,
+		format = DeckFormat.Commander,
 		onSave = undefined,
 		onSwitchVersion = undefined,
 		onSwitchBranch = undefined,
@@ -33,6 +35,7 @@
 		hasUnsavedChanges?: boolean;
 		isNewDeck?: boolean;
 		isCommander?: boolean;
+		format?: DeckFormat;
 		onSave?: (() => void) | undefined;
 		onSwitchVersion?: ((version: string) => void) | undefined;
 		onSwitchBranch?: ((branch: string) => void) | undefined;
@@ -63,6 +66,8 @@
 	let deck = $derived(deckStoreState?.deck);
 	let statistics = $derived(deckStoreState?.statistics);
 	let deckWideWarnings = $derived(validationWarningsState.filter((w) => !w.cardName));
+	let isCubeFormat = $derived(format === DeckFormat.Cube);
+
 	let typeDistribution = $derived({
 		planeswalker:
 			deck?.cards[CardCategory.Planeswalker]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
@@ -74,6 +79,23 @@
 			deck?.cards[CardCategory.Enchantment]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
 		land: deck?.cards[CardCategory.Land]?.reduce((sum, c) => sum + c.quantity, 0) || 0
 	});
+
+	// Cube-specific color breakdown
+	let cubeColorCounts = $derived.by(() => {
+		if (!isCubeFormat || !deck) return null;
+		const cards = deck.cards;
+		return {
+			white: cards[CubeCardCategory.White]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			blue: cards[CubeCardCategory.Blue]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			black: cards[CubeCardCategory.Black]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			red: cards[CubeCardCategory.Red]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			green: cards[CubeCardCategory.Green]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			colorless: cards[CubeCardCategory.Colorless]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			multicolored: cards[CubeCardCategory.Multicolored]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
+			lands: cards[CubeCardCategory.Lands]?.reduce((sum, c) => sum + c.quantity, 0) || 0
+		};
+	});
+
 	let mainDeckCount = $derived(statistics?.totalCards || 0);
 
 	// Save button is enabled if:
@@ -301,51 +323,90 @@
 				{/each}
 			</div>
 
-			<!-- Type Distribution -->
-			<div class="flex items-center gap-3">
-				<div class="flex items-center gap-1" title="Planeswalkers">
-					<ManaSymbolIcon type="planeswalker" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.planeswalker}</span
-					>
+			<!-- Type Distribution (Commander/Standard/Modern) or Color Breakdown (Cube) -->
+			{#if isCubeFormat && cubeColorCounts}
+				<!-- Cube Color Breakdown -->
+				<div class="flex items-center gap-3">
+					<span class="flex items-center gap-1" title="White">
+						<i class="ms ms-w ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.white}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Blue">
+						<i class="ms ms-u ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.blue}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Black">
+						<i class="ms ms-b ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.black}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Red">
+						<i class="ms ms-r ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.red}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Green">
+						<i class="ms ms-g ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.green}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Colorless">
+						<i class="ms ms-c ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.colorless}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Multicolored">
+						<i class="ms ms-multiple ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.multicolored}</span>
+					</span>
+					<span class="flex items-center gap-1" title="Lands">
+						<i class="ms ms-land ms-cost ms-shadow text-base"></i>
+						<span class="text-sm font-medium text-[var(--color-text-primary)]">{cubeColorCounts.lands}</span>
+					</span>
 				</div>
-				<div class="flex items-center gap-1" title="Creatures">
-					<ManaSymbolIcon type="creature" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.creature}</span
-					>
+			{:else}
+				<!-- Type Distribution -->
+				<div class="flex items-center gap-3">
+					<div class="flex items-center gap-1" title="Planeswalkers">
+						<ManaSymbolIcon type="planeswalker" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.planeswalker}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Creatures">
+						<ManaSymbolIcon type="creature" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.creature}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Instants">
+						<ManaSymbolIcon type="instant" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.instant}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Sorceries">
+						<ManaSymbolIcon type="sorcery" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.sorcery}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Artifacts">
+						<ManaSymbolIcon type="artifact" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.artifact}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Enchantments">
+						<ManaSymbolIcon type="enchantment" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.enchantment}</span
+						>
+					</div>
+					<div class="flex items-center gap-1" title="Lands">
+						<ManaSymbolIcon type="land" />
+						<span class="text-sm font-medium text-[var(--color-text-primary)]"
+							>{typeDistribution.land}</span
+						>
+					</div>
 				</div>
-				<div class="flex items-center gap-1" title="Instants">
-					<ManaSymbolIcon type="instant" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.instant}</span
-					>
-				</div>
-				<div class="flex items-center gap-1" title="Sorceries">
-					<ManaSymbolIcon type="sorcery" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.sorcery}</span
-					>
-				</div>
-				<div class="flex items-center gap-1" title="Artifacts">
-					<ManaSymbolIcon type="artifact" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.artifact}</span
-					>
-				</div>
-				<div class="flex items-center gap-1" title="Enchantments">
-					<ManaSymbolIcon type="enchantment" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.enchantment}</span
-					>
-				</div>
-				<div class="flex items-center gap-1" title="Lands">
-					<ManaSymbolIcon type="land" />
-					<span class="text-sm font-medium text-[var(--color-text-primary)]"
-						>{typeDistribution.land}</span
-					>
-				</div>
-			</div>
+			{/if}
 		</div>
 
 		<!-- Right: Recommendations, Search and Settings -->

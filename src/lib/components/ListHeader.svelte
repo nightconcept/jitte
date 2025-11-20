@@ -11,7 +11,6 @@
 	import BracketTooltip from './BracketTooltip.svelte';
 	import SaltTooltip from './SaltTooltip.svelte';
 	import { calculateDeckSaltScore } from '$lib/utils/salt-calculator';
-	import { CubeCardCategory } from '$lib/types/card';
 
 	// Store subscriptions using Svelte 5 runes
 	let deckStoreState = $state($deckStore);
@@ -41,22 +40,6 @@
 	let isCommanderFormat = $derived(deck ? isCommanderDeck(deck) : false);
 	let isCubeFormat = $derived(deck ? isCubeDeck(deck) : false);
 	let gameChangersInDeck = $derived(isCommanderFormat && deck ? getAllGameChangers(deck) : []);
-
-	// Cube-specific stats
-	let cubeColorCounts = $derived.by(() => {
-		if (!isCubeFormat || !deck) return null;
-		const cards = deck.cards;
-		return {
-			white: cards[CubeCardCategory.White]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			blue: cards[CubeCardCategory.Blue]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			black: cards[CubeCardCategory.Black]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			red: cards[CubeCardCategory.Red]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			green: cards[CubeCardCategory.Green]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			colorless: cards[CubeCardCategory.Colorless]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			multicolored: cards[CubeCardCategory.Multicolored]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			lands: cards[CubeCardCategory.Lands]?.reduce((sum, c) => sum + c.quantity, 0) || 0
-		};
-	});
 
 	// Salt score state
 	let saltScore = $state<DeckSaltScore | null>(null);
@@ -204,48 +187,6 @@
 				</div>
 
 				<div class="flex items-center gap-4 text-sm text-[var(--color-text-secondary)]">
-					<!-- Cube Format Stats -->
-					{#if isCubeFormat && cubeColorCounts}
-						<div class="flex items-center gap-3">
-							<span class="text-[var(--color-text-tertiary)]">Cards:</span>
-							<div class="flex items-center gap-2">
-								<span class="flex items-center gap-1">
-									<i class="ms ms-w ms-cost ms-shadow text-base"></i>
-									<span class="text-xs">{cubeColorCounts.white}</span>
-								</span>
-								<span class="flex items-center gap-1">
-									<i class="ms ms-u ms-cost ms-shadow text-base"></i>
-									<span class="text-xs">{cubeColorCounts.blue}</span>
-								</span>
-								<span class="flex items-center gap-1">
-									<i class="ms ms-b ms-cost ms-shadow text-base"></i>
-									<span class="text-xs">{cubeColorCounts.black}</span>
-								</span>
-								<span class="flex items-center gap-1">
-									<i class="ms ms-r ms-cost ms-shadow text-base"></i>
-									<span class="text-xs">{cubeColorCounts.red}</span>
-								</span>
-								<span class="flex items-center gap-1">
-									<i class="ms ms-g ms-cost ms-shadow text-base"></i>
-									<span class="text-xs">{cubeColorCounts.green}</span>
-								</span>
-							</div>
-						</div>
-						<div class="flex items-center gap-3">
-							<span class="flex items-center gap-1">
-								<i class="ms ms-c ms-cost ms-shadow text-base"></i>
-								<span class="text-xs">{cubeColorCounts.colorless}</span>
-							</span>
-							<span class="flex items-center gap-1">
-								<i class="ms ms-multiple ms-cost ms-shadow text-base"></i>
-								<span class="text-xs">{cubeColorCounts.multicolored}</span>
-							</span>
-							<span class="flex items-center gap-1">
-								<i class="ms ms-land ms-cost ms-shadow text-base"></i>
-								<span class="text-xs">{cubeColorCounts.lands}</span>
-							</span>
-						</div>
-					{/if}
 					<!-- Bracket Level - Only for Commander -->
 					{#if isCommanderFormat && deck && statistics?.bracketLevel}
 						<div class="flex items-center gap-2">

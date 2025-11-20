@@ -992,6 +992,7 @@
 			hasUnsavedChanges={$deckStore?.hasUnsavedChanges ?? false}
 			isNewDeck={$deckManager.activeManifest === null}
 			{isCommander}
+			format={currentFormat}
 			onSave={handleSave}
 			onSwitchVersion={handleSwitchVersion}
 			onSwitchBranch={handleSwitchBranch}
