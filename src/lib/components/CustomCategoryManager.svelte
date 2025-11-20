@@ -38,11 +38,12 @@
 
   function handleAddCategory() {
     if (newCategoryName.trim()) {
-      // Generate ID from name
-      const id = newCategoryName
+      // Generate unique ID from name + timestamp
+      const baseName = newCategoryName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
+      const id = `${baseName}-${Date.now().toString(36)}`;
 
       deckStore.createCustomCategory({
         id,
@@ -229,7 +230,7 @@
             </button>
           </div>
         </div>
-      {:else if !deletingCategoryId}
+      {:else}
         <button
           onclick={() => showAddForm = true}
           class="w-full px-4 py-2 rounded border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary)]/5 text-[var(--color-text-secondary)] hover:text-[var(--color-brand-primary)] transition-colors"
