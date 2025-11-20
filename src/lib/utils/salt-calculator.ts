@@ -17,7 +17,6 @@
 
 import type { Deck } from '$lib/types/deck';
 import type { DeckSaltScore } from '$lib/types/edhrec';
-import { CardCategory } from '$lib/types/card';
 import { edhrecService } from '$lib/api/edhrec-service';
 
 /**
@@ -28,19 +27,9 @@ import { edhrecService } from '$lib/api/edhrec-service';
  * only rare cards outside top 100 may trigger API calls
  */
 export async function calculateDeckSaltScore(deck: Deck): Promise<DeckSaltScore> {
-	// Gather all unique card names from deck (all categories)
-	const allCards = [
-		...deck.cards[CardCategory.Commander],
-		...deck.cards[CardCategory.Companion],
-		...deck.cards[CardCategory.Planeswalker],
-		...deck.cards[CardCategory.Creature],
-		...deck.cards[CardCategory.Instant],
-		...deck.cards[CardCategory.Sorcery],
-		...deck.cards[CardCategory.Artifact],
-		...deck.cards[CardCategory.Enchantment],
-		...deck.cards[CardCategory.Land],
-		...deck.cards[CardCategory.Other]
-	];
+	// Gather all unique card names from deck (all categories, including uncategorized)
+	// Use Object.values to dynamically get all categories instead of hardcoding them
+	const allCards = Object.values(deck.cards).flat();
 
 	// Filter out basic lands (they won't have salt scores)
 	const basicLands = [
