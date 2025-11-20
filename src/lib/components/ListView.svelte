@@ -488,6 +488,7 @@
   // Category drag and drop (for reordering custom categories)
   let draggedCategory = $state<string | null>(null);
   let dragOverCategoryHeader = $state<string | null>(null);
+  let insertionPosition = $state<'before' | 'after' | null>(null);
 
   // Dynamic layout mode for stacks view
   let useMasonryLayout = $state(false);
@@ -617,6 +618,13 @@
 
   function handleDrop(event: DragEvent) {
     if (!isEditing) return;
+
+    // Ignore if this is a category header drop (handled by handleCategoryDrop)
+    const textData = event.dataTransfer!.getData("text/plain");
+    if (textData && draggedCategory) {
+      return; // This is a category drag, not a card drag
+    }
+
     event.preventDefault();
 
     try {
@@ -636,6 +644,13 @@
 
   function handleDropOnCategory(event: DragEvent, targetCategory: string) {
     if (!isEditing) return;
+
+    // Ignore if this is a category header drop (handled by handleCategoryDrop)
+    const textData = event.dataTransfer!.getData("text/plain");
+    if (textData && draggedCategory) {
+      return; // This is a category drag, not a card drag
+    }
+
     event.preventDefault();
     event.stopPropagation();
 
@@ -683,6 +698,7 @@
   function handleCategoryDragEnd() {
     draggedCategory = null;
     dragOverCategoryHeader = null;
+    insertionPosition = null;
   }
 
   function handleCategoryDragOver(event: DragEvent, category: string) {
@@ -699,7 +715,14 @@
 
     event.preventDefault();
     event.stopPropagation();
+
+    // Determine if we should insert before or after based on mouse position
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+
     dragOverCategoryHeader = category;
+    insertionPosition = event.clientY < midpoint ? 'before' : 'after';
   }
 
   function handleCategoryDrop(event: DragEvent, targetCategory: string) {
@@ -710,6 +733,7 @@
     if (draggedCategory === targetCategory) {
       draggedCategory = null;
       dragOverCategoryHeader = null;
+      insertionPosition = null;
       return;
     }
 
@@ -724,19 +748,33 @@
     if (draggedIndex === -1 || targetIndex === -1) {
       draggedCategory = null;
       dragOverCategoryHeader = null;
+      insertionPosition = null;
       return;
     }
 
-    // Create new order by moving dragged category before target category
+    // Create new order by moving dragged category
     const newOrder = [...currentOrder];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedCategory);
+    newOrder.splice(draggedIndex, 1); // Remove from old position
+
+    // Insert at new position
+    let insertIndex = targetIndex;
+    // If we removed an item before the target, adjust the index
+    if (draggedIndex < targetIndex) {
+      insertIndex--;
+    }
+    // If inserting after, move one position forward
+    if (insertionPosition === 'after') {
+      insertIndex++;
+    }
+
+    newOrder.splice(insertIndex, 0, draggedCategory);
 
     // Update the deck store
     deckStore.reorderCustomCategories(newOrder);
 
     draggedCategory = null;
     dragOverCategoryHeader = null;
+    insertionPosition = null;
   }
 </script>
 
@@ -1078,6 +1116,7 @@
               {isDraggableCategory}
               isDraggedCategory={draggedCategory === category}
               isDragOverCategory={dragOverCategoryHeader === category}
+              {insertionPosition}
               onCardClick={(card) => {
                 detailModalCard = { name: card.name, category };
               }}
@@ -1102,7 +1141,12 @@
 
         {#if cards.length > 0 || categorizationMode === 'custom'}
           {@const isDraggableCategory = categorizationMode === 'custom' && isEditing && category !== UNCATEGORIZED_CATEGORY_ID && !formatService?.getCategory(category)}
-          <div class="bg-[var(--color-surface)] rounded-lg overflow-visible {dragOverCategoryHeader === category ? 'ring-2 ring-[var(--color-brand-primary)] ring-offset-2' : ''}">
+          <div class="bg-[var(--color-surface)] rounded-lg overflow-visible relative">
+            <!-- Insertion indicator - before -->
+            {#if dragOverCategoryHeader === category && insertionPosition === 'before' && draggedCategory}
+              <div class="absolute -top-2 left-0 right-0 h-1 bg-[var(--color-brand-primary)] rounded-full z-50 shadow-[0_0_8px_var(--color-brand-primary)]"></div>
+            {/if}
+
             <!-- Category Header -->
             <button
               onclick={() => toggleCategory(category)}
@@ -1563,6 +1607,11 @@
                   {/if}
                 </div>
               </div>
+            {/if}
+
+            <!-- Insertion indicator - after -->
+            {#if dragOverCategoryHeader === category && insertionPosition === 'after' && draggedCategory}
+              <div class="absolute -bottom-2 left-0 right-0 h-1 bg-[var(--color-brand-primary)] rounded-full z-50 shadow-[0_0_8px_var(--color-brand-primary)]"></div>
             {/if}
           </div>
         {/if}
