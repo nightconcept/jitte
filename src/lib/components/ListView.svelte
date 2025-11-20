@@ -485,6 +485,10 @@
   let isDragging = $state(false);
   let dragOverCategory = $state<string | null>(null);
 
+  // Category drag and drop (for reordering custom categories)
+  let draggedCategory = $state<string | null>(null);
+  let dragOverCategoryHeader = $state<string | null>(null);
+
   // Dynamic layout mode for stacks view
   let useMasonryLayout = $state(false);
   let stacksContainerRef = $state<HTMLDivElement>();
@@ -655,6 +659,84 @@
     draggedCard = null;
     isDragging = false;
     dragOverCategory = null;
+  }
+
+  // Category header drag handlers (for reordering custom categories)
+  function handleCategoryDragStart(event: DragEvent, category: string) {
+    if (!isEditing || categorizationMode !== 'custom') return;
+
+    // Don't allow dragging zone categories (commander, companion) or uncategorized
+    const formatService = getFormatService(deck!.format);
+    const categoryDef = formatService.getCategory(category);
+    const isZoneCategory = categoryDef && (categoryDef.isRequired || categoryDef.maxCards !== undefined);
+
+    if (isZoneCategory || category === UNCATEGORIZED_CATEGORY_ID) {
+      event.preventDefault();
+      return;
+    }
+
+    draggedCategory = category;
+    event.dataTransfer!.effectAllowed = "move";
+    event.dataTransfer!.setData("text/plain", category);
+  }
+
+  function handleCategoryDragEnd() {
+    draggedCategory = null;
+    dragOverCategoryHeader = null;
+  }
+
+  function handleCategoryDragOver(event: DragEvent, category: string) {
+    if (!isEditing || categorizationMode !== 'custom' || !draggedCategory) return;
+
+    // Don't allow dropping on zone categories or uncategorized
+    const formatService = getFormatService(deck!.format);
+    const categoryDef = formatService.getCategory(category);
+    const isZoneCategory = categoryDef && (categoryDef.isRequired || categoryDef.maxCards !== undefined);
+
+    if (isZoneCategory || category === UNCATEGORIZED_CATEGORY_ID) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    dragOverCategoryHeader = category;
+  }
+
+  function handleCategoryDrop(event: DragEvent, targetCategory: string) {
+    if (!isEditing || categorizationMode !== 'custom' || !draggedCategory) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (draggedCategory === targetCategory) {
+      draggedCategory = null;
+      dragOverCategoryHeader = null;
+      return;
+    }
+
+    // Get current custom category order
+    const customCats = deck?.customCategories || [];
+    const currentOrder = customCats.map(c => c.id);
+
+    // Find indices
+    const draggedIndex = currentOrder.indexOf(draggedCategory);
+    const targetIndex = currentOrder.indexOf(targetCategory);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      draggedCategory = null;
+      dragOverCategoryHeader = null;
+      return;
+    }
+
+    // Create new order by moving dragged category before target category
+    const newOrder = [...currentOrder];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedCategory);
+
+    // Update the deck store
+    deckStore.reorderCustomCategories(newOrder);
+
+    draggedCategory = null;
+    dragOverCategoryHeader = null;
   }
 </script>
 
@@ -1011,11 +1093,17 @@
         {@const count = getCategoryCount(category)}
 
         {#if cards.length > 0 || categorizationMode === 'custom'}
-          <div class="bg-[var(--color-surface)] rounded-lg overflow-visible">
+          {@const isDraggableCategory = categorizationMode === 'custom' && isEditing && category !== UNCATEGORIZED_CATEGORY_ID && !formatService?.getCategory(category)}
+          <div class="bg-[var(--color-surface)] rounded-lg overflow-visible {dragOverCategoryHeader === category ? 'ring-2 ring-[var(--color-brand-primary)] ring-offset-2' : ''}">
             <!-- Category Header -->
             <button
               onclick={() => toggleCategory(category)}
-              class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group"
+              draggable={isDraggableCategory}
+              ondragstart={(e) => isDraggableCategory && handleCategoryDragStart(e, category)}
+              ondragend={handleCategoryDragEnd}
+              ondragover={(e) => isDraggableCategory && handleCategoryDragOver(e, category)}
+              ondrop={(e) => isDraggableCategory && handleCategoryDrop(e, category)}
+              class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--color-brand-primary)]/10 transition-colors rounded-t-lg group {isDraggableCategory ? 'cursor-grab active:cursor-grabbing' : ''} {draggedCategory === category ? 'opacity-50' : ''}"
             >
               <div class="flex items-center gap-3">
                 <svg
