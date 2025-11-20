@@ -37,6 +37,7 @@
   let deletingCategoryId = $state<string | null>(null);
 
   function handleAddCategory() {
+    console.log('[CustomCategoryManager] handleAddCategory called', { newCategoryName });
     if (newCategoryName.trim()) {
       // Generate unique ID from name + timestamp
       const baseName = newCategoryName
@@ -45,6 +46,7 @@
         .replace(/^-|-$/g, '');
       const id = `${baseName}-${Date.now().toString(36)}`;
 
+      console.log('[CustomCategoryManager] Creating category with id:', id);
       deckStore.createCustomCategory({
         id,
         label: newCategoryName.trim(),
@@ -53,6 +55,7 @@
 
       newCategoryName = '';
       showAddForm = false;
+      console.log('[CustomCategoryManager] Category created, form hidden');
     }
   }
 
@@ -94,6 +97,7 @@
   }
 
   function handleClose() {
+    console.log('[CustomCategoryManager] handleClose called');
     isOpen = false;
     showAddForm = false;
     editingCategoryId = null;
@@ -216,13 +220,22 @@
           />
           <div class="flex justify-end gap-2 mt-3">
             <button
-              onclick={() => { showAddForm = false; newCategoryName = ''; }}
+              onclick={(e) => {
+                e.stopPropagation();
+                console.log('[CustomCategoryManager] Cancel clicked');
+                showAddForm = false;
+                newCategoryName = '';
+              }}
               class="px-3 py-1.5 text-sm rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
             >
               Cancel
             </button>
             <button
-              onclick={handleAddCategory}
+              onclick={(e) => {
+                e.stopPropagation();
+                console.log('[CustomCategoryManager] Create clicked');
+                handleAddCategory();
+              }}
               class="px-3 py-1.5 text-sm rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white"
               disabled={!newCategoryName.trim()}
             >
@@ -276,7 +289,11 @@
   {#snippet footer()}
     <div class="flex justify-end gap-3">
       <button
-        onclick={handleClose}
+        onclick={(e) => {
+          e.stopPropagation();
+          console.log('[CustomCategoryManager] Done clicked');
+          handleClose();
+        }}
         class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white"
       >
         Done
