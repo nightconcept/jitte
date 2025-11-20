@@ -269,7 +269,7 @@
         })
         .map(cat => cat.id);
 
-      const customCats = (deck.customCategories || [])
+      const customCats = [...(deck.customCategories || [])]
         .sort((a, b) => a.order - b.order)
         .map(c => c.id);
 

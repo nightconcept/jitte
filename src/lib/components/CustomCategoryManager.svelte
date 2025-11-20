@@ -23,7 +23,7 @@
   });
 
   let deck = $derived(deckStoreState?.deck);
-  let customCategories = $derived((deck?.customCategories || []).sort((a, b) => a.order - b.order));
+  let customCategories = $derived([...(deck?.customCategories || [])].sort((a, b) => a.order - b.order));
 
   // New category form state
   let showAddForm = $state(false);
