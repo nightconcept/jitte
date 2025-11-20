@@ -3,9 +3,10 @@
  * Converts between Deck objects and archive format for storage
  */
 
-import type { Deck, DeckManifest } from '$lib/types/deck';
+import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
-import type { Card } from '$lib/types/card';
+import type { Card, CardsByCategory } from '$lib/types/card';
 import { serializePlaintext, parsePlaintext } from './decklist-parser';
 import { CardCategory } from '$lib/types/card';
 import type { DeckArchive } from './zip';
@@ -18,7 +19,7 @@ import { DeckFormat } from '$lib/formats/format-registry';
 interface DeckVersionData {
 	schemaVersion: string;
 	lastModified: string;
-	cards: Record<CardCategory, Card[]>;
+	cards: CardsByCategory;
 }
 
 /**
@@ -113,7 +114,7 @@ async function enrichCard(card: Card): Promise<Card> {
 /**
  * Parse JSON deck format
  */
-export function deserializeDeckFromJSON(jsonContent: string): Record<CardCategory, Card[]> {
+export function deserializeDeckFromJSON(jsonContent: string): CardsByCategory {
 	try {
 		const versionData = JSON.parse(jsonContent) as DeckVersionData;
 
@@ -133,7 +134,7 @@ export function deserializeDeckFromJSON(jsonContent: string): Record<CardCategor
  * Parse plaintext decklist and categorize cards
  * This is an async operation that may fetch card data from Scryfall for incomplete cards
  */
-export async function deserializeDeckFromPlaintext(text: string): Promise<Record<CardCategory, Card[]>> {
+export async function deserializeDeckFromPlaintext(text: string): Promise<CardsByCategory> {
 	const parseResult = parsePlaintext(text);
 
 	// Initialize categorized structure
@@ -172,7 +173,7 @@ export async function deserializeDeckFromPlaintext(text: string): Promise<Record
  * Auto-detect format and deserialize deck
  * Supports both JSON (new format) and plaintext (legacy format)
  */
-export async function deserializeDeck(content: string): Promise<Record<CardCategory, Card[]>> {
+export async function deserializeDeck(content: string): Promise<CardsByCategory> {
 	// Try to detect if it's JSON
 	const trimmed = content.trim();
 	if (trimmed.startsWith('{')) {
@@ -283,17 +284,23 @@ export async function extractDeckFromArchive(archive: DeckArchive): Promise<{
 	}
 
 	// Create Deck object
+	const format = manifest.format || DeckFormat.Commander; // Default to Commander for old decks
 	const deck: Deck = {
 		name: manifest.name,
-		format: manifest.format || DeckFormat.Commander, // Default to Commander for old decks
+		format,
 		cards,
 		cardCount,
-		colorIdentity: [], // TODO: Calculate from cards
 		currentBranch: manifest.currentBranch,
 		currentVersion: manifest.currentVersion,
 		createdAt: manifest.createdAt,
-		updatedAt: manifest.updatedAt
-	};
+		updatedAt: manifest.updatedAt,
+		categorizationMode: 'default' // Default mode for backward compatibility
+	} as Deck;
+
+	// Set color identity for Commander decks only
+	if (isCommanderDeck(deck)) {
+		(deck as CommanderDeck).colorIdentity = []; // TODO: Calculate from cards
+	}
 
 	return {
 		deck,

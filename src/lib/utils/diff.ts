@@ -3,7 +3,7 @@
  */
 
 import type { Deck } from '$lib/types/deck';
-import type { Card, CategorizedCards } from '$lib/types/card';
+import type { Card, CategorizedCards, CardsByCategory } from '$lib/types/card';
 import type { VersionDiff, DiffCard } from '$lib/types/version';
 import { suggestVersionBump } from './semver';
 
@@ -79,8 +79,9 @@ export function calculateDiff(oldDeck: Deck, newDeck: Deck): VersionDiff {
 
 /**
  * Flatten categorized cards into a Map for easy comparison
+ * Works with any format's card organization (CardsByCategory)
  */
-function flattenCards(cards: CategorizedCards): Map<string, Card> {
+function flattenCards(cards: CardsByCategory): Map<string, Card> {
 	const map = new Map<string, Card>();
 
 	for (const category of Object.values(cards)) {

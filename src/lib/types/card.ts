@@ -129,7 +129,7 @@ export interface Card {
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
 
 /**
- * Card categories for deck organization
+ * Card categories for deck organization (Commander format)
  */
 export enum CardCategory {
 	Commander = 'commander',
@@ -145,9 +145,24 @@ export enum CardCategory {
 }
 
 /**
- * Represents cards grouped by category
+ * Card categories for Cube format (organized by color)
  */
-export interface CategorizedCards {
+export enum CubeCardCategory {
+	White = 'white',
+	Blue = 'blue',
+	Black = 'black',
+	Red = 'red',
+	Green = 'green',
+	Colorless = 'colorless',
+	Multicolored = 'multicolored',
+	Lands = 'lands'
+}
+
+/**
+ * Represents cards grouped by category (Commander format)
+ * Extends CardsByCategory for compatibility
+ */
+export interface CategorizedCards extends CardsByCategory {
 	[CardCategory.Commander]: Card[];
 	[CardCategory.Companion]: Card[];
 	[CardCategory.Planeswalker]: Card[];
@@ -158,6 +173,75 @@ export interface CategorizedCards {
 	[CardCategory.Enchantment]: Card[];
 	[CardCategory.Land]: Card[];
 	[CardCategory.Other]: Card[];
+}
+
+/**
+ * Represents cards grouped by color category (Cube format)
+ * Extends CardsByCategory for compatibility
+ */
+export interface CubeCategorizedCards extends CardsByCategory {
+	[CubeCardCategory.White]: Card[];
+	[CubeCardCategory.Blue]: Card[];
+	[CubeCardCategory.Black]: Card[];
+	[CubeCardCategory.Red]: Card[];
+	[CubeCardCategory.Green]: Card[];
+	[CubeCardCategory.Colorless]: Card[];
+	[CubeCardCategory.Multicolored]: Card[];
+	[CubeCardCategory.Lands]: Card[];
+}
+
+/**
+ * Generic card storage by category (format-agnostic)
+ * Uses string keys to support any format's category system
+ */
+export interface CardsByCategory {
+	[categoryId: string]: Card[];
+}
+
+/**
+ * Special category ID for uncategorized cards (used in custom categorization mode)
+ */
+export const UNCATEGORIZED_CATEGORY_ID = 'uncategorized';
+
+/**
+ * Metadata definition for a single card category
+ */
+export interface CategoryDefinition {
+	/** Unique identifier for this category (e.g., "commander", "white", "ramp") */
+	id: string;
+
+	/** Display name for this category (e.g., "Commander", "White", "Ramp Package") */
+	label: string;
+
+	/** Optional icon class for display (e.g., "ms-creature", "ms-w") */
+	icon?: string;
+
+	/** Display order (lower numbers appear first) */
+	order: number;
+
+	/** Whether this category must contain at least one card */
+	isRequired?: boolean;
+
+	/** Whether multiple copies of the same card are allowed in this category */
+	allowMultiple?: boolean;
+
+	/** Maximum number of cards allowed in this category */
+	maxCards?: number;
+
+	/** Minimum number of cards required in this category */
+	minCards?: number;
+}
+
+/**
+ * Complete category schema for a format
+ * Defines all available categories and their rules
+ */
+export interface CategorySchema {
+	/** All category definitions for this format */
+	categories: CategoryDefinition[];
+
+	/** Default category ID for cards that don't fit other categories */
+	defaultCategoryId?: string;
 }
 
 /**

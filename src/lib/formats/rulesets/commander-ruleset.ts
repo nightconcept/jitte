@@ -4,7 +4,8 @@
 
 import { BaseRuleset } from './base-ruleset';
 import { DeckFormat } from '../format-registry';
-import type { Deck, DeckValidationResult } from '$lib/types/deck';
+import type { Deck, DeckValidationResult, CommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck } from '$lib/types/deck';
 import type { Card, ValidationWarning, ValidationWarningType } from '$lib/types/card';
 import { validatePartnerCompatibility } from '$lib/utils/partner-detection';
 
@@ -87,6 +88,11 @@ export class CommanderRuleset extends BaseRuleset {
 	}
 
 	validateCardAddition(deck: Deck, card: Card): ValidationWarning | null {
+		// Type guard: ensure this is a Commander deck
+		if (!isCommanderDeck(deck)) {
+			return null;
+		}
+
 		// Check color identity
 		const commanderIdentity = new Set(deck.colorIdentity);
 		if (card.colorIdentity && commanderIdentity.size > 0) {
@@ -125,6 +131,11 @@ export class CommanderRuleset extends BaseRuleset {
 	 * Validate color identity (all cards must be within commander's identity)
 	 */
 	private validateColorIdentity(deck: Deck): boolean {
+		// Type guard: ensure this is a Commander deck
+		if (!isCommanderDeck(deck)) {
+			return true;
+		}
+
 		const commanderIdentity = new Set(deck.colorIdentity);
 
 		// If no commander, can't validate

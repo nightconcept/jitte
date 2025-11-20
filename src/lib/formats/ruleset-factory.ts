@@ -7,12 +7,14 @@ import { DeckFormat } from './format-registry';
 import { CommanderRuleset } from './rulesets/commander-ruleset';
 import { StandardRuleset } from './rulesets/standard-ruleset';
 import { ModernRuleset } from './rulesets/modern-ruleset';
+import { CubeRuleset } from './rulesets/cube-ruleset';
 
 export class RulesetFactory {
 	private static rulesets = new Map<DeckFormat, FormatRuleset>([
 		[DeckFormat.Commander, new CommanderRuleset()],
 		[DeckFormat.Standard, new StandardRuleset()],
-		[DeckFormat.Modern, new ModernRuleset()]
+		[DeckFormat.Modern, new ModernRuleset()],
+		[DeckFormat.Cube, new CubeRuleset()]
 	]);
 
 	/**

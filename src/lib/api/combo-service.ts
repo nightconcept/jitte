@@ -131,9 +131,17 @@ function getUniqueCardNames(deck: Deck): string[] {
 	const names: string[] = [];
 	const seen = new Set<string>();
 
+	// Only process Commander format decks (Cube doesn't have combos)
+	if (deck.format !== 'commander') {
+		return names;
+	}
+
+	// Type guard: at this point we know it's a Commander deck with CategorizedCards
+	const cards = deck.cards as import('$lib/types/card').CategorizedCards;
+
 	// Helper to add unique card names
-	const addCards = (cards: typeof deck.cards.commander) => {
-		for (const card of cards) {
+	const addCards = (cardList: typeof cards.commander) => {
+		for (const card of cardList) {
 			const nameLower = card.name.toLowerCase();
 			if (!seen.has(nameLower)) {
 				seen.add(nameLower);
@@ -143,18 +151,18 @@ function getUniqueCardNames(deck: Deck): string[] {
 	};
 
 	// Prioritize commanders and companions first (most likely to be in combos)
-	addCards(deck.cards.commander);
-	addCards(deck.cards.companion);
+	addCards(cards.commander);
+	addCards(cards.companion);
 
 	// Then add all other categories
-	addCards(deck.cards.planeswalker);
-	addCards(deck.cards.creature);
-	addCards(deck.cards.instant);
-	addCards(deck.cards.sorcery);
-	addCards(deck.cards.artifact);
-	addCards(deck.cards.enchantment);
-	addCards(deck.cards.land);
-	addCards(deck.cards.other);
+	addCards(cards.planeswalker);
+	addCards(cards.creature);
+	addCards(cards.instant);
+	addCards(cards.sorcery);
+	addCards(cards.artifact);
+	addCards(cards.enchantment);
+	addCards(cards.land);
+	addCards(cards.other);
 
 	return names;
 }

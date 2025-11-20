@@ -2,10 +2,11 @@
  * Factory functions for creating new deck structures
  */
 
-import type { Deck, DeckManifest } from '$lib/types/deck';
+import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
 import type { Card, CardCategory, CategorizedCards, ManaColor } from '$lib/types/card';
 import type { BranchMetadata } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
+import { getFormatService } from '$lib/formats/services/format-service-factory';
 
 /**
  * Calculate the combined color identity from multiple commanders
@@ -27,7 +28,8 @@ export function calculateColorIdentity(commanders: Card[]): ManaColor[] {
 }
 
 /**
- * Create an empty categorized cards structure
+ * Create an empty categorized cards structure (legacy - use FormatService instead)
+ * @deprecated Use FormatService.createEmptyCardsByCategory() instead
  */
 export function createEmptyCategorizedCards(): CategorizedCards {
 	return {
@@ -45,35 +47,31 @@ export function createEmptyCategorizedCards(): CategorizedCards {
 }
 
 /**
- * Create a new empty deck
+ * Create a new empty deck using FormatService
  */
 export function createEmptyDeck(
 	name: string,
 	format: DeckFormat = DeckFormat.Commander,
 	commanders?: Card | Card[]
 ): Deck {
-	const now = new Date().toISOString();
-	const cards = createEmptyCategorizedCards();
+	// Use format service to create the appropriate deck type
+	const formatService = getFormatService(format);
+	const deck = formatService.createEmptyDeck(name);
 
-	// Add commanders if provided
-	if (commanders) {
+	// Add commanders if provided (Commander format only)
+	if (commanders && format === DeckFormat.Commander) {
 		const commanderArray = Array.isArray(commanders) ? commanders : [commanders];
-		cards.commander = commanderArray.map((c) => ({ ...c, quantity: 1 }));
+		const commanderCards = commanderArray.map((c) => ({ ...c, quantity: 1 }));
+
+		// Add commanders to the deck
+		deck.cards['commander'] = commanderCards;
+		deck.cardCount = commanderCards.length;
+
+		// Update color identity for Commander decks
+		(deck as CommanderDeck).colorIdentity = calculateColorIdentity(commanderCards);
 	}
 
-	const commanderCount = cards.commander.length;
-
-	return {
-		name,
-		cards,
-		cardCount: commanderCount,
-		format,
-		colorIdentity: calculateColorIdentity(cards.commander),
-		currentBranch: 'main',
-		currentVersion: 'unsaved',
-		createdAt: now,
-		updatedAt: now
-	};
+	return deck;
 }
 
 /**

@@ -5,7 +5,8 @@
 export enum DeckFormat {
 	Commander = 'commander',
 	Standard = 'standard',
-	Modern = 'modern'
+	Modern = 'modern',
+	Cube = 'cube'
 }
 
 export interface FormatMetadata {
@@ -34,5 +35,11 @@ export const FORMAT_METADATA: Record<DeckFormat, FormatMetadata> = {
 		displayName: 'Modern',
 		description: 'Modern-legal sets, 60+ cards, up to 4 copies',
 		banListLastUpdated: '2024-08-26' // Last Modern ban list update
+	},
+	[DeckFormat.Cube]: {
+		id: DeckFormat.Cube,
+		displayName: 'Cube',
+		description: 'Custom draft environment with curated cards',
+		banListLastUpdated: '2024-01-01' // No ban list for Cube
 	}
 };

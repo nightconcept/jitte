@@ -5,9 +5,10 @@
 
 import { parsePlaintext } from './decklist-parser';
 import { cardService } from '$lib/api/card-service';
-import type { Card } from '$lib/types/card';
+import type { Card, ManaColor } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
-import type { Deck } from '$lib/types/deck';
+import type { Deck, CommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck } from '$lib/types/deck';
 import { scryfallToCard } from './card-converter';
 import { DeckFormat } from '$lib/formats/format-registry';
 
@@ -60,7 +61,7 @@ export async function loadDeckFromPlaintext(
 	const categorizedCards = categorizeDeckCards(enrichedCards);
 
 	// Calculate color identity from commander
-	const commanderColors = new Set<string>();
+	const commanderColors = new Set<ManaColor>();
 	for (const commander of categorizedCards[CardCategory.Commander]) {
 		if (commander.colorIdentity) {
 			commander.colorIdentity.forEach(color => commanderColors.add(color));
@@ -73,12 +74,17 @@ export async function loadDeckFromPlaintext(
 		cards: categorizedCards,
 		cardCount: enrichedCards.reduce((sum, c) => sum + c.quantity, 0),
 		format,
-		colorIdentity: Array.from(commanderColors),
 		currentBranch: 'main',
 		currentVersion: '1.0.0',
 		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
-	};
+		updatedAt: new Date().toISOString(),
+		categorizationMode: 'default' // Default mode for new decks
+	} as Deck;
+
+	// Set color identity for Commander decks only
+	if (isCommanderDeck(deck)) {
+		(deck as CommanderDeck).colorIdentity = Array.from(commanderColors);
+	}
 
 	return deck;
 }

@@ -4,7 +4,8 @@
  */
 
 import { writable, get } from 'svelte/store';
-import type { Deck, DeckManifest } from '$lib/types/deck';
+import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card } from '$lib/types/card';
 import { getStorageManager } from '$lib/storage/storage-manager';
@@ -424,17 +425,23 @@ function createDeckManager() {
 			);
 
 			// Reconstruct the deck object
+			const format = archive.manifest.format;
 			const deck: Deck = {
 				name: archive.manifest.name,
 				cards,
 				cardCount,
-				format: archive.manifest.format,
-				colorIdentity: [], // TODO: Calculate from commander
+				format,
 				currentBranch,
 				currentVersion: version,
 				createdAt: archive.manifest.createdAt,
-				updatedAt: new Date().toISOString()
-			};
+				updatedAt: new Date().toISOString(),
+				categorizationMode: 'default' // Default mode for backward compatibility
+			} as Deck;
+
+			// Set color identity for Commander decks only
+			if (isCommanderDeck(deck)) {
+				(deck as CommanderDeck).colorIdentity = []; // TODO: Calculate from commander
+			}
 
 			// Load into store
 			deckStore.load(deck, archive.maybeboard);
@@ -621,17 +628,23 @@ function createDeckManager() {
 			);
 
 			// Reconstruct the deck object
+			const format = archive.manifest.format;
 			const deck: Deck = {
 				name: archive.manifest.name,
 				cards,
 				cardCount,
-				format: archive.manifest.format,
-				colorIdentity: [], // TODO: Calculate from commander
+				format,
 				currentBranch,
 				currentVersion: version,
 				createdAt: archive.manifest.createdAt,
-				updatedAt: new Date().toISOString()
-			};
+				updatedAt: new Date().toISOString(),
+				categorizationMode: 'default' // Default mode for backward compatibility
+			} as Deck;
+
+			// Set color identity for Commander decks only
+			if (isCommanderDeck(deck)) {
+				(deck as CommanderDeck).colorIdentity = []; // TODO: Calculate from commander
+			}
 
 			return deck;
 		} catch (error) {

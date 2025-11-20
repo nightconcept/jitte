@@ -5,13 +5,15 @@
 import { writable, derived, get } from 'svelte/store';
 import type {
 	Deck,
+	CommanderDeck,
 	WorkingDeck,
 	DeckManifest,
 	DeckStatistics,
 	CreateBranchOptions
 } from '$lib/types/deck';
+import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
-import type { Card, CategorizedCards } from '$lib/types/card';
+import type { Card, CategorizedCards, CardsByCategory } from '$lib/types/card';
 import { CardCategory } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
@@ -145,7 +147,7 @@ function createDeckStore() {
 				}
 
 				// Create new cards object with updated category
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[targetCategory]: updatedCategoryCards
 				};
@@ -198,7 +200,7 @@ function createDeckStore() {
 				}
 
 				// Create new cards object with updated category
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
 				};
@@ -232,7 +234,7 @@ function createDeckStore() {
 				const commandersWithQuantity = commanders.map(c => ({ ...c, quantity: 1 }));
 
 				// Replace the commander cards
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[CardCategory.Commander]: commandersWithQuantity
 				};
@@ -245,9 +247,13 @@ function createDeckStore() {
 					...state.deck,
 					cards: updatedCards,
 					cardCount: calculateTotalCards(updatedCards),
-					colorIdentity,
 					updatedAt: new Date().toISOString()
 				};
+
+				// Set color identity for Commander decks only
+				if (isCommanderDeck(newDeck)) {
+					(newDeck as CommanderDeck).colorIdentity = colorIdentity;
+				}
 
 				return {
 					...state,
@@ -278,7 +284,7 @@ function createDeckStore() {
 				currentCommanders[index] = { ...newCommander, quantity: 1 };
 
 				// Replace the commander cards
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[CardCategory.Commander]: currentCommanders
 				};
@@ -291,9 +297,13 @@ function createDeckStore() {
 					...state.deck,
 					cards: updatedCards,
 					cardCount: calculateTotalCards(updatedCards),
-					colorIdentity,
 					updatedAt: new Date().toISOString()
 				};
+
+				// Set color identity for Commander decks only
+				if (isCommanderDeck(newDeck)) {
+					(newDeck as CommanderDeck).colorIdentity = colorIdentity;
+				}
 
 				return {
 					...state,
@@ -321,7 +331,7 @@ function createDeckStore() {
 				// Add the partner
 				const updatedCommanders = [...currentCommanders, { ...partner, quantity: 1 }];
 
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[CardCategory.Commander]: updatedCommanders
 				};
@@ -334,9 +344,13 @@ function createDeckStore() {
 					...state.deck,
 					cards: updatedCards,
 					cardCount: calculateTotalCards(updatedCards),
-					colorIdentity,
 					updatedAt: new Date().toISOString()
 				};
+
+				// Set color identity for Commander decks only
+				if (isCommanderDeck(newDeck)) {
+					(newDeck as CommanderDeck).colorIdentity = colorIdentity;
+				}
 
 				return {
 					...state,
@@ -364,7 +378,7 @@ function createDeckStore() {
 				// Remove the specified commander
 				const updatedCommanders = currentCommanders.filter(c => c.name !== commanderName);
 
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[CardCategory.Commander]: updatedCommanders
 				};
@@ -377,9 +391,13 @@ function createDeckStore() {
 					...state.deck,
 					cards: updatedCards,
 					cardCount: calculateTotalCards(updatedCards),
-					colorIdentity,
 					updatedAt: new Date().toISOString()
 				};
+
+				// Set color identity for Commander decks only
+				if (isCommanderDeck(newDeck)) {
+					(newDeck as CommanderDeck).colorIdentity = colorIdentity;
+				}
 
 				return {
 					...state,
@@ -422,7 +440,7 @@ function createDeckStore() {
 				}
 
 				// Create new cards object with updated category
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
 				};
@@ -465,7 +483,7 @@ function createDeckStore() {
 				];
 
 				// Create new cards object with updated category
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
 				};
@@ -510,7 +528,7 @@ function createDeckStore() {
 				];
 
 				// Create new cards object with updated category
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
 				};
@@ -748,7 +766,7 @@ function createDeckStore() {
 					...categoryCards.slice(cardIndex + 1)
 				];
 
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[category]: updatedCategoryCards
 				};
@@ -809,7 +827,7 @@ function createDeckStore() {
 					updatedDeckCategoryCards = [...deckCategoryCards, card];
 				}
 
-				const updatedCards = {
+				const updatedCards: CardsByCategory = {
 					...state.deck.cards,
 					[deckCategory]: updatedDeckCategoryCards
 				};
@@ -1263,10 +1281,10 @@ function inferCategory(card: Card): CardCategory {
 /**
  * Calculate total cards in categorized deck
  */
-function calculateTotalCards(cards: CategorizedCards): number {
+function calculateTotalCards(cards: CardsByCategory): number {
 	let total = 0;
-	for (const category of Object.values(CardCategory)) {
-		for (const card of cards[category] || []) {
+	for (const categoryCards of Object.values(cards)) {
+		for (const card of categoryCards) {
 			total += card.quantity;
 		}
 	}

@@ -2,20 +2,106 @@
  * Deck type definitions
  */
 
-import type { CategorizedCards, ValidationWarning } from './card';
+import type {
+	CategorizedCards,
+	CubeCategorizedCards,
+	ValidationWarning,
+	CardsByCategory,
+	CategorySchema,
+	CategoryDefinition,
+	ManaColor
+} from './card';
 import type { Maybeboard } from './maybeboard';
 import type { BranchMetadata, Stash } from './version';
-import type { DeckFormat } from '$lib/formats/format-registry';
+import { DeckFormat } from '$lib/formats/format-registry';
 
 /**
- * Main deck structure
+ * Categorization mode for deck organization
  */
-export interface Deck {
+export type CategorizationMode = 'default' | 'custom';
+
+/**
+ * Base deck structure shared by all formats
+ */
+export interface BaseDeck {
 	/** Deck name */
 	name: string;
 
-	/** Cards organized by category */
-	cards: CategorizedCards;
+	/** Cards organized by category (generic) */
+	cards: CardsByCategory;
+
+	/** Total card count */
+	cardCount: number;
+
+	/** Format identifier */
+	format: DeckFormat;
+
+	/** Current branch name */
+	currentBranch: string;
+
+	/** Current version string */
+	currentVersion: string;
+
+	/** ISO timestamp of deck creation */
+	createdAt: string;
+
+	/** ISO timestamp of last update */
+	updatedAt: string;
+
+	/** Categorization mode: 'default' uses format rules, 'custom' uses user-defined categories */
+	categorizationMode: CategorizationMode;
+
+	/** User-defined custom categories (only used when categorizationMode is 'custom') */
+	customCategories?: CategoryDefinition[];
+}
+
+/**
+ * Commander-specific deck structure
+ */
+export interface CommanderDeck extends BaseDeck {
+	format: DeckFormat.Commander;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Cube-specific deck structure
+ */
+export interface CubeDeck extends BaseDeck {
+	format: DeckFormat.Cube;
+}
+
+/**
+ * Standard-specific deck structure
+ */
+export interface StandardDeck extends BaseDeck {
+	format: DeckFormat.Standard;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Modern-specific deck structure
+ */
+export interface ModernDeck extends BaseDeck {
+	format: DeckFormat.Modern;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Main deck type (discriminated union)
+ * TypeScript will automatically narrow the type based on the format field
+ */
+export type Deck = CommanderDeck | CubeDeck | StandardDeck | ModernDeck;
+
+/**
+ * Legacy deck interface (for backward compatibility during migration)
+ * @deprecated Use specific deck types (CommanderDeck, CubeDeck, etc.) instead
+ */
+export interface LegacyDeck {
+	/** Deck name */
+	name: string;
+
+	/** Cards organized by category (format-specific) */
+	cards: CategorizedCards | CubeCategorizedCards;
 
 	/** Total card count (should be 100 for Commander) */
 	cardCount: number;
@@ -265,4 +351,36 @@ export interface DeckValidationResult {
 
 	/** Color identity matches commander */
 	colorIdentityValid: boolean;
+}
+
+/**
+ * Type guard utilities for discriminated union
+ */
+
+/**
+ * Check if a deck is a Commander deck
+ */
+export function isCommanderDeck(deck: Deck): deck is CommanderDeck {
+	return deck.format === DeckFormat.Commander;
+}
+
+/**
+ * Check if a deck is a Cube deck
+ */
+export function isCubeDeck(deck: Deck): deck is CubeDeck {
+	return deck.format === DeckFormat.Cube;
+}
+
+/**
+ * Check if a deck is a Standard deck
+ */
+export function isStandardDeck(deck: Deck): deck is StandardDeck {
+	return deck.format === DeckFormat.Standard;
+}
+
+/**
+ * Check if a deck is a Modern deck
+ */
+export function isModernDeck(deck: Deck): deck is ModernDeck {
+	return deck.format === DeckFormat.Modern;
 }
