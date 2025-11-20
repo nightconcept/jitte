@@ -805,7 +805,7 @@ function createDeckStore() {
 		/**
 		 * Move a card from maybeboard to deck
 		 */
-		moveToDeck(cardName: string, categoryId: string, targetCategory?: CardCategory): void {
+		moveToDeck(cardName: string, categoryId: string, targetCategory?: string): void {
 			update((state) => {
 				if (!state) return state;
 
@@ -1428,36 +1428,84 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
+				console.log('[deck-store] switchCategorizationMode called:', {
+					requestedMode: mode,
+					currentMode: state.deck.categorizationMode,
+					format: state.deck.format
+				});
+
 				// If already in this mode, do nothing
-				if (state.deck.categorizationMode === mode) return state;
+				if (state.deck.categorizationMode === mode) {
+					console.log('[deck-store] Already in mode:', mode);
+					return state;
+				}
 
 				const formatService = getFormatService(state.deck.format);
 
-				// Collect all cards from all categories
-				const allCards: Card[] = [];
-				for (const categoryCards of Object.values(state.deck.cards)) {
-					allCards.push(...categoryCards);
+				// Get all default format categories
+				const defaultCategories = formatService.getAllCategories();
+
+				// Separate zone categories (commander, companion) from customizable cards
+				const zoneCategoryCards: Record<string, Card[]> = {};
+				const customizableCards: Card[] = [];
+
+				for (const [category, categoryCards] of Object.entries(state.deck.cards)) {
+					// Check if this is a zone category (commander, companion)
+					// Zone categories have card limits (maxCards) and should be preserved
+					const categoryDef = formatService.getCategory(category);
+					const isZoneCategory = categoryDef && (categoryDef.isRequired || categoryDef.maxCards !== undefined);
+
+					if (isZoneCategory) {
+						// This is a zone category - preserve it (commander, companion)
+						zoneCategoryCards[category] = categoryCards;
+					} else {
+						// This is a type category or custom category - cards can be reorganized
+						customizableCards.push(...categoryCards);
+					}
 				}
 
 				let updatedCards: CardsByCategory;
 				let customCategories = state.deck.customCategories;
 
 				if (mode === 'custom') {
-					// Switching to custom mode - move all cards to uncategorized
+					// Switching to custom mode - move customizable cards to uncategorized
 					// Initialize custom categories if not present
 					if (!customCategories || customCategories.length === 0) {
 						customCategories = [];
 					}
 
-					// Create empty card structure with uncategorized containing all cards
-					updatedCards = formatService.createEmptyCardsByCategory(customCategories);
-					updatedCards[UNCATEGORIZED_CATEGORY_ID] = allCards;
-				} else {
-					// Switching to default mode - recategorize all cards by type/color
+					// Create card structure with BOTH default categories (for validation) AND custom categories
+					// First, initialize all default categories as empty
 					updatedCards = formatService.createEmptyCardsByCategory();
 
-					// Categorize each card using default logic
-					for (const card of allCards) {
+					// Then add custom categories
+					for (const cat of customCategories) {
+						updatedCards[cat.id] = [];
+					}
+
+					// Add uncategorized if not already present
+					if (!updatedCards[UNCATEGORIZED_CATEGORY_ID]) {
+						updatedCards[UNCATEGORIZED_CATEGORY_ID] = [];
+					}
+
+					// Move customizable cards to uncategorized
+					updatedCards[UNCATEGORIZED_CATEGORY_ID] = customizableCards;
+
+					// Preserve all zone category cards (commander, companion)
+					for (const [category, cards] of Object.entries(zoneCategoryCards)) {
+						updatedCards[category] = cards;
+					}
+				} else {
+					// Switching to default mode - recategorize customizable cards by type/color
+					updatedCards = formatService.createEmptyCardsByCategory();
+
+					// Preserve all zone category cards (commander, companion)
+					for (const [category, cards] of Object.entries(zoneCategoryCards)) {
+						updatedCards[category] = cards;
+					}
+
+					// Recategorize customizable cards using default logic
+					for (const card of customizableCards) {
 						const category = formatService.categorizeCard(card, 'default');
 						if (!updatedCards[category]) {
 							updatedCards[category] = [];
@@ -1474,6 +1522,13 @@ function createDeckStore() {
 					cardCount: calculateTotalCards(updatedCards),
 					updatedAt: new Date().toISOString()
 				};
+
+				console.log('[deck-store] switchCategorizationMode complete:', {
+					newMode: newDeck.categorizationMode,
+					customCategoriesCount: customCategories?.length || 0,
+					cardCategories: Object.keys(updatedCards),
+					uncategorizedCount: updatedCards[UNCATEGORIZED_CATEGORY_ID]?.length || 0
+				});
 
 				return {
 					...state,

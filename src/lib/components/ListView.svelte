@@ -252,11 +252,28 @@
     if (!deck) return [];
 
     if (categorizationMode === 'custom') {
-      // Custom mode: uncategorized first, then custom categories sorted by order
+      // Custom mode: zone categories first (commander, companion), then uncategorized, then custom categories
+      const formatService = getFormatService(deck.format);
+      const zoneCategories = formatService
+        .getAllCategories()
+        .filter(cat => {
+          const isZone = cat.isRequired || cat.maxCards !== undefined;
+          if (!isZone) return false;
+
+          // Always show required categories (commander) even if empty
+          if (cat.isRequired) return true;
+
+          // For optional zones (companion), only show if they have cards
+          const hasCards = deck.cards[cat.id] && deck.cards[cat.id].length > 0;
+          return hasCards;
+        })
+        .map(cat => cat.id);
+
       const customCats = (deck.customCategories || [])
         .sort((a, b) => a.order - b.order)
         .map(c => c.id);
-      return [UNCATEGORIZED_CATEGORY_ID, ...customCats];
+
+      return [...zoneCategories, UNCATEGORIZED_CATEGORY_ID, ...customCats];
     } else {
       // Default mode: use format service
       const formatService = getFormatService(deck.format);
@@ -267,19 +284,25 @@
   let categoryLabels = $derived.by(() => {
     if (!deck) return {};
 
+    const formatService = getFormatService(deck.format);
+    const labels: Record<string, string> = {};
+
     if (categorizationMode === 'custom') {
-      // Custom mode: build labels from custom categories
-      const labels: Record<string, string> = {
-        [UNCATEGORIZED_CATEGORY_ID]: 'Uncategorized'
-      };
+      // Custom mode: include labels for required categories (commander, companion)
+      for (const category of formatService.getAllCategories()) {
+        labels[category.id] = category.label;
+      }
+
+      // Add uncategorized
+      labels[UNCATEGORIZED_CATEGORY_ID] = 'Uncategorized';
+
+      // Add custom category labels
       for (const category of deck.customCategories || []) {
         labels[category.id] = category.label;
       }
       return labels;
     } else {
       // Default mode: use format service
-      const formatService = getFormatService(deck.format);
-      const labels: Record<string, string> = {};
       for (const category of formatService.getAllCategories()) {
         labels[category.id] = category.label;
       }
@@ -291,19 +314,25 @@
   let categoryIcons = $derived.by(() => {
     if (!deck) return {};
 
+    const formatService = getFormatService(deck.format);
+    const icons: Record<string, string> = {};
+
     if (categorizationMode === 'custom') {
-      // Custom mode: build icons from custom categories
-      const icons: Record<string, string> = {
-        [UNCATEGORIZED_CATEGORY_ID]: ''
-      };
+      // Custom mode: include icons for required categories (commander, companion)
+      for (const category of formatService.getAllCategories()) {
+        icons[category.id] = category.icon || "";
+      }
+
+      // Add uncategorized (no icon)
+      icons[UNCATEGORIZED_CATEGORY_ID] = '';
+
+      // Add custom category icons
       for (const category of deck.customCategories || []) {
         icons[category.id] = category.icon || "";
       }
       return icons;
     } else {
       // Default mode: use format service
-      const formatService = getFormatService(deck.format);
-      const icons: Record<string, string> = {};
       for (const category of formatService.getAllCategories()) {
         icons[category.id] = category.icon || "";
       }
@@ -767,7 +796,7 @@
           class="px-3 py-1.5 text-sm bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] flex items-center gap-2"
         >
           <span class="text-[var(--color-text-tertiary)]">Group:</span>
-          <span>{groupModeLabel}</span>
+          <span>{categorizationMode === 'custom' ? 'Custom Categories' : `Default (${groupModeLabel})`}</span>
           <svg
             class="w-4 h-4"
             fill="none"
@@ -784,7 +813,7 @@
         </button>
         {#if groupDropdownOpen}
           <div
-            class="absolute right-0 mt-1 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10"
+            class="absolute right-0 mt-1 w-52 bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-lg z-10"
           >
             <button
               onclick={() => {
@@ -795,7 +824,7 @@
                 ? 'text-[var(--color-brand-primary)]'
                 : 'text-[var(--color-text-primary)]'}"
             >
-              {deck?.format === DeckFormat.Cube ? 'Color' : 'Type'}
+              Default ({deck?.format === DeckFormat.Cube ? 'Color' : 'Type'})
             </button>
             <button
               onclick={() => {
@@ -806,7 +835,7 @@
                 ? 'text-[var(--color-brand-primary)]'
                 : 'text-[var(--color-text-primary)]'}"
             >
-              Custom
+              Custom Categories
             </button>
           </div>
         {/if}

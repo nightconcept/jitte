@@ -112,7 +112,7 @@
   class="{isCollapsed
     ? 'w-12'
     : className ||
-      'w-[28rem]'} bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)] relative transition-all duration-200"
+      'w-[24rem]'} bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)] relative transition-all duration-200"
 >
   <!-- Collapsible Header -->
   <button
