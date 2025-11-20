@@ -1059,6 +1059,7 @@
     >
       {#each categoryOrder as category}
         {@const cards = getCategoryCards(category)}
+        {@const isDraggableCategory = categorizationMode === 'custom' && isEditing && category !== UNCATEGORIZED_CATEGORY_ID && !formatService?.getCategory(category)}
         {#if cards.length > 0 || categorizationMode === 'custom'}
           <div
             class="transition-all duration-200 {isDragging && dragOverCategory === category
@@ -1074,12 +1075,19 @@
               categoryLabel={categoryLabels[category]}
               categoryIcon={categoryIcons[category]}
               {isEditing}
+              {isDraggableCategory}
+              isDraggedCategory={draggedCategory === category}
+              isDragOverCategory={dragOverCategoryHeader === category}
               onCardClick={(card) => {
                 detailModalCard = { name: card.name, category };
               }}
               {onCardHover}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              onCategoryDragStart={handleCategoryDragStart}
+              onCategoryDragEnd={handleCategoryDragEnd}
+              onCategoryDragOver={handleCategoryDragOver}
+              onCategoryDrop={handleCategoryDrop}
             />
           </div>
         {/if}

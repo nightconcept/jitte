@@ -15,20 +15,34 @@
 		categoryLabel,
 		categoryIcon,
 		isEditing = false,
+		isDraggableCategory = false,
+		isDraggedCategory = false,
+		isDragOverCategory = false,
 		onCardClick = undefined,
 		onCardHover = undefined,
 		onDragStart = undefined,
-		onDragEnd = undefined
+		onDragEnd = undefined,
+		onCategoryDragStart = undefined,
+		onCategoryDragEnd = undefined,
+		onCategoryDragOver = undefined,
+		onCategoryDrop = undefined
 	}: {
 		cards: Card[];
 		category: string;
 		categoryLabel: string;
 		categoryIcon: string;
 		isEditing?: boolean;
+		isDraggableCategory?: boolean;
+		isDraggedCategory?: boolean;
+		isDragOverCategory?: boolean;
 		onCardClick?: (card: Card) => void;
 		onCardHover?: (card: Card | null) => void;
 		onDragStart?: (event: DragEvent, card: Card, category: string) => void;
 		onDragEnd?: () => void;
+		onCategoryDragStart?: (event: DragEvent, category: string) => void;
+		onCategoryDragEnd?: () => void;
+		onCategoryDragOver?: (event: DragEvent, category: string) => void;
+		onCategoryDrop?: (event: DragEvent, category: string) => void;
 	} = $props();
 
 	// Store subscription
@@ -280,7 +294,16 @@
 
 <div class="stacks-category">
 	<!-- Category Header -->
-	<div class="stacks-category-header">
+	<div
+		class="stacks-category-header {isDraggableCategory ? 'stacks-category-header-draggable' : ''} {isDraggedCategory ? 'stacks-category-header-dragged' : ''} {isDragOverCategory ? 'stacks-category-header-dragover' : ''}"
+		draggable={isDraggableCategory}
+		ondragstart={(e) => isDraggableCategory && onCategoryDragStart?.(e, category)}
+		ondragend={onCategoryDragEnd}
+		ondragover={(e) => isDraggableCategory && onCategoryDragOver?.(e, category)}
+		ondrop={(e) => isDraggableCategory && onCategoryDrop?.(e, category)}
+		role={isDraggableCategory ? 'button' : undefined}
+		tabindex={isDraggableCategory ? 0 : undefined}
+	>
 		{#if categoryIcon}
 			<i class="ms {categoryIcon} text-xl text-[var(--color-text-primary)]"></i>
 		{/if}
@@ -502,6 +525,24 @@
 		background: var(--color-surface);
 		border-radius: 0.5rem;
 		border: 1px solid var(--color-border);
+		transition: all 0.2s ease;
+	}
+
+	.stacks-category-header-draggable {
+		cursor: grab;
+	}
+
+	.stacks-category-header-draggable:active {
+		cursor: grabbing;
+	}
+
+	.stacks-category-header-dragged {
+		opacity: 0.5;
+	}
+
+	.stacks-category-header-dragover {
+		border-color: var(--color-brand-primary);
+		box-shadow: 0 0 0 2px var(--color-brand-primary);
 	}
 
 	.stacks-container {
