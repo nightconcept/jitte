@@ -43,13 +43,15 @@ export function determineCategory(card: Card): CardCategory {
 	const types = card.types.map((t) => t.toLowerCase());
 
 	// Priority order for multi-type cards
+	// Note: Lands are checked first to ensure artifact lands, enchantment lands, etc.
+	// are categorized as lands, not as artifacts/enchantments
+	if (types.includes('land')) return CardCategory.Land;
 	if (types.includes('planeswalker')) return CardCategory.Planeswalker;
 	if (types.includes('creature')) return CardCategory.Creature;
 	if (types.includes('instant')) return CardCategory.Instant;
 	if (types.includes('sorcery')) return CardCategory.Sorcery;
 	if (types.includes('artifact')) return CardCategory.Artifact;
 	if (types.includes('enchantment')) return CardCategory.Enchantment;
-	if (types.includes('land')) return CardCategory.Land;
 
 	return CardCategory.Other;
 }
