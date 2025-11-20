@@ -405,7 +405,7 @@
 	/* Context Menu */
 	.context-menu {
 		position: fixed;
-		z-index: 1000;
+		z-index: 100; /* Above content, below modals */
 		min-width: 12rem;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);

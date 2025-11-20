@@ -10,11 +10,13 @@
     showPricing = true,
     className = "",
     collapsedByDefault = false,
+    allowCollapse = true,
   }: {
     hoveredCard: Card | null;
     showPricing?: boolean;
     className?: string;
     collapsedByDefault?: boolean;
+    allowCollapse?: boolean;
   } = $props();
 
   // Store subscription using Svelte 5 runes pattern
@@ -114,19 +116,20 @@
 </script>
 
 <aside
-  class="{isCollapsed
+  class="{allowCollapse && isCollapsed
     ? 'w-12'
     : className ||
       'w-[24rem]'} bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)] relative transition-all duration-200"
 >
-  <!-- Collapsible Header -->
-  <button
-    onclick={toggleCollapsed}
-    class="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors {isCollapsed
-      ? 'writing-mode-vertical px-2'
-      : ''}"
-    title={isCollapsed ? "Expand Card Preview" : "Collapse Card Preview"}
-  >
+  {#if allowCollapse}
+    <!-- Collapsible Header -->
+    <button
+      onclick={toggleCollapsed}
+      class="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] transition-colors {isCollapsed
+        ? 'writing-mode-vertical px-2'
+        : ''}"
+      title={isCollapsed ? "Expand Card Preview" : "Collapse Card Preview"}
+    >
     {#if isCollapsed}
       <!-- Collapsed state: vertical text -->
       <div class="flex flex-col items-center gap-2 w-full">
@@ -173,8 +176,9 @@
       </div>
     {/if}
   </button>
+  {/if}
 
-  {#if !isCollapsed}
+  {#if !allowCollapse || !isCollapsed}
     <!-- Card Image -->
     <div class="flex-shrink-0 mb-2 mt-4 px-4 perspective-container">
       <div class="flip-card" class:is-flipped={currentFaceIndex === 1}>

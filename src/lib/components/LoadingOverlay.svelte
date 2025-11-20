@@ -3,7 +3,7 @@
 </script>
 
 {#if isLoading}
-	<div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+	<div class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000]">
 		<div class="text-center">
 			<!-- Spinner -->
 			<div class="relative w-24 h-24 mx-auto mb-6">

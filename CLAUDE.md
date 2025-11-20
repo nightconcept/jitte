@@ -52,6 +52,7 @@ jitte/
 | **Change import/export** | `src/routes/+page.svelte` → export handlers, `src/lib/utils/decklist-parser.ts` |
 | **Modify maybeboard** | `src/lib/components/Maybeboard.svelte`, `src/lib/utils/maybeboard-manager.ts` |
 | **Update diff/buylist** | `src/lib/utils/diff.ts`, `src/lib/components/BuylistModal.svelte` |
+| **Work with z-index layering** | `src/lib/constants/z-index.ts` - centralized z-index constants for consistent UI layering |
 | **Understand project goals** | `project/PRD.md` for full product requirements |
 | **See what's implemented** | `project/TASKS.md` for task status |
 | **Test a feature** | `project/VERIFICATION_GUIDE.md` for testing checklists |
@@ -92,6 +93,19 @@ Use semantic color tokens in components:
 ```
 
 See `theme/QUICK-REFERENCE.md` for the full list of available color tokens.
+
+### Z-Index Layering System
+
+Centralized z-index constants in `src/lib/constants/z-index.ts` ensure consistent UI layering:
+- **Content (0-99)**: Card stacks (1), active cards (20), dropdowns (50)
+- **Overlays (100-999)**: Context menus (100)
+- **Modals (1000-9998)**: All modals (1000)
+- **Tooltips (9999)**: Always on top
+
+**Key Rules:**
+- Import from `src/lib/constants/z-index.ts`, don't use arbitrary values
+- Stack cards use **fixed z-index** (DOM order handles visual stacking, not variable z-index)
+- All modals use `z-[1000]` to stay above content/overlays
 
 ## Svelte 5 Runes
 

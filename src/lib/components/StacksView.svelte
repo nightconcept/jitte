@@ -7,6 +7,7 @@
 	import ChangeCommanderModal from './ChangeCommanderModal.svelte';
 	import { deckStore } from '$lib/stores/deck-store';
 	import { canAddPartner } from '$lib/utils/partner-detection';
+	import { Z_INDEX } from '$lib/constants/z-index';
 
 	let {
 		cards,
@@ -514,7 +515,7 @@
 		left: 0;
 		width: 100%;
 		transition: top 0.25s ease;
-		z-index: var(--stack-index);
+		z-index: 1; /* Fixed z-index - DOM order handles visual stacking */
 	}
 
 	/* Cards above the hovered card move down to fully reveal it including pricing */
@@ -525,7 +526,7 @@
 
 	/* Held card gets a visual outline to indicate it's selected */
 	.stacks-card-held {
-		z-index: 40; /* Above other cards (which use var(--stack-index)) but below modals (z-50) */
+		z-index: 20; /* Above other cards but below modals */
 	}
 
 	/* Apply visible borders on all sides to the card image container, not the pricing */
@@ -541,7 +542,7 @@
 	/* Context Menu */
 	.context-menu {
 		position: fixed;
-		z-index: 1000;
+		z-index: 100; /* Above content, below modals */
 		min-width: 12rem;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);

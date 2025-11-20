@@ -344,7 +344,7 @@
 
 {#if isOpen}
 	<div
-		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in"
+		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] p-4 animate-fade-in"
 		onclick={handleBackdropClick}
 		onkeydown={(e) => {
 			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
@@ -391,6 +391,7 @@
 								<CardPreview
 									hoveredCard={cardWithFaces}
 									showPricing={false}
+									allowCollapse={false}
 									className="w-full bg-transparent border-none flex flex-col static h-auto scale-card-preview"
 								/>
 							</div>

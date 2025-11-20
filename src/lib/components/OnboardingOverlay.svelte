@@ -105,7 +105,7 @@ For example, on your "stax" branch, you might:
 {#if isOpen}
 	<!-- Darkened Overlay -->
 	<div
-		class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+		class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"
 		role="presentation"
 	>
 		<!-- Onboarding Card -->
