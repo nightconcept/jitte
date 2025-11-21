@@ -776,6 +776,15 @@
       console.log('[Maybeboard] Calling deckStore.updateMaybeboardCardPrinting with:', cardName, activeCategory, updateData);
       deckStore.updateMaybeboardCardPrinting(cardName, activeCategory, updateData);
     }}
+    format={deck?.format}
+    onCustomPropertiesChange={(cardName, customProperties) => {
+      console.log('[Maybeboard] onCustomPropertiesChange called:', {
+        cardName,
+        customProperties
+      });
+      // Maybeboard cards use the same card store, so we can use the deck store method
+      deckStore.updateCardCustomProperties(cardName, customProperties);
+    }}
   />
 {/if}
 

@@ -1724,6 +1724,14 @@
       );
       deckStore.updateCardPrinting(cardName, updateData);
     }}
+    format={deck?.format}
+    onCustomPropertiesChange={(cardName, customProperties) => {
+      console.log('[ListView] onCustomPropertiesChange called:', {
+        cardName,
+        customProperties
+      });
+      deckStore.updateCardCustomProperties(cardName, customProperties);
+    }}
   />
 {/if}
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { Card } from '$lib/types/card';
+	import type { Card, ManaColor } from '$lib/types/card';
+	import { getEffectiveCmc, getEffectiveColorIdentity } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import { cardService } from '$lib/api/card-service';
 	import { edhrecService } from '$lib/api/edhrec-service';
@@ -8,6 +9,7 @@
 	import CardPreviewInfo from './CardPreviewInfo.svelte';
 	import OracleText from './OracleText.svelte';
 	import { FORMAT_ORDER, FORMAT_DISPLAY_NAMES, getLegalityIcon } from '$lib/formats/format-legality';
+	import { DeckFormat } from '$lib/formats/format-registry';
 
 	let {
 		card,
@@ -15,7 +17,9 @@
 		onClose = () => {},
 		isCommander = false,
 		commanderName = '',
-		onPrintingChange = undefined
+		onPrintingChange = undefined,
+		format = undefined,
+		onCustomPropertiesChange = undefined
 	}: {
 		card: Card;
 		isOpen: boolean;
@@ -23,6 +27,8 @@
 		isCommander?: boolean;
 		commanderName?: string;
 		onPrintingChange?: (cardName: string, printingData: ScryfallCard) => void;
+		format?: DeckFormat;
+		onCustomPropertiesChange?: (cardName: string, customProperties: { customCmc?: number; customColorIdentity?: ManaColor[] }) => void;
 	} = $props();
 
 	let scryfallCard = $state<ScryfallCard | null>(null);
@@ -33,6 +39,10 @@
 	let printings = $state<ScryfallCard[]>([]);
 	let loadingPrintings = $state(false);
 	let currentCardName = $state<string | null>(null); // Track which card we're viewing
+
+	// Custom properties editor state (for Cube format)
+	let customCmc = $state<number | undefined>(undefined);
+	let customColors = $state<Set<ManaColor>>(new Set());
 
 	// Create a merged card with full face data for CardPreview
 	let cardWithFaces = $derived.by(() => {
@@ -124,6 +134,18 @@
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown);
 		};
+	});
+
+	// Initialize custom properties when card changes
+	$effect(() => {
+		if (isOpen && card) {
+			// Initialize custom CMC with current value (custom if set, otherwise base)
+			customCmc = card.customCmc !== undefined ? card.customCmc : card.cmc;
+
+			// Initialize custom colors with current value
+			const effectiveColors = getEffectiveColorIdentity(card);
+			customColors = new Set(effectiveColors);
+		}
 	});
 
 	async function loadCardDetails() {
@@ -269,6 +291,54 @@
 		}
 	}
 
+	function toggleColor(color: ManaColor) {
+		const newColors = new Set(customColors);
+		if (newColors.has(color)) {
+			newColors.delete(color);
+		} else {
+			newColors.add(color);
+		}
+		customColors = newColors;
+		updateCustomProperties();
+	}
+
+	function updateCustomCmc(value: number | undefined) {
+		customCmc = value;
+		updateCustomProperties();
+	}
+
+	function updateCustomProperties() {
+		if (!onCustomPropertiesChange) return;
+
+		const hasCustomCmc = customCmc !== undefined && customCmc !== card.cmc;
+		const baseColors = card.colorIdentity || [];
+		const currentColorsArray = Array.from(customColors).sort();
+		const hasCustomColors = JSON.stringify(currentColorsArray) !== JSON.stringify(baseColors.sort());
+
+		// Build custom properties object - always include both properties
+		// If they match the base, set to undefined to clear the custom property
+		const customProperties: { customCmc?: number; customColorIdentity?: ManaColor[] } = {
+			customCmc: hasCustomCmc ? customCmc : undefined,
+			customColorIdentity: hasCustomColors ? currentColorsArray : undefined
+		};
+
+		onCustomPropertiesChange(card.name, customProperties);
+	}
+
+	function resetCustomProperties() {
+		// Reset to base values
+		customCmc = card.cmc;
+		customColors = new Set(card.colorIdentity || []);
+
+		// Clear custom properties
+		if (onCustomPropertiesChange) {
+			onCustomPropertiesChange(card.name, {
+				customCmc: undefined,
+				customColorIdentity: undefined
+			});
+		}
+	}
+
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
 			onClose();
@@ -366,6 +436,7 @@
 								</div>
 							{/if}
 
+
 					<!-- EDHREC Stats (Commander only) -->
 					{#if isCommander && commanderName && card.name !== commanderName && (loadingEdhrecData || edhrecData)}
 						<div class="w-full mt-2 flex-shrink-0" class:mt-auto={printings.length <= 1}>
@@ -400,6 +471,81 @@
 						<div class="flex flex-col gap-4">
 							<!-- Card Info (Name, Type, Oracle Text, etc.) -->
 							<CardPreviewInfo card={card} scryfallCard={scryfallCard} />
+
+						<!-- Custom Properties Editor (Cube only) -->
+						{#if format === DeckFormat.Cube && onCustomPropertiesChange}
+							<div>
+								<div class="flex items-center justify-between mb-2">
+									<h3 class="text-lg font-bold text-[var(--color-text-primary)]">Cube Overrides</h3>
+									{#if card.customCmc !== undefined || card.customColorIdentity !== undefined}
+										<button
+											onclick={resetCustomProperties}
+											class="text-xs text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)] transition-colors"
+											title="Reset to defaults"
+										>
+											Reset
+										</button>
+									{/if}
+								</div>
+
+								<div class="space-y-3">
+									<!-- CMC Editor -->
+									<div>
+										<label for="custom-cmc" class="text-sm font-semibold text-[var(--color-text-secondary)] block mb-1">
+											CMC
+											{#if card.customCmc !== undefined}
+												<span class="text-xs text-[var(--color-brand-primary)] ml-1">(customized)</span>
+											{/if}
+										</label>
+										<div class="flex items-center gap-2">
+											<input
+												id="custom-cmc"
+												type="number"
+												min="0"
+												max="20"
+												value={customCmc ?? ''}
+												oninput={(e) => {
+													const value = (e.target as HTMLInputElement).value;
+													updateCustomCmc(value === '' ? undefined : Number(value));
+												}}
+												class="flex-1 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+												placeholder={card.cmc?.toString() || '0'}
+											/>
+											{#if card.cmc !== undefined && card.cmc !== customCmc}
+												<span class="text-sm text-[var(--color-text-tertiary)]">
+													(was {card.cmc})
+												</span>
+											{/if}
+										</div>
+									</div>
+
+									<!-- Color Identity Editor -->
+									<div>
+										<label class="text-sm font-semibold text-[var(--color-text-secondary)] block mb-1">
+											Colors
+											{#if card.customColorIdentity !== undefined}
+												<span class="text-xs text-[var(--color-brand-primary)] ml-1">(customized)</span>
+											{/if}
+										</label>
+										<div class="flex flex-wrap gap-2">
+											{#each ['W', 'U', 'B', 'R', 'G', 'C'] as color}
+												<button
+													onclick={() => toggleColor(color as ManaColor)}
+													class="w-10 h-10 rounded flex items-center justify-center border-2 transition-all"
+													class:border-[var(--color-brand-primary)]={customColors.has(color as ManaColor)}
+													class:bg-[var(--color-brand-primary)]={customColors.has(color as ManaColor)}
+													class:border-[var(--color-border)]={!customColors.has(color as ManaColor)}
+													class:bg-[var(--color-surface)]={!customColors.has(color as ManaColor)}
+													title={color === 'W' ? 'White' : color === 'U' ? 'Blue' : color === 'B' ? 'Black' : color === 'R' ? 'Red' : color === 'G' ? 'Green' : 'Colorless'}
+												>
+													<i class="ms ms-{color.toLowerCase()} ms-cost ms-2x" class:ms-shadow={customColors.has(color as ManaColor)}></i>
+												</button>
+											{/each}
+										</div>
+									</div>
+								</div>
+							</div>
+						{/if}
 
 							<!-- Pricing -->
 							<div>

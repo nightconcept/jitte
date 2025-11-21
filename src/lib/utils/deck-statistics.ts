@@ -4,6 +4,7 @@
 
 import type { Deck, DeckStatistics } from '$lib/types/deck';
 import type { Card, ManaColor } from '$lib/types/card';
+import { getEffectiveCmc } from '$lib/types/card';
 import { validateDeck } from './deck-validation';
 import {
 	countGameChangers,
@@ -85,7 +86,7 @@ function calculateManaCurve(cards: Card[]): Record<number, { permanents: number;
 		// Skip lands
 		if (card.types?.some((t) => t.toLowerCase() === 'land')) continue;
 
-		const cmc = card.cmc ?? 0;
+		const cmc = getEffectiveCmc(card);
 		// Group CMC 7+ as "7+"
 		const key = Math.min(cmc, 7);
 
@@ -257,7 +258,7 @@ function calculateAverageCmc(cards: Card[]): number {
 
 	if (nonLands.length === 0) return 0;
 
-	const totalCmc = nonLands.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
+	const totalCmc = nonLands.reduce((sum, card) => sum + getEffectiveCmc(card), 0);
 	return Number((totalCmc / nonLands.length).toFixed(2));
 }
 
@@ -267,7 +268,7 @@ function calculateAverageCmc(cards: Card[]): number {
 function calculateAverageCmcWithLands(cards: Card[]): number {
 	if (cards.length === 0) return 0;
 
-	const totalCmc = cards.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
+	const totalCmc = cards.reduce((sum, card) => sum + getEffectiveCmc(card), 0);
 	return Number((totalCmc / cards.length).toFixed(2));
 }
 
@@ -279,7 +280,7 @@ function calculateMedianCmc(cards: Card[]): number {
 
 	if (nonLands.length === 0) return 0;
 
-	const cmcs = nonLands.map((card) => card.cmc ?? 0).sort((a, b) => a - b);
+	const cmcs = nonLands.map((card) => getEffectiveCmc(card)).sort((a, b) => a - b);
 	const mid = Math.floor(cmcs.length / 2);
 
 	if (cmcs.length % 2 === 0) {
@@ -295,7 +296,7 @@ function calculateMedianCmc(cards: Card[]): number {
 function calculateMedianCmcWithLands(cards: Card[]): number {
 	if (cards.length === 0) return 0;
 
-	const cmcs = cards.map((card) => card.cmc ?? 0).sort((a, b) => a - b);
+	const cmcs = cards.map((card) => getEffectiveCmc(card)).sort((a, b) => a - b);
 	const mid = Math.floor(cmcs.length / 2);
 
 	if (cmcs.length % 2 === 0) {
@@ -309,7 +310,7 @@ function calculateMedianCmcWithLands(cards: Card[]): number {
  * Calculate total mana value of the deck
  */
 function calculateTotalManaValue(cards: Card[]): number {
-	return cards.reduce((sum, card) => sum + (card.cmc ?? 0), 0);
+	return cards.reduce((sum, card) => sum + getEffectiveCmc(card), 0);
 }
 
 /**

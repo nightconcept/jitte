@@ -116,6 +116,12 @@ export interface Card {
 	/** Whether this card is a Game Changer (affects bracket level) */
 	isGameChanger?: boolean;
 
+	/** Custom CMC override (primarily for Cube format) */
+	customCmc?: number;
+
+	/** Custom color identity override (primarily for Cube format) */
+	customColorIdentity?: ManaColor[];
+
 	/** Format legalities from Scryfall */
 	legalities?: {
 		commander?: 'legal' | 'not_legal' | 'restricted' | 'banned';
@@ -263,4 +269,22 @@ export interface ValidationWarning {
 	message: string;
 	cardName?: string;
 	severity: 'error' | 'warning' | 'info';
+}
+
+/**
+ * Get the effective CMC for a card, respecting custom overrides
+ * @param card - The card to get CMC for
+ * @returns The custom CMC if set, otherwise the base CMC, or 0 if neither is set
+ */
+export function getEffectiveCmc(card: Card): number {
+	return card.customCmc !== undefined ? card.customCmc : (card.cmc ?? 0);
+}
+
+/**
+ * Get the effective color identity for a card, respecting custom overrides
+ * @param card - The card to get color identity for
+ * @returns The custom color identity if set, otherwise the base color identity, or empty array if neither is set
+ */
+export function getEffectiveColorIdentity(card: Card): ManaColor[] {
+	return card.customColorIdentity !== undefined ? card.customColorIdentity : (card.colorIdentity ?? []);
 }

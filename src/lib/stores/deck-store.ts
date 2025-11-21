@@ -14,7 +14,7 @@ import type {
 } from '$lib/types/deck';
 import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
-import type { Card, CategorizedCards, CardsByCategory, CategoryDefinition } from '$lib/types/card';
+import type { Card, CategorizedCards, CardsByCategory, CategoryDefinition, ManaColor } from '$lib/types/card';
 import { CardCategory, UNCATEGORIZED_CATEGORY_ID } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
@@ -1257,6 +1257,79 @@ function createDeckStore() {
 				return {
 					...state,
 					maybeboard: newMaybeboard,
+					hasUnsavedChanges: true
+				};
+			});
+		},
+
+		/**
+		 * Update card custom properties (CMC and color identity overrides)
+		 * Primarily used for Cube format to customize card properties
+		 */
+		updateCardCustomProperties(
+			cardName: string,
+			customProperties: {
+				customCmc?: number;
+				customColorIdentity?: ManaColor[];
+			}
+		): void {
+			console.log('[DeckStore] updateCardCustomProperties called:', {
+				cardName,
+				customProperties
+			});
+
+			update((state) => {
+				if (!state) return state;
+
+				let cardFound = false;
+				const updatedCards = { ...state.deck.cards };
+
+				// Search through all categories to find and update the card
+				for (const category of Object.keys(updatedCards)) {
+					const categoryCards = updatedCards[category];
+					const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+
+					if (cardIndex !== -1) {
+						console.log('[DeckStore] Found card in category:', category, 'at index:', cardIndex);
+						console.log('[DeckStore] Original card:', categoryCards[cardIndex]);
+
+						// Found the card, update its custom properties
+						const updatedCard = {
+							...categoryCards[cardIndex],
+							...customProperties
+						};
+
+						console.log('[DeckStore] Updated card:', updatedCard);
+
+						updatedCards[category] = [
+							...categoryCards.slice(0, cardIndex),
+							updatedCard,
+							...categoryCards.slice(cardIndex + 1)
+						];
+
+						cardFound = true;
+						break; // Card found and updated, stop searching
+					}
+				}
+
+				if (!cardFound) {
+					console.warn(`[DeckStore] Card "${cardName}" not found in deck for custom properties update`);
+					return state;
+				}
+
+				// Create new deck object with updated cards
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards,
+					updatedAt: new Date().toISOString()
+				};
+
+				console.log('[DeckStore] Returning updated state with custom properties');
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
 					hasUnsavedChanges: true
 				};
 			});
