@@ -12,6 +12,7 @@
   import { MIN_SEARCH_CHARACTERS } from "$lib/constants/search";
   import { scryfallToCard } from "$lib/utils/card-converter";
   import { isGameChanger } from "$lib/utils/game-changers";
+  import { isCommanderDeck } from "$lib/types/deck";
 
   let {
     isOpen = false,
@@ -42,9 +43,12 @@
   // Flip animation state
   let currentFaceIndex = $state(0);
 
-  // Check if selected card has multiple faces
+  // Check if selected card has multiple faces (only transform and modal_dfc cards flip)
+  // Adventure, split, and room cards have multiple faces but don't flip
   let isDoubleFaced = $derived(
-    selectedCardFull?.cardFaces && selectedCardFull.cardFaces.length > 1
+    selectedCardFull?.cardFaces &&
+    selectedCardFull.cardFaces.length > 1 &&
+    (selectedCardFull?.layout === 'transform' || selectedCardFull?.layout === 'modal_dfc' || selectedCardFull?.layout === 'reversible_card')
   );
 
   // Debug logging for double-faced cards
@@ -68,7 +72,7 @@
   // Track whether modal was previously open (to detect opening transition)
   let wasOpen = $state(false);
 
-  // Subscribe to deck store to get commander color identity
+  // Subscribe to deck store to get deck format and commander color identity
   let deckStoreState = $state($deckStore);
   $effect(() => {
     const unsubscribe = deckStore.subscribe((value) => {
@@ -77,8 +81,14 @@
     return unsubscribe;
   });
 
-  // Get commander color identity
+  // Get deck format
+  let deckFormat = $derived(deckStoreState?.deck?.format || 'commander');
+  let isCommander = $derived(deckStoreState?.deck ? isCommanderDeck(deckStoreState.deck) : false);
+
+  // Get commander color identity (Commander format only)
   let commanderColors = $derived(() => {
+    if (!isCommander) return [];
+
     const commanders = deckStoreState?.deck?.cards?.commander;
     if (!commanders || commanders.length === 0) return [];
 
@@ -171,8 +181,13 @@
       currentPage = 1; // Reset to first page on new search
 
       try {
-        // Build search query - always show Commander-legal cards
-        let query = searchQuery + " format:commander";
+        // Build search query with format filter
+        let query = searchQuery;
+
+        // Add format filter (skip for Cube as it's not a real Scryfall format)
+        if (deckFormat !== 'cube') {
+          query += ` format:${deckFormat}`;
+        }
 
         // Fetch ALL results across all pages
         const { cards, totalCards: total } = await cardService.searchCardsAll(
@@ -182,30 +197,37 @@
 
         totalCards = total;
 
-        // Sort results: prioritize exact matches first, then starts-with
+        // Helper: Extract front face name from split/adventure cards
+        const getFrontFace = (name: string) => {
+          return name.includes(' // ') ? name.split(' // ')[0].trim() : name;
+        };
+
+        // Sort results: prioritize exact matches first, then starts-with, handle Adventure cards
         const sorted = cards.sort((a, b) => {
           const aName = a.name.toLowerCase();
           const bName = b.name.toLowerCase();
+          const aFrontFace = getFrontFace(a.name).toLowerCase();
+          const bFrontFace = getFrontFace(b.name).toLowerCase();
           const searchLower = searchQuery.toLowerCase();
 
-          // Exact match priority
-          const aExact = aName === searchLower;
-          const bExact = bName === searchLower;
+          // Exact match priority (check both full name and front face)
+          const aExact = aName === searchLower || aFrontFace === searchLower;
+          const bExact = bName === searchLower || bFrontFace === searchLower;
           if (aExact && !bExact) return -1;
           if (!aExact && bExact) return 1;
 
-          // Starts-with priority
-          const aStartsWith = aName.startsWith(searchLower);
-          const bStartsWith = bName.startsWith(searchLower);
+          // Starts-with priority (check both full name and front face)
+          const aStartsWith = aName.startsWith(searchLower) || aFrontFace.startsWith(searchLower);
+          const bStartsWith = bName.startsWith(searchLower) || bFrontFace.startsWith(searchLower);
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
 
-          // Alphabetical fallback
-          return aName.localeCompare(bName);
+          // Alphabetical fallback (using front face for split/adventure cards)
+          return aFrontFace.localeCompare(bFrontFace);
         });
 
-        // Filter out cards outside color identity if checkbox is checked
-        allResults = commanderLegalOnly
+        // Filter out cards outside color identity if checkbox is checked (Commander only)
+        allResults = (isCommander && commanderLegalOnly)
           ? sorted.filter((card) => !isOutsideColorIdentity(card))
           : sorted;
       } catch (error) {

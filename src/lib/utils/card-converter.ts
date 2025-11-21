@@ -53,14 +53,16 @@ export function scryfallToCard(
 			manaCost: face.mana_cost,
 			typeLine: face.type_line,
 			oracleText: face.oracle_text,
-			imageUrls: {
-				small: face.image_uris?.small,
-				normal: face.image_uris?.normal,
-				large: face.image_uris?.large,
-				png: face.image_uris?.png,
-				artCrop: face.image_uris?.art_crop,
-				borderCrop: face.image_uris?.border_crop
-			},
+			// Only include imageUrls if the face actually has image_uris
+			// Adventure cards have images at the top level, not on individual faces
+			imageUrls: face.image_uris ? {
+				small: face.image_uris.small,
+				normal: face.image_uris.normal,
+				large: face.image_uris.large,
+				png: face.image_uris.png,
+				artCrop: face.image_uris.art_crop,
+				borderCrop: face.image_uris.border_crop
+			} : undefined,
 			colors: face.colors,
 			power: face.power,
 			toughness: face.toughness,

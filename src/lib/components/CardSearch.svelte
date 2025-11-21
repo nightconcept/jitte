@@ -21,7 +21,8 @@
   let searchInputRef: HTMLInputElement;
   let modalOpen = false;
 
-  // Get commander color identity for filtering (Commander format only)
+  // Get deck format and commander color identity for filtering
+  $: deckFormat = $deckStore?.deck?.format || 'commander';
   $: isCommander = $deckStore?.deck ? isCommanderDeck($deckStore.deck) : false;
   $: commanders = isCommander ? ($deckStore?.deck?.cards?.commander || []) : [];
   $: commanderColors = (() => {
@@ -101,11 +102,16 @@
       showDropdown = true;
 
       try {
-        // Build search query with color identity filter for inline dropdown
-        let query = searchQuery + " format:commander";
+        // Build search query with format filter
+        let query = searchQuery;
 
-        // Add color identity filter if we have a commander
-        if (commanderColors.length > 0) {
+        // Add format filter (skip for Cube as it's not a real Scryfall format)
+        if (deckFormat !== 'cube') {
+          query += ` format:${deckFormat}`;
+        }
+
+        // Add color identity filter if we have a commander (Commander format only)
+        if (isCommander && commanderColors.length > 0) {
           // Scryfall uses "id<=" to mean "color identity is subset of or equal to"
           const colorString = commanderColors.join("").toLowerCase();
           query += ` id<=${colorString}`;
@@ -117,37 +123,44 @@
           );
         } else {
           console.log(
-            "[CardSearch] No commander, showing all Commander-legal cards",
+            `[CardSearch] Showing all ${deckFormat}-legal cards`,
           );
         }
 
         // Fetch more results (175 is Scryfall's page size) to have better pool for sorting
         const searchResults = await cardService.searchCards(query, 175, false);
 
-        // Sort results: prioritize exact matches first, then starts-with
+        // Helper: Extract front face name from split/adventure cards
+        const getFrontFace = (name: string) => {
+          return name.includes(' // ') ? name.split(' // ')[0].trim() : name;
+        };
+
+        // Sort results: prioritize exact matches first, then starts-with, handle Adventure cards
         const sorted = searchResults.sort((a, b) => {
           const aName = a.name.toLowerCase();
           const bName = b.name.toLowerCase();
+          const aFrontFace = getFrontFace(a.name).toLowerCase();
+          const bFrontFace = getFrontFace(b.name).toLowerCase();
           const searchLower = searchQuery.toLowerCase();
 
-          // Exact match priority
-          const aExact = aName === searchLower;
-          const bExact = bName === searchLower;
+          // Exact match priority (check both full name and front face)
+          const aExact = aName === searchLower || aFrontFace === searchLower;
+          const bExact = bName === searchLower || bFrontFace === searchLower;
           if (aExact && !bExact) return -1;
           if (!aExact && bExact) return 1;
 
-          // Starts-with priority
-          const aStartsWith = aName.startsWith(searchLower);
-          const bStartsWith = bName.startsWith(searchLower);
+          // Starts-with priority (check both full name and front face)
+          const aStartsWith = aName.startsWith(searchLower) || aFrontFace.startsWith(searchLower);
+          const bStartsWith = bName.startsWith(searchLower) || bFrontFace.startsWith(searchLower);
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
 
-          // Otherwise, maintain alphabetical order
-          return aName.localeCompare(bName);
+          // Otherwise, maintain alphabetical order (using front face for split/adventure cards)
+          return aFrontFace.localeCompare(bFrontFace);
         });
 
-        // Take top 10 after sorting
-        results = sorted.slice(0, 10);
+        // Take top 20 after sorting (increased from 10 for better coverage)
+        results = sorted.slice(0, 20);
       } catch (error) {
         console.error("Search error:", error);
         results = [];

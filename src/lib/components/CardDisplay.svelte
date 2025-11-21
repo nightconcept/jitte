@@ -115,21 +115,30 @@
 		  card?.cardFaces?.[0]?.typeLine?.includes('Room')) ?? false)
 	);
 
-	// Check if card has multiple faces (but exclude room cards - they don't flip)
+	// Check if card has multiple faces (only transform and modal_dfc cards flip)
+	// Adventure, split, and room cards have multiple faces but don't flip
 	const isDoubleFaced = $derived(
-		card?.cardFaces && card.cardFaces.length > 1 && !isRoomCard
+		card?.cardFaces &&
+		card.cardFaces.length > 1 &&
+		(card?.layout === 'transform' || card?.layout === 'modal_dfc' || card?.layout === 'reversible_card')
 	);
 
 	// Get card image URL based on current face
 	function getCardImageUrl(c: Card): string {
-		// If card has card faces, use the current face's image
+		let url = '';
+
+		// If card has card faces with their own images, use the current face's image
 		if (isDoubleFaced && c.cardFaces) {
 			const face = c.cardFaces[currentFaceIndex];
-			return face?.imageUrls?.normal || face?.imageUrls?.large || face?.imageUrls?.small || '';
+			url = face?.imageUrls?.normal || face?.imageUrls?.large || face?.imageUrls?.small || '';
 		}
 
-		// Otherwise use the card's main image URLs
-		return c.imageUrls?.normal || c.imageUrls?.small || c.imageUrls?.large || '';
+		// If no URL from card faces (e.g., Adventure cards), fall back to main image
+		if (!url) {
+			url = c.imageUrls?.normal || c.imageUrls?.small || c.imageUrls?.large || '';
+		}
+
+		return url;
 	}
 
 	const imageUrl = $derived(getCardImageUrl(card));

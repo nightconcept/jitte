@@ -59,11 +59,12 @@
   // Check if card is a split card
   let isSplitCard = $derived(displayCard?.layout === 'split');
 
-  // Check if card has multiple faces (exclude split cards - they don't flip)
+  // Check if card has multiple faces (only transform and modal_dfc cards flip)
+  // Adventure and split cards have multiple faces but don't flip
   let isDoubleFaced = $derived(
     displayCard?.cardFaces &&
     displayCard.cardFaces.length > 1 &&
-    displayCard?.layout !== 'split',
+    (displayCard?.layout === 'transform' || displayCard?.layout === 'modal_dfc' || displayCard?.layout === 'reversible_card'),
   );
 
   // Debug logging for double-faced cards
@@ -98,12 +99,14 @@
 
     let url = null;
 
-    // If card has card faces, use the current face's image
+    // If card has card faces with their own images, use the current face's image
     if (isDoubleFaced && displayCard.cardFaces) {
       const face = displayCard.cardFaces[currentFaceIndex];
       url = face?.imageUrls?.normal || face?.imageUrls?.large;
-    } else {
-      // Otherwise use the card's main image URLs
+    }
+
+    // If no URL from card faces (e.g., Adventure cards), fall back to main image
+    if (!url) {
       url = displayCard.imageUrls?.normal || displayCard.imageUrls?.large;
     }
 
