@@ -18,6 +18,7 @@
 		isDraggableCategory = false,
 		isDraggedCategory = false,
 		isDragOverCategory = false,
+		insertionPosition = null,
 		onCardClick = undefined,
 		onCardHover = undefined,
 		onDragStart = undefined,
@@ -35,6 +36,7 @@
 		isDraggableCategory?: boolean;
 		isDraggedCategory?: boolean;
 		isDragOverCategory?: boolean;
+		insertionPosition?: 'before' | 'after' | null;
 		onCardClick?: (card: Card) => void;
 		onCardHover?: (card: Card | null) => void;
 		onDragStart?: (event: DragEvent, card: Card, category: string) => void;
@@ -293,6 +295,11 @@
 </script>
 
 <div class="stacks-category">
+	<!-- Insertion indicator - before -->
+	{#if isDragOverCategory && insertionPosition === 'before'}
+		<div class="insertion-indicator insertion-indicator-before"></div>
+	{/if}
+
 	<!-- Category Header -->
 	<div
 		class="stacks-category-header {isDraggableCategory ? 'stacks-category-header-draggable' : ''} {isDraggedCategory ? 'stacks-category-header-dragged' : ''} {isDragOverCategory ? 'stacks-category-header-dragover' : ''}"
@@ -360,6 +367,11 @@
 			</div>
 		{/each}
 	</div>
+
+	<!-- Insertion indicator - after -->
+	{#if isDragOverCategory && insertionPosition === 'after'}
+		<div class="insertion-indicator insertion-indicator-after"></div>
+	{/if}
 </div>
 
 <!-- Context Menu -->
@@ -543,6 +555,31 @@
 	.stacks-category-header-dragover {
 		border-color: var(--color-brand-primary);
 		box-shadow: 0 0 0 2px var(--color-brand-primary);
+	}
+
+	.insertion-indicator {
+		height: 4px;
+		background: var(--color-brand-primary);
+		border-radius: 2px;
+		box-shadow: 0 0 8px var(--color-brand-primary);
+		animation: pulse 0.5s ease-in-out infinite alternate;
+	}
+
+	.insertion-indicator-before {
+		margin-bottom: 0.5rem;
+	}
+
+	.insertion-indicator-after {
+		margin-top: 0.5rem;
+	}
+
+	@keyframes pulse {
+		from {
+			opacity: 0.7;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.stacks-container {

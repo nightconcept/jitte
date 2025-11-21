@@ -75,24 +75,24 @@
 	async function loadDeckInfoForDeck(deckName: string) {
 		if (!storage) return;
 
-		console.log('[DeckPickerModal] loadDeckInfoForDeck() called for:', deckName);
+		console.log('[ListLoadModal] loadDeckInfoForDeck() called for:', deckName);
 		try {
 			const result = await storage.loadDeck(deckName);
 			if (result.success && result.data) {
-				console.log('[DeckPickerModal] Extracting deck info for:', deckName);
+				console.log('[ListLoadModal] Extracting deck info for:', deckName);
 				const deckInfo = await extractDeckInfo(result.data);
-				console.log('[DeckPickerModal] Deck info extracted:', deckInfo);
+				console.log('[ListLoadModal] Deck info extracted:', deckInfo);
 				// Create a new Map to trigger reactivity
 				deckInfoCache = new Map(deckInfoCache.set(deckName, deckInfo));
 			} else {
-				console.log('[DeckPickerModal] Failed to load deck:', deckName);
+				console.log('[ListLoadModal] Failed to load deck:', deckName);
 				deckInfoCache = new Map(deckInfoCache.set(deckName, {
 					format: DeckFormat.Commander,
 					commanders: []
 				}));
 			}
 		} catch (error) {
-			console.error(`[DeckPickerModal] Failed to load deck info for ${deckName}:`, error);
+			console.error(`[ListLoadModal] Failed to load deck info for ${deckName}:`, error);
 			deckInfoCache = new Map(deckInfoCache.set(deckName, {
 				format: DeckFormat.Commander,
 				commanders: []
@@ -125,35 +125,35 @@
 	}
 
 	function scheduleCommanderLoading() {
-		console.log('[DeckPickerModal] scheduleCommanderLoading() called');
+		console.log('[ListLoadModal] scheduleCommanderLoading() called');
 		stopCommanderLoading();
 
 		if (!isOpen || !storage || decks.length === 0) {
-			console.log('[DeckPickerModal] Skipping deck info loading:', { isOpen, hasStorage: !!storage, decksLength: decks.length });
+			console.log('[ListLoadModal] Skipping deck info loading:', { isOpen, hasStorage: !!storage, decksLength: decks.length });
 			return;
 		}
 
 		const pendingDecks = decks.filter((deck) => !deckInfoCache.has(deck.name));
-		console.log('[DeckPickerModal] Pending decks to load:', pendingDecks.length, pendingDecks.map(d => d.name));
+		console.log('[ListLoadModal] Pending decks to load:', pendingDecks.length, pendingDecks.map(d => d.name));
 
 		if (pendingDecks.length === 0) {
-			console.log('[DeckPickerModal] All deck info already cached');
+			console.log('[ListLoadModal] All deck info already cached');
 			return;
 		}
 
 		commanderLoadQueue = pendingDecks.map((deck) => deck.name);
 		isLoadingCommanders = true;
 
-		console.log('[DeckPickerModal] Scheduling deck info load queue with', commanderLoadQueue.length, 'decks');
+		console.log('[ListLoadModal] Scheduling deck info load queue with', commanderLoadQueue.length, 'decks');
 		commanderLoadHandle = setTimeout(() => {
-			console.log('[DeckPickerModal] Starting deck info queue processing');
+			console.log('[ListLoadModal] Starting deck info queue processing');
 			processCommanderQueue();
 		}, COMMANDER_BATCH_DELAY);
 	}
 
 	// Build browser items based on current folder
 	function buildBrowserItems() {
-		console.log('[DeckPickerModal] buildBrowserItems() called');
+		console.log('[ListLoadModal] buildBrowserItems() called');
 		const items: BrowserItem[] = [];
 
 		// Add folders at current level
@@ -194,16 +194,16 @@
 			}
 		}
 
-		console.log('[DeckPickerModal] buildBrowserItems() complete, items count:', items.length);
+		console.log('[ListLoadModal] buildBrowserItems() complete, items count:', items.length);
 		browserItems = items;
 	}
 
 	// Load data when modal opens
 	// IMPORTANT: Use untrack() to prevent circular dependencies
 	$effect(() => {
-		console.log('[DeckPickerModal] Effect - isOpen changed:', isOpen);
+		console.log('[ListLoadModal] Effect - isOpen changed:', isOpen);
 		if (isOpen) {
-			console.log('[DeckPickerModal] Modal opening, loading data...');
+			console.log('[ListLoadModal] Modal opening, loading data...');
 			// Use untrack to prevent these operations from being tracked as dependencies
 			untrack(() => {
 				folderStructure = loadFolderStructure();
@@ -212,7 +212,7 @@
 				scheduleCommanderLoading();
 			});
 		} else {
-			console.log('[DeckPickerModal] Modal closing, stopping commander loading...');
+			console.log('[ListLoadModal] Modal closing, stopping commander loading...');
 			untrack(() => {
 				stopCommanderLoading();
 				openMenuDeckName = null;
@@ -456,7 +456,7 @@
 
 	// Breadcrumb path
 	let breadcrumbs = $derived.by(() => {
-		const path: { id: string | null; name: string }[] = [{ id: null, name: 'All Decks' }];
+		const path: { id: string | null; name: string }[] = [{ id: null, name: 'All Lists' }];
 		let currentId = currentFolderId;
 
 		const buildPath: { id: string; name: string }[] = [];
@@ -517,8 +517,8 @@
 <BaseModal
 	{isOpen}
 	onClose={handleClose}
-	title="Load Deck"
-	subtitle="{decks.length} deck{decks.length === 1 ? '' : 's'} available"
+	title="Load List"
+	subtitle="{decks.length} list{decks.length === 1 ? '' : 's'} available"
 	size="custom"
 	customSize="w-[80vw]"
 	height="max-h-[90vh]"
@@ -556,30 +556,30 @@
 		</div>
 
 		<!-- Body -->
-		<div class="flex-1 overflow-y-auto" ondragover={handleDragOver} ondrop={() => handleDrop(currentFolderId)} role="region" aria-label="Deck browser">
+		<div class="flex-1 overflow-y-auto" ondragover={handleDragOver} ondrop={() => handleDrop(currentFolderId)} role="region" aria-label="List browser">
 			{#if browserItems.length === 0 && decks.length === 0 && currentFolderId === null}
-				<!-- No decks at all in the system -->
+				<!-- No lists at all in the system -->
 				<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
-					<p>No decks found. Create a new deck to get started!</p>
+					<p>No lists found. Create a new list to get started!</p>
 				</div>
 			{:else}
-				<!-- Column Headers -->
-				<div class="sticky top-0 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] z-10">
-					<div class="px-6 py-3 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto_auto] gap-6 items-center text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-						<div>Deck Name</div>
-						<div>Commander</div>
-						<div>Colors</div>
-						<div>Format</div>
-						<div class="text-right">Modified</div>
-						<div class="text-right w-20">Size</div>
-						<div class="w-10"></div>
-					</div>
-				</div>
-				<div class="divide-y divide-[var(--color-border)]">
+				<table class="w-full">
+					<thead class="sticky top-0 bg-[var(--color-bg-secondary)] border-b-2 border-[var(--color-border)] z-10">
+						<tr>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">List Name</th>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Commander</th>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Colors</th>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Format</th>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Modified</th>
+							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider w-24">Size</th>
+							<th class="px-6 py-3 w-10"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[var(--color-border)]">
 					<!-- Back/Up Navigation Row -->
 					{#if currentFolderId !== null}
-						<div
-							class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-pointer"
+						<tr
+							class="hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-pointer"
 							ondragover={handleDragOver}
 							ondrop={() => {
 								const currentFolder = getFolderById(folderStructure, currentFolderId!);
@@ -587,280 +587,263 @@
 									handleDrop(currentFolder.parentId);
 								}
 							}}
-							role="region"
+							role="row"
 							aria-label="Parent folder drop zone"
+							onclick={navigateUp}
 						>
-							<button
-								type="button"
-								class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center w-full"
-								onclick={navigateUp}
-							>
-								<!-- Back indicator with icon -->
-								<div class="flex items-center gap-2 min-w-0">
+							<td class="px-6 py-2" colspan="7">
+								<div class="flex items-center gap-2">
 									<span class="text-lg">⬆️</span>
-									<div class="font-medium text-[var(--color-text-secondary)] text-sm truncate">
+									<div class="font-medium text-[var(--color-text-secondary)] text-sm">
 										..
 									</div>
 								</div>
-
-								<!-- Empty columns to match deck layout -->
-								<div></div>
-								<div></div>
-								<div></div>
-								<div></div>
-								<div class="w-20"></div>
-								<div class="w-10"></div>
-							</button>
-						</div>
+							</td>
+						</tr>
 					{/if}
 
 					{#each browserItems as item}
 						{#if item.type === 'folder'}
 							<!-- Folder Item -->
-							<div
-								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors relative group"
+							<tr
+								class="hover:bg-[var(--color-accent-blue)]/10 transition-colors group"
 								ondragover={handleDragOver}
 								ondrop={() => handleDrop(item.folder.id)}
-								role="region"
+								role="row"
 								aria-label="Folder drop zone"
 							>
-								<div class="flex items-center gap-6">
-									<!-- Main content area - single-click to open folder -->
+								<td class="px-6 py-2">
 									<button
 										type="button"
-										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center"
+										class="flex items-center gap-2 text-left"
 										onclick={() => navigateToFolder(item.folder.id)}
 									>
-										<!-- Folder Name with Icon -->
-										<div class="flex items-center gap-2 min-w-0">
-											<span class="text-lg">📁</span>
-											<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
-												{item.folder.name}
-												<span class="text-[var(--color-text-tertiary)] ml-1">
-													({getDeckCountInFolder(item.folder.id)})
-												</span>
-											</div>
+										<span class="text-lg">📁</span>
+										<div class="font-medium text-[var(--color-text-primary)] text-sm truncate">
+											{item.folder.name}
+											<span class="text-[var(--color-text-tertiary)] ml-1">
+												({getDeckCountInFolder(item.folder.id)})
+											</span>
 										</div>
-
-										<!-- Empty columns to match deck layout -->
-										<div></div>
-										<div></div>
-										<div></div>
-										<div></div>
-										<div class="w-20"></div>
+									</button>
+								</td>
+								<td class="px-6 py-2"></td>
+								<td class="px-6 py-2"></td>
+								<td class="px-6 py-2"></td>
+								<td class="px-6 py-2"></td>
+								<td class="px-6 py-2"></td>
+								<td class="px-6 py-2 relative">
+									<button
+										type="button"
+										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+										onclick={(e) => {
+											e.stopPropagation();
+											openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
+										}}
+										aria-label="Folder options"
+									>
+										<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+											<circle cx="12" cy="5" r="2"/>
+											<circle cx="12" cy="12" r="2"/>
+											<circle cx="12" cy="19" r="2"/>
+										</svg>
 									</button>
 
-									<!-- Three-dot menu -->
-									<div class="relative w-10">
-										<button
-											type="button"
-											class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-											onclick={(e) => {
-												e.stopPropagation();
-												openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
-											}}
-											aria-label="Folder options"
-										>
-											<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-												<circle cx="12" cy="5" r="2"/>
-												<circle cx="12" cy="12" r="2"/>
-												<circle cx="12" cy="19" r="2"/>
-											</svg>
-										</button>
-
-										<!-- Dropdown menu -->
-										{#if openMenuFolderId === item.folder.id}
-											<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
-												<button
-													type="button"
-													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-													onclick={(e) => {
-														e.stopPropagation();
-														confirmRenameFolder(item.folder);
-														openMenuFolderId = null;
-													}}
-												>
-													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-													</svg>
-													Rename
-												</button>
-												<button
-													type="button"
-													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2 border-t border-[var(--color-border)]"
-													onclick={(e) => {
-														e.stopPropagation();
-														confirmDeleteFolder(item.folder);
-														openMenuFolderId = null;
-													}}
-												>
-													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-													</svg>
-													Delete
-												</button>
-											</div>
-										{/if}
-									</div>
-								</div>
-							</div>
+									<!-- Dropdown menu -->
+									{#if openMenuFolderId === item.folder.id}
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+											<button
+												type="button"
+												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+												onclick={(e) => {
+													e.stopPropagation();
+													confirmRenameFolder(item.folder);
+													openMenuFolderId = null;
+												}}
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+												</svg>
+												Rename
+											</button>
+											<button
+												type="button"
+												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2 border-t border-[var(--color-border)]"
+												onclick={(e) => {
+													e.stopPropagation();
+													confirmDeleteFolder(item.folder);
+													openMenuFolderId = null;
+												}}
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+												</svg>
+												Delete
+											</button>
+										</div>
+									{/if}
+								</td>
+							</tr>
 						{:else}
-							<!-- Deck Item -->
-							<div
-								class="px-6 py-2 hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-move relative group"
+							<!-- List Item -->
+							<tr
+								class="hover:bg-[var(--color-accent-blue)]/10 transition-colors cursor-move group relative"
 								draggable="true"
 								ondragstart={() => handleDragStart(item.deckName)}
 								ondragend={handleDragEnd}
 								ondragover={(e) => handleDeckDragOver(e, item.deckName)}
 								ondrop={(e) => handleDeckDrop(e, item.deckName)}
-								role="button"
-								aria-label="Draggable deck item"
+								aria-label="Draggable list item"
 								tabindex="0"
 							>
-								<!-- Drop indicator -->
-								{#if dropTargetDeckName === item.deckName && dropPosition === 'above'}
-									<div class="absolute top-0 left-0 right-0 h-0.5 bg-[var(--color-accent-blue)] z-20"></div>
-								{/if}
-								{#if dropTargetDeckName === item.deckName && dropPosition === 'below'}
-									<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-blue)] z-20"></div>
-								{/if}
-								<div class="flex items-center gap-6">
-									<!-- Deck content grid -->
-									<div
-										class="flex-1 text-left min-w-0 grid grid-cols-[1.5fr_2fr_1fr_auto_auto_auto] gap-6 items-center"
+								<!-- List Name - single click to load -->
+								<td class="px-6 py-2 relative">
+									<!-- Drop indicators -->
+									{#if dropTargetDeckName === item.deckName && dropPosition === 'above'}
+										<div class="absolute top-0 left-0 right-full h-0.5 bg-[var(--color-accent-blue)] z-20" style="width: 100vw;"></div>
+									{/if}
+									{#if dropTargetDeckName === item.deckName && dropPosition === 'below'}
+										<div class="absolute bottom-0 left-0 right-full h-0.5 bg-[var(--color-accent-blue)] z-20" style="width: 100vw;"></div>
+									{/if}
+									<button
+										type="button"
+										class="text-left group/deckname"
+										onclick={(e) => {
+											e.stopPropagation();
+											handleLoad(item.deckName);
+										}}
 									>
-										<!-- Deck Name - single click to load -->
-										<button
-											type="button"
-											class="min-w-0 text-left group/deckname"
-											onclick={(e) => {
-												e.stopPropagation();
-												handleLoad(item.deckName);
-											}}
-										>
-											<div class="font-medium text-[var(--color-text-primary)] group-hover/deckname:text-[var(--color-accent-blue)] text-sm truncate transition-colors relative">
-												{item.deckName}
-												<span class="absolute bottom-0 left-0 w-0 h-[1.5px] bg-[var(--color-accent-blue)] group-hover/deckname:w-full transition-all duration-200"></span>
+										<div class="font-medium text-[var(--color-text-primary)] group-hover/deckname:text-[var(--color-accent-blue)] text-sm truncate transition-colors relative">
+											{item.deckName}
+											<span class="absolute bottom-0 left-0 w-0 h-[1.5px] bg-[var(--color-accent-blue)] group-hover/deckname:w-full transition-all duration-200"></span>
+										</div>
+									</button>
+								</td>
+
+								<!-- Commander Names -->
+								<td class="px-6 py-2">
+									{#if deckInfoCache.has(item.deckName)}
+										{@const deckInfo = deckInfoCache.get(item.deckName)!}
+										{#if deckInfo.commanders.length > 0}
+											<div class="flex flex-col gap-0.5">
+												{#each deckInfo.commanders as commander}
+													<span class="text-sm text-[var(--color-text-secondary)] truncate">
+														{commander.name}
+													</span>
+												{/each}
 											</div>
-										</button>
+										{:else if deckInfo.format === DeckFormat.Commander}
+											<span class="text-sm text-[var(--color-text-tertiary)]">No commander</span>
+										{:else}
+											<span class="text-sm text-[var(--color-text-tertiary)]">—</span>
+										{/if}
+									{:else}
+										<span class="text-sm text-[var(--color-text-tertiary)]">Loading...</span>
+									{/if}
+								</td>
 
-										<!-- Commander Names -->
-										<div class="min-w-0">
-											{#if deckInfoCache.has(item.deckName)}
-												{@const deckInfo = deckInfoCache.get(item.deckName)!}
-												{#if deckInfo.commanders.length > 0}
-													<div class="flex flex-col gap-0.5">
-														{#each deckInfo.commanders as commander}
-															<span class="text-sm text-[var(--color-text-secondary)] truncate">
-																{commander.name}
-															</span>
-														{/each}
-													</div>
-												{:else if deckInfo.format === DeckFormat.Commander}
-													<span class="text-sm text-[var(--color-text-tertiary)]">No commander</span>
-												{:else}
-													<span class="text-sm text-[var(--color-text-tertiary)]">—</span>
-												{/if}
+								<!-- Colors -->
+								<td class="px-6 py-2">
+									{#if deckInfoCache.has(item.deckName)}
+										{@const deckInfo = deckInfoCache.get(item.deckName)!}
+										{#if deckInfo.commanders.length > 0}
+											{@const allColors = [...new Set(deckInfo.commanders.flatMap(c => c.colorIdentity))]}
+											{#if allColors.length > 0}
+												<div class="flex gap-0.5">
+													{#each allColors.sort() as color}
+														<i class={getManaSymbolClass(color)}></i>
+													{/each}
+												</div>
 											{:else}
-												<span class="text-sm text-[var(--color-text-tertiary)]">Loading...</span>
+												<i class="ms ms-c ms-cost ms-shadow"></i>
 											{/if}
-										</div>
+										{/if}
+									{/if}
+								</td>
 
-										<!-- Colors -->
-										<div class="flex items-center">
-											{#if deckInfoCache.has(item.deckName)}
-												{@const deckInfo = deckInfoCache.get(item.deckName)!}
-												{#if deckInfo.commanders.length > 0}
-													{@const allColors = [...new Set(deckInfo.commanders.flatMap(c => c.colorIdentity))]}
-													{#if allColors.length > 0}
-														<div class="flex gap-0.5">
-															{#each allColors.sort() as color}
-																<i class={getManaSymbolClass(color)}></i>
-															{/each}
-														</div>
-													{:else}
-														<i class="ms ms-c ms-cost ms-shadow"></i>
-													{/if}
-												{/if}
-											{/if}
-										</div>
-
-										<!-- Format with Bracket -->
-										<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
-											{#if deckInfoCache.has(item.deckName)}
-												{@const deckInfo = deckInfoCache.get(item.deckName)!}
-												{@const formatName = FORMAT_METADATA[deckInfo.format]?.displayName || deckInfo.format}
-												{#if deckInfo.format === DeckFormat.Commander && deckInfo.commanders.length > 0 && deckInfo.commanders[0].bracketLevel !== undefined}
-													{formatName} (Bracket {deckInfo.commanders[0].bracketLevel})
-												{:else}
-													{formatName}
-												{/if}
+								<!-- Format with Bracket -->
+								<td class="px-6 py-2">
+									<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+										{#if deckInfoCache.has(item.deckName)}
+											{@const deckInfo = deckInfoCache.get(item.deckName)!}
+											{@const formatName = FORMAT_METADATA[deckInfo.format]?.displayName || deckInfo.format}
+											{#if deckInfo.format === DeckFormat.Commander && deckInfo.commanders.length > 0 && deckInfo.commanders[0].bracketLevel !== undefined}
+												{formatName} (Bracket {deckInfo.commanders[0].bracketLevel})
 											{:else}
-												Loading...
+												{formatName}
 											{/if}
-										</div>
-
-										<!-- Last Modified -->
-										<div class="text-sm text-[var(--color-text-secondary)] text-right whitespace-nowrap">
-											{formatDate(item.lastModified)}
-										</div>
-
-										<!-- Size -->
-										<div class="text-sm text-[var(--color-text-secondary)] text-right whitespace-nowrap w-20">
-											{formatSize(item.size)}
-										</div>
-									</div>
-
-									<!-- Three-dot menu -->
-									<div class="relative w-10">
-										<button
-											type="button"
-											class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-											onclick={(e) => {
-												e.stopPropagation();
-												openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
-											}}
-											aria-label="Deck options"
-										>
-											<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-												<circle cx="12" cy="5" r="2"/>
-												<circle cx="12" cy="12" r="2"/>
-												<circle cx="12" cy="19" r="2"/>
-											</svg>
-										</button>
-
-										<!-- Dropdown menu -->
-										{#if openMenuDeckName === item.deckName}
-											<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
-												<button
-													type="button"
-													class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
-													onclick={(e) => {
-														e.stopPropagation();
-														confirmDelete(item.deckName);
-														openMenuDeckName = null;
-													}}
-												>
-													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-													</svg>
-													Delete
-												</button>
-											</div>
+										{:else}
+											Loading...
 										{/if}
 									</div>
-								</div>
-							</div>
+								</td>
+
+								<!-- Last Modified -->
+								<td class="px-6 py-2">
+									<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+										{formatDate(item.lastModified)}
+									</div>
+								</td>
+
+								<!-- Size -->
+								<td class="px-6 py-2">
+									<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
+										{formatSize(item.size)}
+									</div>
+								</td>
+
+								<!-- Three-dot menu -->
+								<td class="px-6 py-2 relative">
+									<button
+										type="button"
+										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+										onclick={(e) => {
+											e.stopPropagation();
+											openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
+										}}
+										aria-label="List options"
+									>
+										<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+											<circle cx="12" cy="5" r="2"/>
+											<circle cx="12" cy="12" r="2"/>
+											<circle cx="12" cy="19" r="2"/>
+										</svg>
+									</button>
+
+									<!-- Dropdown menu -->
+									{#if openMenuDeckName === item.deckName}
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+											<button
+												type="button"
+												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
+												onclick={(e) => {
+													e.stopPropagation();
+													confirmDelete(item.deckName);
+													openMenuDeckName = null;
+												}}
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+												</svg>
+												Delete
+											</button>
+										</div>
+									{/if}
+								</td>
+							</tr>
 						{/if}
 					{/each}
 
 					<!-- Empty folder message -->
 					{#if browserItems.length === 0 && currentFolderId !== null}
-						<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
-							<p>This folder is empty. Drag decks here or create a subfolder.</p>
-						</div>
+						<tr>
+							<td colspan="7" class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
+								<p>This folder is empty. Drag lists here or create a subfolder.</p>
+							</td>
+						</tr>
 					{/if}
-				</div>
+					</tbody>
+				</table>
 			{/if}
 		</div>
 
@@ -876,8 +859,8 @@
 	{/snippet}
 </BaseModal>
 
-<!-- Delete Deck Confirmation Modal -->
-<BaseModal isOpen={deckToDelete !== null} onClose={cancelDeleteDeck} title="Delete Deck?" size="md">
+<!-- Delete List Confirmation Modal -->
+<BaseModal isOpen={deckToDelete !== null} onClose={cancelDeleteDeck} title="Delete List?" size="md">
 	{#snippet children()}
 		<div class="px-6 py-4">
 			<p class="text-sm text-[var(--color-text-secondary)]">
@@ -907,7 +890,7 @@
 		<div class="px-6 py-4">
 			<p class="text-sm text-[var(--color-text-secondary)]">
 				Are you sure you want to delete "<span class="font-medium">{folderToDelete?.name}</span>"?
-				All subfolders will be deleted and decks inside will be moved to the root level.
+				All subfolders will be deleted and lists inside will be moved to the root level.
 			</p>
 		</div>
 

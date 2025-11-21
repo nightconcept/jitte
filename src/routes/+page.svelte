@@ -12,7 +12,7 @@
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CommitModal from '$lib/components/CommitModal.svelte';
 	import NewListModal from '$lib/components/NewListModal.svelte';
-	import DeckPickerModal from '$lib/components/DeckPickerModal.svelte';
+	import ListLoadModal from '$lib/components/ListLoadModal.svelte';
 	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import NewBranchModal from '$lib/components/NewBranchModal.svelte';
 	import BulkListEditModal from '$lib/components/BulkListEditModal.svelte';
@@ -37,7 +37,7 @@
 	let hoveredCard = $state<Card | null>(null);
 	let showCommitModal = $state(false);
 	let showNewDeckModal = $state(false);
-	let showDeckPickerModal = $state(false);
+	let showListLoadModal = $state(false);
 	let showSettingsModal = $state(false);
 	let showNewBranchModal = $state(false);
 	let showEditDecklistModal = $state(false);
@@ -503,9 +503,9 @@
 
 	function handleLoadDeck() {
 		console.log('[+page.svelte] handleLoadDeck() called');
-		if (!checkUnsavedChanges(() => showDeckPickerModal = true)) {
+		if (!checkUnsavedChanges(() => showListLoadModal = true)) {
 			console.log('[+page.svelte] No unsaved changes, opening modal');
-			showDeckPickerModal = true;
+			showListLoadModal = true;
 		} else {
 			console.log('[+page.svelte] Has unsaved changes, showing warning first');
 		}
@@ -513,7 +513,7 @@
 
 	async function handleLoadDeckFromPicker(deckName: string) {
 		await deckManager.loadDeck(deckName);
-		showDeckPickerModal = false;
+		showListLoadModal = false;
 	}
 
 	function handleDiscardChanges() {
@@ -1105,13 +1105,13 @@
 	on:close={() => showNewDeckModal = false}
 />
 
-<DeckPickerModal
-	isOpen={showDeckPickerModal}
+<ListLoadModal
+	isOpen={showListLoadModal}
 	decks={$deckManager.decks}
 	storage={deckManager.getStorage()}
 	onload={handleLoadDeckFromPicker}
 	ondelete={handleDeleteDeck}
-	onclose={() => (showDeckPickerModal = false)}
+	onclose={() => (showListLoadModal = false)}
 />
 
 <!-- Unsaved Changes Warning Modal -->
