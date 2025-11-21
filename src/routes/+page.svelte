@@ -549,6 +549,12 @@
 		// Deck picker stays open to allow selecting another deck
 	}
 
+	async function handleRenameDeck(oldName: string, newName: string) {
+		// Refresh the deck list after rename
+		await deckManager.refreshDeckList();
+		// Deck picker stays open to show the renamed deck
+	}
+
 	function handleSettings() {
 		showSettingsModal = true;
 	}
@@ -1162,6 +1168,7 @@
 	storage={deckManager.getStorage()}
 	onload={handleLoadDeckFromPicker}
 	ondelete={handleDeleteDeck}
+	onrename={handleRenameDeck}
 	onclose={() => (showListLoadModal = false)}
 />
 

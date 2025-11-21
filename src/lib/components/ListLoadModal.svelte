@@ -30,7 +30,8 @@
 		storage = null,
 		onclose,
 		onload,
-		ondelete
+		ondelete,
+		onrename
 	}: {
 		isOpen?: boolean;
 		decks: DeckListItem[];
@@ -38,6 +39,7 @@
 		onclose?: () => void;
 		onload?: (deckName: string) => void;
 		ondelete?: (deckName: string) => void;
+		onrename?: (oldName: string, newName: string) => void;
 	} = $props();
 
 	// Folder state
@@ -48,10 +50,12 @@
 
 	// UI state
 	let deckToDelete = $state<string | null>(null);
+	let deckToRename = $state<string | null>(null);
 	let folderToDelete = $state<Folder | null>(null);
 	let folderToRename = $state<Folder | null>(null);
 	let showNewFolderModal = $state(false);
 	let showRenameFolderModal = $state(false);
+	let showRenameDeckModal = $state(false);
 	let isLoadingCommanders = $state(false);
 	const COMMANDER_BATCH_DELAY = 32;
 	let commanderLoadQueue: string[] = [];
@@ -255,6 +259,46 @@
 
 	function cancelDeleteDeck() {
 		deckToDelete = null;
+	}
+
+	function confirmRenameDeck(deckName: string) {
+		deckToRename = deckName;
+		showRenameDeckModal = true;
+	}
+
+	async function handleRenameDeck(newName: string) {
+		if (!deckToRename || !storage) return;
+
+		const oldName = deckToRename;
+
+		// Validate new name
+		if (!newName || newName.trim() === '') {
+			alert('Please enter a valid deck name');
+			return;
+		}
+
+		if (newName === oldName) {
+			showRenameDeckModal = false;
+			deckToRename = null;
+			return;
+		}
+
+		// Check if name already exists
+		const existingDeck = decks.find(d => d.name === newName);
+		if (existingDeck) {
+			alert(`A deck with the name "${newName}" already exists`);
+			return;
+		}
+
+		// Rename via storage manager
+		const result = await storage.renameDeck(oldName, newName);
+		if (result.success) {
+			onrename?.(oldName, newName);
+			showRenameDeckModal = false;
+			deckToRename = null;
+		} else {
+			alert(`Failed to rename deck: ${result.error}`);
+		}
 	}
 
 	function handleClose() {
@@ -802,7 +846,21 @@
 										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
 											<button
 												type="button"
-												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
+												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+												onclick={(e) => {
+													e.stopPropagation();
+													confirmRenameDeck(item.deckName);
+													openMenuDeckName = null;
+												}}
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+												</svg>
+												Rename
+											</button>
+											<button
+												type="button"
+												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2 border-t border-[var(--color-border)]"
 												onclick={(e) => {
 													e.stopPropagation();
 													confirmDelete(item.deckName);
@@ -914,5 +972,18 @@
 	onCancel={() => {
 		showRenameFolderModal = false;
 		folderToRename = null;
+	}}
+/>
+
+<!-- Rename Deck Modal -->
+<FolderPromptModal
+	bind:isOpen={showRenameDeckModal}
+	title="Rename List"
+	initialValue={deckToRename || ''}
+	placeholder="List name"
+	onConfirm={handleRenameDeck}
+	onCancel={() => {
+		showRenameDeckModal = false;
+		deckToRename = null;
 	}}
 />
