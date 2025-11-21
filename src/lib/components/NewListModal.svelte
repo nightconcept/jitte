@@ -48,6 +48,7 @@
   let isDetectingCommanders = false;
   let detectionTimeoutId: number | undefined;
   let autoDetectEnabled = true; // Auto-detection enabled by default (bypasses queue)
+  let previousCommandersLength = 0; // Track to detect manual clearing
 
   const cardServiceInstance = new CardService();
 
@@ -58,6 +59,14 @@
   $: hasPartnerAbility = selectedCommander
     ? checkPartnerAbility(selectedCommander)
     : false;
+
+  // Detect when user manually clears commanders (disable auto-detection)
+  $: {
+    if (previousCommandersLength > 0 && selectedCommanders.length === 0) {
+      autoDetectEnabled = false;
+    }
+    previousCommandersLength = selectedCommanders.length;
+  }
 
   // Dynamic text based on selected format
   $: deckNamePlaceholder = {
@@ -180,6 +189,8 @@
     }
     // Stop the detection spinner
     isDetectingCommanders = false;
+    // Disable auto-detection when user cancels
+    autoDetectEnabled = false;
   }
 
   async function tryCommanderCandidates(
