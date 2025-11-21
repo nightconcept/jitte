@@ -33,7 +33,7 @@ export const pioneerBanList: FormatBanList = {
 		{ cardName: 'Teferi, Time Raveler', bannedDate: '2024-01-12' },
 		{ cardName: 'Undercity Informer', bannedDate: '2013-02-01' },
 		{ cardName: 'Underworld Breach', bannedDate: '2020-01-24' },
-		{ cardName: 'Uro, Titan of Nature's Wrath', bannedDate: '2020-01-24' },
+		{ cardName: 'Uro, Titan of Nature\'s Wrath', bannedDate: '2020-01-24' },
 		{ cardName: 'Veil of Summer', bannedDate: '2019-07-12' },
 		{ cardName: 'Walking Ballista', bannedDate: '2020-08-07' },
 		{ cardName: 'Wilderness Reclamation', bannedDate: '2024-09-27' },

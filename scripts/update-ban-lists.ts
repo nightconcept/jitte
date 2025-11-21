@@ -177,10 +177,16 @@ async function fetchCardsWithLegality(
 	return cards;
 }
 
+interface ExistingFileInfo {
+	banList: ExistingBanList;
+	hadRestrictedExport: boolean;
+	hadSuspendedExport: boolean;
+}
+
 /**
- * Load existing ban list to preserve ban dates
+ * Load existing ban list to preserve ban dates and detect existing exports
  */
-function loadExistingBanList(formatFileName: string): ExistingBanList | null {
+function loadExistingBanList(formatFileName: string): ExistingFileInfo | null {
 	const filePath = join(process.cwd(), 'src/lib/formats/ban-lists', `${formatFileName}.ts`);
 
 	if (!existsSync(filePath)) {
@@ -195,6 +201,10 @@ function loadExistingBanList(formatFileName: string): ExistingBanList | null {
 		const restrictedMatch = content.match(/restricted:\s*\[([\s\S]*?)\]/);
 		const suspendedMatch = content.match(/suspended:\s*\[([\s\S]*?)\]/);
 
+		// Check if exports existed (even if empty)
+		const hadRestrictedExport = /export const \w+Restricted/.test(content);
+		const hadSuspendedExport = /export const \w+Suspended/.test(content);
+
 		const result: ExistingBanList = { banned: [] };
 
 		if (bannedMatch) {
@@ -207,7 +217,11 @@ function loadExistingBanList(formatFileName: string): ExistingBanList | null {
 			result.suspended = parseCardEntries(suspendedMatch[1]);
 		}
 
-		return result;
+		return {
+			banList: result,
+			hadRestrictedExport,
+			hadSuspendedExport
+		};
 	} catch (error) {
 		console.warn(`  Warning: Could not parse existing ban list for ${formatFileName}`);
 		return null;
@@ -271,7 +285,11 @@ function generateBanListFile(
 	formatKey: string,
 	formatConfig: typeof FORMATS[keyof typeof FORMATS],
 	banned: BanListEntry[],
-	restricted?: BanListEntry[]
+	restricted?: BanListEntry[],
+	options?: {
+		includeRestrictedExport?: boolean;
+		includeSuspendedExport?: boolean;
+	}
 ): string {
 	const today = new Date().toISOString().split('T')[0];
 	const hasDeckFormat = ['commander', 'cube', 'standard', 'modern'].includes(formatKey);
@@ -283,12 +301,12 @@ function generateBanListFile(
 	}
 
 	const formatBannedEntries = banned
-		.map(entry => `\t\t{ cardName: '${entry.cardName}', bannedDate: '${entry.bannedDate}' }`)
+		.map(entry => `\t\t{ cardName: '${entry.cardName.replace(/'/g, "\\'")}', bannedDate: '${entry.bannedDate}' }`)
 		.join(',\n');
 
 	const restrictedSection = restricted && restricted.length > 0
 		? `,\n\trestricted: [\n${restricted
-			.map(entry => `\t\t{ cardName: '${entry.cardName}', bannedDate: '${entry.bannedDate}' }`)
+			.map(entry => `\t\t{ cardName: '${entry.cardName.replace(/'/g, "\\'")}', bannedDate: '${entry.bannedDate}' }`)
 			.join(',\n')}\n\t]`
 		: '';
 
@@ -316,10 +334,16 @@ export const ${formatKey}Banned: string[] = ${formatKey}BanList.banned.map((entr
 	typeof entry === 'string' ? entry : entry.cardName
 );
 ${restricted && restricted.length > 0 ? `
-// Restricted list for Vintage format
+// Restricted list for ${formatConfig.displayName} format
 export const ${formatKey}Restricted: string[] = (${formatKey}BanList.restricted || []).map((entry) =>
 	typeof entry === 'string' ? entry : entry.cardName
 );
+` : options?.includeRestrictedExport ? `
+// ${formatConfig.displayName} currently has no restricted cards
+export const ${formatKey}Restricted: string[] = [];
+` : ''}${options?.includeSuspendedExport ? `
+// ${formatConfig.displayName} currently has no suspended cards
+export const ${formatKey}Suspended: string[] = [];
 ` : ''}`;
 }
 
@@ -342,8 +366,9 @@ async function updateFormatBanList(
 			console.log(`  Found ${restrictedCards.length} restricted cards`);
 		}
 
-		// Load existing data to preserve dates
-		const existing = loadExistingBanList(formatConfig.fileName);
+		// Load existing data to preserve dates and detect existing exports
+		const existingInfo = loadExistingBanList(formatConfig.fileName);
+		const existing = existingInfo?.banList;
 
 		// Merge with existing data
 		const banned = mergeBanLists(bannedCards, existing?.banned as BanListEntry[] | undefined);
@@ -351,8 +376,11 @@ async function updateFormatBanList(
 			? mergeBanLists(restrictedCards, existing?.restricted as BanListEntry[] | undefined)
 			: undefined;
 
-		// Generate file content
-		const fileContent = generateBanListFile(formatKey, formatConfig, banned, restricted);
+		// Generate file content with options to preserve empty exports
+		const fileContent = generateBanListFile(formatKey, formatConfig, banned, restricted, {
+			includeRestrictedExport: existingInfo?.hadRestrictedExport && !restricted,
+			includeSuspendedExport: existingInfo?.hadSuspendedExport
+		});
 
 		// Write to file
 		const outputPath = join(

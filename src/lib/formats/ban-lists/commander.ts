@@ -12,7 +12,7 @@ export const commanderBanList: FormatBanList = {
 	lastUpdated: '2025-11-21',
 	source: 'https://mtgcommander.net/index.php/banned-list/',
 	banned: [
-		{ cardName: 'Adriana's Valor', bannedDate: '2016-08-26' },
+		{ cardName: 'Adriana\'s Valor', bannedDate: '2016-08-26' },
 		{ cardName: 'Advantageous Proclamation', bannedDate: '2014-06-06' },
 		{ cardName: 'Amulet of Quoz', bannedDate: '1995-06-03' },
 		{ cardName: 'Ancestral Recall', bannedDate: '2011-09-20' },
@@ -21,7 +21,7 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Balance', bannedDate: '2011-09-20' },
 		{ cardName: 'Biorhythm', bannedDate: '2011-09-20' },
 		{ cardName: 'Black Lotus', bannedDate: '2011-09-20' },
-		{ cardName: 'Brago's Favor', bannedDate: '2014-06-06' },
+		{ cardName: 'Brago\'s Favor', bannedDate: '2014-06-06' },
 		{ cardName: 'Bronze Tablet', bannedDate: '1995-04-01' },
 		{ cardName: 'Channel', bannedDate: '2011-09-20' },
 		{ cardName: 'Chaos Orb', bannedDate: '2011-09-20' },
@@ -33,9 +33,9 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Dockside Extortionist', bannedDate: '2024-09-23' },
 		{ cardName: 'Double Stroke', bannedDate: '2014-06-06' },
 		{ cardName: 'Echoing Boon', bannedDate: '2016-08-26' },
-		{ cardName: 'Emissary's Ploy', bannedDate: '2016-08-26' },
+		{ cardName: 'Emissary\'s Ploy', bannedDate: '2016-08-26' },
 		{ cardName: 'Emrakul, the Aeons Torn', bannedDate: '2011-09-20' },
-		{ cardName: 'Erayo, Soratami Ascendant // Erayo's Essence', bannedDate: '2005-06-03' },
+		{ cardName: 'Erayo, Soratami Ascendant // Erayo\'s Essence', bannedDate: '2005-06-03' },
 		{ cardName: 'Falling Star', bannedDate: '2011-09-20' },
 		{ cardName: 'Fastbond', bannedDate: '2011-09-20' },
 		{ cardName: 'Flash', bannedDate: '2020-02-24' },
@@ -65,7 +65,7 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Mox Pearl', bannedDate: '2011-09-20' },
 		{ cardName: 'Mox Ruby', bannedDate: '2011-09-20' },
 		{ cardName: 'Mox Sapphire', bannedDate: '2011-09-20' },
-		{ cardName: 'Muzzio's Preparations', bannedDate: '2014-06-06' },
+		{ cardName: 'Muzzio\'s Preparations', bannedDate: '2014-06-06' },
 		{ cardName: 'Nadu, Winged Wisdom', bannedDate: '2024-09-23' },
 		{ cardName: 'Natural Unity', bannedDate: '2016-08-26' },
 		{ cardName: 'Paradox Engine', bannedDate: '2019-07-08' },
@@ -80,9 +80,9 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Secrets of Paradise', bannedDate: '2014-06-06' },
 		{ cardName: 'Sentinel Dispatch', bannedDate: '2014-06-06' },
 		{ cardName: 'Shahrazad', bannedDate: '2011-09-20' },
-		{ cardName: 'Sovereign's Realm', bannedDate: '2016-08-26' },
+		{ cardName: 'Sovereign\'s Realm', bannedDate: '2016-08-26' },
 		{ cardName: 'Stone-Throwing Devils', bannedDate: '1993-12-17' },
-		{ cardName: 'Summoner's Bond', bannedDate: '2016-08-26' },
+		{ cardName: 'Summoner\'s Bond', bannedDate: '2016-08-26' },
 		{ cardName: 'Sundering Titan', bannedDate: '2011-09-20' },
 		{ cardName: 'Sylvan Primordial', bannedDate: '2014-02-01' },
 		{ cardName: 'Tempest Efreet', bannedDate: '1995-04-01' },
@@ -96,7 +96,7 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Upheaval', bannedDate: '2011-09-20' },
 		{ cardName: 'Weight Advantage', bannedDate: '2016-08-26' },
 		{ cardName: 'Worldknit', bannedDate: '2014-06-06' },
-		{ cardName: 'Yawgmoth's Bargain', bannedDate: '2014-06-16' }
+		{ cardName: 'Yawgmoth\'s Bargain', bannedDate: '2014-06-16' }
 	]
 };
 

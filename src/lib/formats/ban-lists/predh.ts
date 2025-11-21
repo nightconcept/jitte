@@ -24,7 +24,7 @@ export const predhBanList: FormatBanList = {
 		{ cardName: 'Darkpact', bannedDate: '1994-06-21' },
 		{ cardName: 'Demonic Attorney', bannedDate: '1994-06-21' },
 		{ cardName: 'Emrakul, the Aeons Torn', bannedDate: '2022-07-08' },
-		{ cardName: 'Erayo, Soratami Ascendant // Erayo's Essence', bannedDate: '2005-06-03' },
+		{ cardName: 'Erayo, Soratami Ascendant // Erayo\'s Essence', bannedDate: '2005-06-03' },
 		{ cardName: 'Falling Star', bannedDate: '1994-06-01' },
 		{ cardName: 'Fastbond', bannedDate: '2014-06-16' },
 		{ cardName: 'Flash', bannedDate: '2018-03-16' },
@@ -58,7 +58,7 @@ export const predhBanList: FormatBanList = {
 		{ cardName: 'Tolarian Academy', bannedDate: '2014-06-16' },
 		{ cardName: 'Trade Secrets', bannedDate: '2011-06-17' },
 		{ cardName: 'Upheaval', bannedDate: '2021-06-18' },
-		{ cardName: 'Yawgmoth's Bargain', bannedDate: '2014-06-16' }
+		{ cardName: 'Yawgmoth\'s Bargain', bannedDate: '2014-06-16' }
 	]
 };
 

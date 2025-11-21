@@ -47,7 +47,7 @@ export const historicBanList: FormatBanList = {
 		{ cardName: 'Mana Drain', bannedDate: '2022-07-08' },
 		{ cardName: 'Marsh Flats', bannedDate: '2021-06-18' },
 		{ cardName: 'Memory Lapse', bannedDate: '2016-06-10' },
-		{ cardName: 'Mishra's Bauble', bannedDate: '2020-08-07' },
+		{ cardName: 'Mishra\'s Bauble', bannedDate: '2020-08-07' },
 		{ cardName: 'Misty Rainforest', bannedDate: '2021-06-18' },
 		{ cardName: 'Mox Opal', bannedDate: '2020-08-07' },
 		{ cardName: 'Mystical Tutor', bannedDate: '2023-01-13' },
@@ -71,10 +71,10 @@ export const historicBanList: FormatBanList = {
 		{ cardName: 'Subtlety', bannedDate: '2021-06-18' },
 		{ cardName: 'Swords to Plowshares', bannedDate: '2025-08-01' },
 		{ cardName: 'Temporal Manipulation', bannedDate: '2018-12-07' },
-		{ cardName: 'Thassa's Oracle', bannedDate: '2020-01-24' },
-		{ cardName: 'Tibalt's Trickery', bannedDate: '2021-02-05' },
+		{ cardName: 'Thassa\'s Oracle', bannedDate: '2020-01-24' },
+		{ cardName: 'Tibalt\'s Trickery', bannedDate: '2021-02-05' },
 		{ cardName: 'Time Warp', bannedDate: '2015-05-06' },
-		{ cardName: 'Uro, Titan of Nature's Wrath', bannedDate: '2020-01-24' },
+		{ cardName: 'Uro, Titan of Nature\'s Wrath', bannedDate: '2020-01-24' },
 		{ cardName: 'Veil of Summer', bannedDate: '2019-07-12' },
 		{ cardName: 'Verdant Catacombs', bannedDate: '2021-06-18' },
 		{ cardName: 'Wilderness Reclamation', bannedDate: '2024-09-27' },
@@ -88,3 +88,6 @@ export const historicBanList: FormatBanList = {
 export const historicBanned: string[] = historicBanList.banned.map((entry) =>
 	typeof entry === 'string' ? entry : entry.cardName
 );
+
+// Historic currently has no suspended cards
+export const historicSuspended: string[] = [];

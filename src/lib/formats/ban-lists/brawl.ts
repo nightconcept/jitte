@@ -19,7 +19,7 @@ export const brawlBanList: FormatBanList = {
 		{ cardName: 'Disruptor Flute', bannedDate: '2024-06-14' },
 		{ cardName: 'Drannith Magistrate', bannedDate: '2020-04-24' },
 		{ cardName: 'Field of the Dead', bannedDate: '2019-07-12' },
-		{ cardName: 'Gideon's Intervention', bannedDate: '2017-04-28' },
+		{ cardName: 'Gideon\'s Intervention', bannedDate: '2017-04-28' },
 		{ cardName: 'Iona, Shield of Emeria', bannedDate: '2015-05-22' },
 		{ cardName: 'Lutri, the Spellchaser', bannedDate: '2020-04-24' },
 		{ cardName: 'Mana Drain', bannedDate: '2022-07-08' },
