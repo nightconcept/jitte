@@ -4,7 +4,7 @@
  */
 
 import type { Card } from '$lib/types/card';
-import { CubeCardCategory, type CubeCategorizedCards, getEffectiveColorIdentity } from '$lib/types/card';
+import { CubeCardCategory, type CubeCategorizedCards, getEffectiveColorIdentity, getEffectiveCategory } from '$lib/types/card';
 
 /**
  * Categorize cube cards by color
@@ -31,9 +31,15 @@ export function categorizeCube(cards: Card[]): CubeCategorizedCards {
 
 /**
  * Determine the cube category for a card based on color identity
- * Respects custom color identity overrides (customColorIdentity)
+ * Respects custom category overrides (customCategory) and custom color identity overrides (customColorIdentity)
  */
 export function determineCubeCategory(card: Card): CubeCardCategory {
+	// Check for custom category override first
+	const customCategory = getEffectiveCategory(card);
+	if (customCategory !== null) {
+		return customCategory;
+	}
+
 	// Lands always go to lands category
 	if (card.types?.some((t) => t.toLowerCase() === 'land')) {
 		return CubeCardCategory.Lands;

@@ -15,6 +15,7 @@ export enum CubeCardType {
 	Sorcery = 'sorcery',
 	Artifact = 'artifact',
 	Enchantment = 'enchantment',
+	Land = 'land',
 	Other = 'other'
 }
 
@@ -28,6 +29,7 @@ export const TYPE_SUBCATEGORY_ORDER: CubeCardType[] = [
 	CubeCardType.Sorcery,
 	CubeCardType.Artifact,
 	CubeCardType.Enchantment,
+	CubeCardType.Land,
 	CubeCardType.Other
 ];
 
@@ -41,6 +43,7 @@ export const TYPE_SUBCATEGORY_LABELS: Record<CubeCardType, string> = {
 	[CubeCardType.Sorcery]: 'Sorceries',
 	[CubeCardType.Artifact]: 'Artifacts',
 	[CubeCardType.Enchantment]: 'Enchantments',
+	[CubeCardType.Land]: 'Lands',
 	[CubeCardType.Other]: 'Other'
 };
 
@@ -255,6 +258,7 @@ export function determineCardType(card: Card): CubeCardType {
 	if (types.includes('sorcery')) return CubeCardType.Sorcery;
 	if (types.includes('artifact')) return CubeCardType.Artifact;
 	if (types.includes('enchantment')) return CubeCardType.Enchantment;
+	if (types.includes('land')) return CubeCardType.Land;
 
 	return CubeCardType.Other;
 }

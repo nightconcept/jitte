@@ -122,6 +122,9 @@ export interface Card {
 	/** Custom color identity override (primarily for Cube format) */
 	customColorIdentity?: ManaColor[];
 
+	/** Custom category override (primarily for Cube format) */
+	customCategory?: CubeCardCategory;
+
 	/** Format legalities from Scryfall */
 	legalities?: {
 		commander?: 'legal' | 'not_legal' | 'restricted' | 'banned';
@@ -287,4 +290,13 @@ export function getEffectiveCmc(card: Card): number {
  */
 export function getEffectiveColorIdentity(card: Card): ManaColor[] {
 	return card.customColorIdentity !== undefined ? card.customColorIdentity : (card.colorIdentity ?? []);
+}
+
+/**
+ * Get the effective category for a card (Cube format), respecting custom overrides
+ * @param card - The card to get category for
+ * @returns The custom category if set, otherwise null (will use default categorization)
+ */
+export function getEffectiveCategory(card: Card): CubeCardCategory | null {
+	return card.customCategory ?? null;
 }

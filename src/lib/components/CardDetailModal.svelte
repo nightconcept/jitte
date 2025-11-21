@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Card, ManaColor } from '$lib/types/card';
-	import { getEffectiveCmc, getEffectiveColorIdentity } from '$lib/types/card';
+	import { getEffectiveCmc, getEffectiveColorIdentity, CubeCardCategory } from '$lib/types/card';
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import { cardService } from '$lib/api/card-service';
 	import { edhrecService } from '$lib/api/edhrec-service';
@@ -10,6 +10,7 @@
 	import OracleText from './OracleText.svelte';
 	import { FORMAT_ORDER, FORMAT_DISPLAY_NAMES, getLegalityIcon } from '$lib/formats/format-legality';
 	import { DeckFormat } from '$lib/formats/format-registry';
+	import { getCubeCategoryLabel, getCubeCategoryIcon, getCubeCategoryDisplayOrder } from '$lib/utils/cube-categorization';
 
 	let {
 		card,
@@ -28,7 +29,7 @@
 		commanderName?: string;
 		onPrintingChange?: (cardName: string, printingData: ScryfallCard) => void;
 		format?: DeckFormat;
-		onCustomPropertiesChange?: (cardName: string, customProperties: { customCmc?: number; customColorIdentity?: ManaColor[] }) => void;
+		onCustomPropertiesChange?: (cardName: string, customProperties: { customCmc?: number; customColorIdentity?: ManaColor[]; customCategory?: CubeCardCategory }) => void;
 	} = $props();
 
 	let scryfallCard = $state<ScryfallCard | null>(null);
@@ -43,6 +44,7 @@
 	// Custom properties editor state (for Cube format)
 	let customCmc = $state<number | undefined>(undefined);
 	let customColors = $state<Set<ManaColor>>(new Set());
+	let customCategory = $state<CubeCardCategory | undefined>(undefined);
 
 	// Create a merged card with full face data for CardPreview
 	let cardWithFaces = $derived.by(() => {
@@ -145,6 +147,9 @@
 			// Initialize custom colors with current value
 			const effectiveColors = getEffectiveColorIdentity(card);
 			customColors = new Set(effectiveColors);
+
+			// Initialize custom category with current value
+			customCategory = card.customCategory;
 		}
 	});
 
@@ -307,6 +312,11 @@
 		updateCustomProperties();
 	}
 
+	function updateCustomCategory(value: CubeCardCategory | undefined) {
+		customCategory = value;
+		updateCustomProperties();
+	}
+
 	function updateCustomProperties() {
 		if (!onCustomPropertiesChange) return;
 
@@ -314,12 +324,14 @@
 		const baseColors = card.colorIdentity || [];
 		const currentColorsArray = Array.from(customColors).sort();
 		const hasCustomColors = JSON.stringify(currentColorsArray) !== JSON.stringify(baseColors.sort());
+		const hasCustomCategory = customCategory !== undefined && customCategory !== card.customCategory;
 
-		// Build custom properties object - always include both properties
+		// Build custom properties object - always include all properties
 		// If they match the base, set to undefined to clear the custom property
-		const customProperties: { customCmc?: number; customColorIdentity?: ManaColor[] } = {
+		const customProperties: { customCmc?: number; customColorIdentity?: ManaColor[]; customCategory?: CubeCardCategory } = {
 			customCmc: hasCustomCmc ? customCmc : undefined,
-			customColorIdentity: hasCustomColors ? currentColorsArray : undefined
+			customColorIdentity: hasCustomColors ? currentColorsArray : undefined,
+			customCategory: hasCustomCategory ? customCategory : undefined
 		};
 
 		onCustomPropertiesChange(card.name, customProperties);
@@ -329,12 +341,14 @@
 		// Reset to base values
 		customCmc = card.cmc;
 		customColors = new Set(card.colorIdentity || []);
+		customCategory = undefined;
 
 		// Clear custom properties
 		if (onCustomPropertiesChange) {
 			onCustomPropertiesChange(card.name, {
 				customCmc: undefined,
-				customColorIdentity: undefined
+				customColorIdentity: undefined,
+				customCategory: undefined
 			});
 		}
 	}
@@ -477,7 +491,7 @@
 							<div>
 								<div class="flex items-center justify-between mb-2">
 									<h3 class="text-lg font-bold text-[var(--color-text-primary)]">Cube Overrides</h3>
-									{#if card.customCmc !== undefined || card.customColorIdentity !== undefined}
+									{#if card.customCmc !== undefined || card.customColorIdentity !== undefined || card.customCategory !== undefined}
 										<button
 											onclick={resetCustomProperties}
 											class="text-xs text-[var(--color-brand-primary)] hover:text-[var(--color-brand-secondary)] transition-colors"
@@ -542,6 +556,32 @@
 												</button>
 											{/each}
 										</div>
+									</div>
+
+									<!-- Category Editor -->
+									<div>
+										<label for="custom-category" class="text-sm font-semibold text-[var(--color-text-secondary)] block mb-1">
+											Category
+											{#if card.customCategory !== undefined}
+												<span class="text-xs text-[var(--color-brand-primary)] ml-1">(customized)</span>
+											{/if}
+										</label>
+										<select
+											id="custom-category"
+											class="w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+											onchange={(e) => {
+												const value = (e.target as HTMLSelectElement).value;
+												updateCustomCategory(value === '' ? undefined : value as CubeCardCategory);
+											}}
+											value={customCategory ?? ''}
+										>
+											<option value="">Auto (default categorization)</option>
+											{#each getCubeCategoryDisplayOrder() as category}
+												<option value={category}>
+													{getCubeCategoryLabel(category)}
+												</option>
+											{/each}
+										</select>
 									</div>
 								</div>
 							</div>

@@ -15,7 +15,7 @@ import type {
 import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CategorizedCards, CardsByCategory, CategoryDefinition, ManaColor } from '$lib/types/card';
-import { CardCategory, UNCATEGORIZED_CATEGORY_ID } from '$lib/types/card';
+import { CardCategory, CubeCardCategory, UNCATEGORIZED_CATEGORY_ID } from '$lib/types/card';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
 import { getFormatService } from '$lib/formats/services/format-service-factory';
@@ -1263,7 +1263,7 @@ function createDeckStore() {
 		},
 
 		/**
-		 * Update card custom properties (CMC and color identity overrides)
+		 * Update card custom properties (CMC, color identity, and category overrides)
 		 * Primarily used for Cube format to customize card properties
 		 */
 		updateCardCustomProperties(
@@ -1271,6 +1271,7 @@ function createDeckStore() {
 			customProperties: {
 				customCmc?: number;
 				customColorIdentity?: ManaColor[];
+				customCategory?: CubeCardCategory;
 			}
 		): void {
 			console.log('[DeckStore] updateCardCustomProperties called:', {
@@ -1282,9 +1283,11 @@ function createDeckStore() {
 				if (!state) return state;
 
 				let cardFound = false;
+				let foundCard: Card | null = null;
+				let oldCategory: string | null = null;
 				const updatedCards = { ...state.deck.cards };
 
-				// Search through all categories to find and update the card
+				// Search through all categories to find the card
 				for (const category of Object.keys(updatedCards)) {
 					const categoryCards = updatedCards[category];
 					const cardIndex = categoryCards.findIndex(c => c.name === cardName);
@@ -1293,28 +1296,57 @@ function createDeckStore() {
 						console.log('[DeckStore] Found card in category:', category, 'at index:', cardIndex);
 						console.log('[DeckStore] Original card:', categoryCards[cardIndex]);
 
-						// Found the card, update its custom properties
-						const updatedCard = {
-							...categoryCards[cardIndex],
-							...customProperties
-						};
-
-						console.log('[DeckStore] Updated card:', updatedCard);
-
-						updatedCards[category] = [
-							...categoryCards.slice(0, cardIndex),
-							updatedCard,
-							...categoryCards.slice(cardIndex + 1)
-						];
-
+						foundCard = categoryCards[cardIndex];
+						oldCategory = category;
 						cardFound = true;
-						break; // Card found and updated, stop searching
+						break;
 					}
 				}
 
-				if (!cardFound) {
+				if (!cardFound || !foundCard || !oldCategory) {
 					console.warn(`[DeckStore] Card "${cardName}" not found in deck for custom properties update`);
 					return state;
+				}
+
+				// Update the card with new custom properties
+				const updatedCard = {
+					...foundCard,
+					...customProperties
+				};
+
+				console.log('[DeckStore] Updated card:', updatedCard);
+
+				// Determine the new category based on updated properties
+				const newCategory = inferCategory(updatedCard, state.deck);
+
+				console.log('[DeckStore] Category change:', {
+					oldCategory,
+					newCategory,
+					needsMove: oldCategory !== newCategory
+				});
+
+				// If category changed, move the card
+				if (oldCategory !== newCategory) {
+					// Remove from old category
+					const oldCategoryCards = updatedCards[oldCategory];
+					const cardIndex = oldCategoryCards.findIndex(c => c.name === cardName);
+					updatedCards[oldCategory] = [
+						...oldCategoryCards.slice(0, cardIndex),
+						...oldCategoryCards.slice(cardIndex + 1)
+					];
+
+					// Add to new category
+					const newCategoryCards = updatedCards[newCategory] || [];
+					updatedCards[newCategory] = [...newCategoryCards, updatedCard];
+				} else {
+					// Same category, just update in place
+					const categoryCards = updatedCards[oldCategory];
+					const cardIndex = categoryCards.findIndex(c => c.name === cardName);
+					updatedCards[oldCategory] = [
+						...categoryCards.slice(0, cardIndex),
+						updatedCard,
+						...categoryCards.slice(cardIndex + 1)
+					];
 				}
 
 				// Create new deck object with updated cards
