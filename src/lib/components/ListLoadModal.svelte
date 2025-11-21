@@ -22,6 +22,7 @@
 	import { extractDeckInfo, type DeckInfo } from '$lib/utils/deck-info-extractor';
 	import { DeckFormat, FORMAT_METADATA } from '$lib/formats/format-registry';
 	import { StorageManager } from '$lib/storage/storage-manager';
+	import { Z_INDEX } from '$lib/constants/z-index';
 
 	let {
 		isOpen = false,
@@ -633,7 +634,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuFolderId === item.folder.id}
-										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
@@ -787,7 +788,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuDeckName === item.deckName}
-										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-50">
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
