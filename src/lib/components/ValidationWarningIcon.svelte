@@ -25,7 +25,7 @@
 
 <BaseTooltip trigger="hover" {position} positioning="absolute" closeDelay={200}>
 	{#snippet children()}
-		<span class="inline-flex items-center justify-center w-4 h-4 text-xs {severityStyles[warning.severity]}" title={warning.message}>
+		<span class="inline-flex items-center justify-center w-4 h-4 text-xs {severityStyles[warning.severity]}">
 			{severityIcons[warning.severity]}
 		</span>
 	{/snippet}

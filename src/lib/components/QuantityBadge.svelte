@@ -5,22 +5,18 @@
 	 */
 	let {
 		quantity,
-		title = undefined,
 		position = 'left'
 	}: {
 		quantity: number;
-		title?: string;
 		position?: 'left' | 'right' | 'inline';
 	} = $props();
-
-	const displayTitle = title || `Quantity: ${quantity}`;
 </script>
 
 {#if position === 'inline'}
-	<span class="badge badge-quantity" title={displayTitle}>{quantity}×</span>
+	<span class="badge badge-quantity">{quantity}×</span>
 {:else}
 	<div class="badge-container badge-container-{position}">
-		<span class="badge badge-quantity" title={displayTitle}>{quantity}×</span>
+		<span class="badge badge-quantity">{quantity}×</span>
 	</div>
 {/if}
 
