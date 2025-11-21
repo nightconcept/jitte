@@ -58,6 +58,7 @@
 	let commanderLoadHandle: ReturnType<typeof setTimeout> | null = null;
 	let openMenuDeckName = $state<string | null>(null);
 	let openMenuFolderId = $state<string | null>(null);
+	let menuPositionAbove = $state(false);
 
 	// Drag and drop state
 	let draggedDeckName = $state<string | null>(null);
@@ -621,6 +622,11 @@
 										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
 										onclick={(e) => {
 											e.stopPropagation();
+											const target = e.currentTarget as HTMLElement;
+											const rect = target.getBoundingClientRect();
+											const viewportHeight = window.innerHeight;
+											// Position menu above if button is in lower half of viewport
+											menuPositionAbove = rect.bottom > viewportHeight / 2;
 											openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
 										}}
 										aria-label="Folder options"
@@ -634,7 +640,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuFolderId === item.folder.id}
-										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
+										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
@@ -775,6 +781,11 @@
 										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
 										onclick={(e) => {
 											e.stopPropagation();
+											const target = e.currentTarget as HTMLElement;
+											const rect = target.getBoundingClientRect();
+											const viewportHeight = window.innerHeight;
+											// Position menu above if button is in lower half of viewport
+											menuPositionAbove = rect.bottom > viewportHeight / 2;
 											openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
 										}}
 										aria-label="List options"
@@ -788,7 +799,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuDeckName === item.deckName}
-										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
+										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-red-500 flex items-center gap-2"
