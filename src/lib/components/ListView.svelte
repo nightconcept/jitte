@@ -24,6 +24,19 @@
   import VisualSpoilerView from "./VisualSpoilerView.svelte";
   import StacksView from "./StacksView.svelte";
   import CustomCategoryManager from "./CustomCategoryManager.svelte";
+  import {
+    groupCardsByType,
+    groupMulticoloredCardsByColorCombination,
+    getMulticolorSubcategoryOrder,
+    getColorCombinationLabel,
+    sortCardsInSubcategory,
+    getSubcategoryCount,
+    TYPE_SUBCATEGORY_ORDER,
+    TYPE_SUBCATEGORY_LABELS,
+    groupCardsByCmc,
+    getSortedCmcKeys,
+    sortCardsAlphabetically,
+  } from "$lib/utils/cube-text-view-helpers";
 
   let {
     onCardHover = undefined,
@@ -490,6 +503,38 @@
   let dragOverCategoryHeader = $state<string | null>(null);
   let insertionPosition = $state<'before' | 'after' | null>(null);
 
+  // Cube view hover tooltip state
+  let cubeHoveredCard = $state<Card | null>(null);
+  let mouseX = $state(0);
+  let mouseY = $state(0);
+
+  // Tooltip positioning constants
+  const TOOLTIP_OFFSET = 5; // px from cursor
+  const TOOLTIP_WIDTH = 300; // max-width from CSS
+
+  // Calculate tooltip position with edge detection
+  let tooltipX = $derived.by(() => {
+    if (typeof window === 'undefined') return mouseX + TOOLTIP_OFFSET;
+
+    const wouldOverflowRight = mouseX + TOOLTIP_OFFSET + TOOLTIP_WIDTH > window.innerWidth;
+
+    if (wouldOverflowRight) {
+      // Position on left side of cursor
+      return mouseX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
+    } else {
+      // Position on right side of cursor
+      return mouseX + TOOLTIP_OFFSET;
+    }
+  });
+
+  let tooltipY = $derived.by(() => {
+    if (typeof window === 'undefined') return mouseY + TOOLTIP_OFFSET;
+
+    // For now, just use offset below cursor
+    // Could add top-side logic later if needed
+    return mouseY + TOOLTIP_OFFSET;
+  });
+
   // Dynamic layout mode for stacks view
   let useMasonryLayout = $state(false);
   let stacksContainerRef = $state<HTMLDivElement>();
@@ -775,6 +820,22 @@
     draggedCategory = null;
     dragOverCategoryHeader = null;
     insertionPosition = null;
+  }
+
+  // Cube view hover handlers
+  function handleCubeCardHover(card: Card | null, event?: MouseEvent) {
+    cubeHoveredCard = card;
+    if (event) {
+      mouseX = event.clientX;
+      mouseY = event.clientY;
+    }
+  }
+
+  function handleMouseMove(event: MouseEvent) {
+    if (cubeHoveredCard) {
+      mouseX = event.clientX;
+      mouseY = event.clientY;
+    }
   }
 </script>
 
@@ -1134,8 +1195,155 @@
     </div>
   {:else}
     <!-- Text Views -->
-    <div class="space-y-2 overflow-visible">
-      {#each categoryOrder as category}
+    {#if deck?.format === DeckFormat.Cube && categorizationMode === 'default'}
+      <!-- Cube 8-Column Text View -->
+      <div class="cube-text-columns-container" onmousemove={handleMouseMove}>
+        <div class="cube-text-columns">
+          {#each categoryOrder as category}
+            {@const cards = getCategoryCards(category)}
+            {@const count = getCategoryCount(category)}
+            {#if cards.length > 0}
+              <div class="cube-column">
+                <!-- Column Header (Non-collapsible) -->
+                <div class="cube-column-header">
+                  <div class="flex items-center gap-1.5">
+                    {#if categoryIcons[category]}
+                      <i class="ms {categoryIcons[category]} ms-cost text-base"></i>
+                    {/if}
+                    <span class="font-semibold text-sm">{categoryLabels[category]}</span>
+                    <span class="text-xs text-[var(--color-text-tertiary)]">({count})</span>
+                  </div>
+                </div>
+
+                <!-- Column Content (Always expanded) -->
+                <div class="cube-column-content">
+                    {#if category === 'lands'}
+                      <!-- Lands: Group by CMC, sort alphabetically -->
+                      {@const cmcGrouped = groupCardsByCmc(cards)}
+                      {@const cmcKeys = getSortedCmcKeys(cmcGrouped)}
+                      {#each cmcKeys as cmcKey, cmcIndex}
+                        {@const cmcCards = cmcGrouped[cmcKey]}
+                        {@const sortedCards = sortCardsAlphabetically(cmcCards)}
+                        <div class="cube-cmc-group">
+                          {#if cmcIndex > 0}
+                            <div class="cube-cmc-separator"></div>
+                          {/if}
+                          {#each sortedCards as card}
+                            <div
+                              class="cube-card-row {viewMode === 'condensed' ? 'cube-card-row-condensed' : ''}"
+                              onmouseenter={(e) => handleCubeCardHover(card, e)}
+                              onmouseleave={() => handleCubeCardHover(null)}
+                              onclick={() => (detailModalCard = { name: card.name, category })}
+                              role="button"
+                              tabindex="0"
+                            >
+                              <span class="cube-card-name">{card.name}</span>
+                            </div>
+                          {/each}
+                        </div>
+                      {/each}
+                    {:else if category === 'multicolored'}
+                      <!-- Multicolored: Group by color combination, then CMC -->
+                      {@const grouped = groupMulticoloredCardsByColorCombination(cards)}
+                      {#each getMulticolorSubcategoryOrder() as subcategory}
+                        {@const subcategoryCards = grouped[subcategory] || []}
+                        {@const cmcGrouped = groupCardsByCmc(subcategoryCards)}
+                        {@const cmcKeys = getSortedCmcKeys(cmcGrouped)}
+                        {#if subcategoryCards.length > 0}
+                          <div class="cube-subcategory">
+                            <div class="cube-subcategory-header">
+                              <span>{getColorCombinationLabel(subcategory)}</span>
+                              <span class="text-xs text-[var(--color-text-tertiary)]">
+                                ({getSubcategoryCount(subcategoryCards)})
+                              </span>
+                            </div>
+                            {#each cmcKeys as cmcKey, cmcIndex}
+                              {@const cmcCards = cmcGrouped[cmcKey]}
+                              {@const sortedCards = sortCardsAlphabetically(cmcCards)}
+                              <div class="cube-cmc-group">
+                                {#if cmcIndex > 0}
+                                  <div class="cube-cmc-separator"></div>
+                                {/if}
+                                {#each sortedCards as card}
+                                  <div
+                                    class="cube-card-row {viewMode === 'condensed' ? 'cube-card-row-condensed' : ''}"
+                                    onmouseenter={(e) => handleCubeCardHover(card, e)}
+                                    onmouseleave={() => handleCubeCardHover(null)}
+                                    onclick={() => (detailModalCard = { name: card.name, category })}
+                                    role="button"
+                                    tabindex="0"
+                                  >
+                                    <span class="cube-card-name">{card.name}</span>
+                                  </div>
+                                {/each}
+                              </div>
+                            {/each}
+                          </div>
+                        {/if}
+                      {/each}
+                    {:else}
+                      <!-- Mono-colors and Colorless: Group by type, then CMC -->
+                      {@const grouped = groupCardsByType(cards)}
+                      {#each TYPE_SUBCATEGORY_ORDER as subcategory}
+                        {@const subcategoryCards = grouped[subcategory] || []}
+                        {@const cmcGrouped = groupCardsByCmc(subcategoryCards)}
+                        {@const cmcKeys = getSortedCmcKeys(cmcGrouped)}
+                        {#if subcategoryCards.length > 0}
+                          <div class="cube-subcategory">
+                            <div class="cube-subcategory-header">
+                              <span>{TYPE_SUBCATEGORY_LABELS[subcategory]}</span>
+                              <span class="text-xs text-[var(--color-text-tertiary)]">
+                                ({getSubcategoryCount(subcategoryCards)})
+                              </span>
+                            </div>
+                            {#each cmcKeys as cmcKey, cmcIndex}
+                              {@const cmcCards = cmcGrouped[cmcKey]}
+                              {@const sortedCards = sortCardsAlphabetically(cmcCards)}
+                              <div class="cube-cmc-group">
+                                {#if cmcIndex > 0}
+                                  <div class="cube-cmc-separator"></div>
+                                {/if}
+                                {#each sortedCards as card}
+                                  <div
+                                    class="cube-card-row {viewMode === 'condensed' ? 'cube-card-row-condensed' : ''}"
+                                    onmouseenter={(e) => handleCubeCardHover(card, e)}
+                                    onmouseleave={() => handleCubeCardHover(null)}
+                                    onclick={() => (detailModalCard = { name: card.name, category })}
+                                    role="button"
+                                    tabindex="0"
+                                  >
+                                    <span class="cube-card-name">{card.name}</span>
+                                  </div>
+                                {/each}
+                              </div>
+                            {/each}
+                          </div>
+                        {/if}
+                      {/each}
+                    {/if}
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </div>
+
+        <!-- Card Art Hover Tooltip -->
+        {#if cubeHoveredCard}
+          {@const imageUrl = cubeHoveredCard.imageUrls?.normal || cubeHoveredCard.imageUrls?.large || cubeHoveredCard.imageUrls?.small}
+          {#if imageUrl}
+            <div
+              class="cube-card-tooltip"
+              style="left: {tooltipX}px; top: {tooltipY}px;"
+            >
+              <img src={imageUrl} alt={cubeHoveredCard.name} />
+            </div>
+          {/if}
+        {/if}
+      </div>
+    {:else}
+      <!-- Standard Text View (non-Cube or custom mode) -->
+      <div class="space-y-2 overflow-visible">
+        {#each categoryOrder as category}
         {@const cards = getCategoryCards(category)}
         {@const count = getCategoryCount(category)}
 
@@ -1619,7 +1827,8 @@
 
       <!-- Tokens & Extras Section -->
       <TokensSection {tokens} {onCardHover} />
-    </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -1853,5 +2062,131 @@
       column-width: 220px;
       column-gap: 1.25rem;
     }
+  }
+
+  /* Cube 8-Column Text View */
+  .cube-text-columns-container {
+    overflow-x: visible;
+    overflow-y: visible;
+    padding-bottom: 0.5rem;
+  }
+
+  .cube-text-columns {
+    display: flex;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .cube-column {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 220px;
+    background: var(--color-surface);
+    border-radius: 0.375rem;
+    overflow: visible;
+  }
+
+  .cube-column-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+    background: var(--color-surface);
+    border-radius: 0.375rem 0.375rem 0 0;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .cube-column-content {
+    padding: 0.375rem 0.375rem;
+    overflow: visible;
+  }
+
+  .cube-subcategory {
+    margin-bottom: 0.75rem;
+  }
+
+  .cube-subcategory:last-child {
+    margin-bottom: 0;
+  }
+
+  .cube-subcategory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.375rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    opacity: 0.7;
+  }
+
+  .cube-cmc-group {
+    margin-bottom: 0.5rem;
+  }
+
+  .cube-cmc-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .cube-cmc-separator {
+    height: 1px;
+    background: var(--color-border);
+    margin: 0.375rem 0.25rem;
+    opacity: 0.4;
+  }
+
+  .cube-card-row {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+    cursor: pointer;
+    transition: background-color 0.1s;
+  }
+
+  .cube-card-row:hover {
+    background-color: var(--color-surface-hover);
+    border-radius: 0.25rem;
+  }
+
+  .cube-card-row-condensed {
+    padding: 0.1875rem 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.125rem;
+  }
+
+  .cube-card-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-primary);
+    font-family: "Roboto Condensed", sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Cube card hover tooltip */
+  .cube-card-tooltip {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+    max-width: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .cube-card-tooltip img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
   }
 </style>

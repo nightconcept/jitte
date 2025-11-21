@@ -3,6 +3,7 @@
 	import { deckStore, currentDiff } from '$lib/stores/deck-store';
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { toastStore } from '$lib/stores/toast-store';
+	import { viewSettingsStore } from '$lib/stores/viewSettingsStore';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import ListHeader from '$lib/components/ListHeader.svelte';
 	import ListEditNav from '$lib/components/ListEditNav.svelte';
@@ -129,6 +130,14 @@
 
 	// Check if current deck is Cube format
 	const isCube = $derived($deckStore?.deck?.format === DeckFormat.Cube);
+
+	// Get current view mode
+	const viewMode = $derived($viewSettingsStore?.viewMode ?? 'text');
+
+	// Check if we should hide card preview (Cube format in text/condensed view)
+	const shouldHideCardPreview = $derived(
+		isCube && (viewMode === 'text' || viewMode === 'condensed')
+	);
 
 	// Get format-specific UI settings
 	const currentFormat = $derived($deckStore?.deck?.format ?? DeckFormat.Commander);
@@ -1069,8 +1078,10 @@
 
 		<!-- Main Content -->
 		<div class="flex flex-1">
-			<!-- Card Preview Sidebar (Left, Sticky) -->
-			<CardPreview {hoveredCard} collapsedByDefault={cardPreviewCollapsed} />
+			<!-- Card Preview Sidebar (Left, Sticky) - Hidden for Cube text/condensed view -->
+			{#if !shouldHideCardPreview}
+				<CardPreview {hoveredCard} collapsedByDefault={cardPreviewCollapsed} />
+			{/if}
 
 			<!-- Center Column -->
 			<div class="flex-1 flex flex-col">
