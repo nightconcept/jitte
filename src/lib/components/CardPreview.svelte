@@ -11,12 +11,14 @@
     className = "",
     collapsedByDefault = false,
     allowCollapse = true,
+    scaleRotatedCard = true,
   }: {
     hoveredCard: Card | null;
     showPricing?: boolean;
     className?: string;
     collapsedByDefault?: boolean;
     allowCollapse?: boolean;
+    scaleRotatedCard?: boolean;
   } = $props();
 
   // Store subscription using Svelte 5 runes pattern
@@ -51,9 +53,17 @@
   // Track which face is currently displayed (0 = front, 1 = back)
   let currentFaceIndex = $state(0);
 
-  // Check if card has multiple faces
+  // Track rotation state for split cards
+  let isRotated = $state(false);
+
+  // Check if card is a split card
+  let isSplitCard = $derived(displayCard?.layout === 'split');
+
+  // Check if card has multiple faces (exclude split cards - they don't flip)
   let isDoubleFaced = $derived(
-    displayCard?.cardFaces && displayCard.cardFaces.length > 1,
+    displayCard?.cardFaces &&
+    displayCard.cardFaces.length > 1 &&
+    displayCard?.layout !== 'split',
   );
 
   // Debug logging for double-faced cards
@@ -100,10 +110,11 @@
     return url;
   });
 
-  // Reset to front face when card changes
+  // Reset to front face and rotation when card changes
   $effect(() => {
     if (displayCard) {
       currentFaceIndex = 0;
+      isRotated = false;
     }
   });
 
@@ -112,6 +123,10 @@
       // Toggle between front (0) and back (1) face
       currentFaceIndex = currentFaceIndex === 0 ? 1 : 0;
     }
+  }
+
+  function toggleRotation() {
+    isRotated = !isRotated;
   }
 </script>
 
@@ -180,7 +195,7 @@
 
   {#if !allowCollapse || !isCollapsed}
     <!-- Card Image -->
-    <div class="flex-shrink-0 mb-2 mt-4 px-4 perspective-container">
+    <div class="flex-shrink-0 mb-2 mt-4 px-4 perspective-container" class:split-card={isSplitCard && isRotated} class:scaled-split-card={isSplitCard && isRotated && scaleRotatedCard}>
       <div class="flip-card" class:is-flipped={currentFaceIndex === 1}>
         <!-- Front Face -->
         <div class="card-face card-face--front">
@@ -282,6 +297,33 @@
       </div>
     {/if}
 
+    <!-- Rotation button for split cards -->
+    {#if isSplitCard}
+      <div class="px-4">
+        <button
+          type="button"
+          onclick={toggleRotation}
+          class="w-full mb-4 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] rounded py-2 px-3 transition-colors duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+          aria-label="{isRotated ? 'Rotate upright' : 'Rotate 90 degrees'}"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          <span>{isRotated ? 'Rotate Upright' : 'Rotate Card'}</span>
+        </button>
+      </div>
+    {/if}
+
     <!-- Vendor Pricing (Non-Foil) -->
     {#if showPricing && displayCard?.prices}
       <div class="pt-4 px-4 border-t border-[var(--color-border)]">
@@ -370,5 +412,20 @@
   .vertical-text {
     writing-mode: vertical-rl;
     text-orientation: mixed;
+  }
+
+  /* Split card rotation (Fire // Ice, Room cards, etc.) */
+  .perspective-container {
+    transition: transform 0.5s ease-in-out, scale 0.5s ease-in-out;
+  }
+
+  .perspective-container.split-card {
+    transform: rotate(90deg);
+    transform-origin: center center;
+  }
+
+  /* Scale rotated split cards to fit in sidebar (not in modal) */
+  .perspective-container.scaled-split-card {
+    scale: 0.7;
   }
 </style>

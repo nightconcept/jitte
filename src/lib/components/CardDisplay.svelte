@@ -108,9 +108,16 @@
 		}
 	});
 
-	// Check if card has multiple faces
+	// Check if card is a Room card (split layout with "Room" type)
+	const isRoomCard = $derived(
+		card?.layout === 'split' &&
+		((card?.types?.includes('Room') ||
+		  card?.cardFaces?.[0]?.typeLine?.includes('Room')) ?? false)
+	);
+
+	// Check if card has multiple faces (but exclude room cards - they don't flip)
 	const isDoubleFaced = $derived(
-		card?.cardFaces && card.cardFaces.length > 1
+		card?.cardFaces && card.cardFaces.length > 1 && !isRoomCard
 	);
 
 	// Get card image URL based on current face

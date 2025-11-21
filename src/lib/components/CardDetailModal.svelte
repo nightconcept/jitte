@@ -356,7 +356,7 @@
 	>
 		<!-- Modal Content -->
 		<div
-			class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-[var(--color-border)] animate-scale-in"
+			class="bg-[var(--color-surface)] rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-[var(--color-border)] animate-scale-in"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
@@ -392,6 +392,7 @@
 									hoveredCard={cardWithFaces}
 									showPricing={false}
 									allowCollapse={false}
+									scaleRotatedCard={false}
 									className="w-full bg-transparent border-none flex flex-col static h-auto scale-card-preview"
 								/>
 							</div>
