@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { type Snippet } from 'svelte';
+	import { Z_INDEX } from '$lib/constants/z-index';
 
 	let {
 		trigger = 'hover',
@@ -28,20 +29,87 @@
 	let isVisible = $state(false);
 	let closeTimeout: number | null = null;
 	let triggerElement = $state<HTMLElement | null>(null);
+	let tooltipElement = $state<HTMLElement | null>(null);
 	let tooltipPosition = $state({ top: 0, left: 0 });
+	let arrowOffset = $state('50%'); // CSS value for arrow position
 
 	function updatePosition() {
 		if (triggerElement) {
 			const rect = triggerElement.getBoundingClientRect();
 			if (positioning === 'fixed') {
-				// Fixed positioning - viewport-relative
-				tooltipPosition = {
-					top: position === 'above' ? rect.top - 8 + offsetY : rect.bottom + 8 + offsetY,
-					left: rect.left + rect.width / 2
-				};
+				// Fixed positioning - viewport-relative with boundary detection
+				const viewportWidth = window.innerWidth;
+				const viewportHeight = window.innerHeight;
+				const padding = 16; // Min distance from viewport edge
+
+				// Start with centered position
+				let top = position === 'above' ? rect.top - 8 + offsetY : rect.bottom + 8 + offsetY;
+				let left = rect.left + rect.width / 2;
+
+				// Wait for tooltip to render to get its dimensions
+				requestAnimationFrame(() => {
+					if (tooltipElement) {
+						const tooltipRect = tooltipElement.getBoundingClientRect();
+						const tooltipWidth = tooltipRect.width;
+						const tooltipHeight = tooltipRect.height;
+
+						// Calculate the centered position
+						let adjustedLeft = left;
+						let adjustedTop = top;
+
+						// Check horizontal boundaries
+						const leftEdge = left - tooltipWidth / 2;
+						const rightEdge = left + tooltipWidth / 2;
+
+						if (leftEdge < padding) {
+							// Too far left - shift right
+							adjustedLeft = padding + tooltipWidth / 2;
+						} else if (rightEdge > viewportWidth - padding) {
+							// Too far right - shift left
+							adjustedLeft = viewportWidth - padding - tooltipWidth / 2;
+						}
+
+						// Check vertical boundaries
+						if (position === 'above') {
+							const topEdge = top - tooltipHeight;
+							if (topEdge < padding) {
+								// Not enough room above - flip to below
+								adjustedTop = rect.bottom + 8 + offsetY;
+							}
+						} else {
+							const bottomEdge = top + tooltipHeight;
+							if (bottomEdge > viewportHeight - padding) {
+								// Not enough room below - flip to above
+								adjustedTop = rect.top - 8 + offsetY;
+							}
+						}
+
+						// Calculate arrow offset to point back at trigger center
+						// Arrow is positioned relative to tooltip's left edge
+						const triggerCenter = rect.left + rect.width / 2;
+						const tooltipLeft = adjustedLeft - tooltipWidth / 2;
+						const arrowOffsetPx = triggerCenter - tooltipLeft;
+
+						// Clamp arrow position to stay within tooltip bounds (with some padding)
+						const minArrowOffset = 16; // pixels from edge
+						const maxArrowOffset = tooltipWidth - 16;
+						const clampedArrowOffset = Math.max(
+							minArrowOffset,
+							Math.min(maxArrowOffset, arrowOffsetPx)
+						);
+
+						tooltipPosition = { top: adjustedTop, left: adjustedLeft };
+						arrowOffset = `${clampedArrowOffset}px`;
+					}
+				});
+
+				// Set initial position (will be refined in requestAnimationFrame)
+				tooltipPosition = { top, left };
+				arrowOffset = '50%';
 			} else {
 				// Absolute positioning - will be handled by CSS
 				tooltipPosition = { top: 0, left: 0 };
+				arrowOffset = '50%';
 			}
 		}
 	}
@@ -132,10 +200,11 @@
 
 	{#if isVisible}
 		<span
+			bind:this={tooltipElement}
 			class="base-tooltip base-tooltip--{position} base-tooltip--{positioning} {className}"
 			style={positioning === 'fixed'
-				? `top: ${tooltipPosition.top}px; left: ${tooltipPosition.left}px; max-width: ${maxWidth};`
-				: `max-width: ${maxWidth};`}
+				? `top: ${tooltipPosition.top}px; left: ${tooltipPosition.left}px; max-width: ${maxWidth}; --arrow-offset: ${arrowOffset}; z-index: ${Z_INDEX.TOOLTIP};`
+				: `max-width: ${maxWidth}; --arrow-offset: ${arrowOffset}; z-index: ${Z_INDEX.TOOLTIP};`}
 			role="tooltip"
 			{...(trigger === 'click' ? { tabindex: 0, 'aria-label': 'Close tooltip' } : {})}
 			onmouseenter={handleTooltipMouseEnter}
@@ -167,7 +236,7 @@
 
 	/* Base tooltip styling */
 	.base-tooltip {
-		z-index: 50;
+		/* z-index set inline via Z_INDEX.TOOLTIP */
 		padding: 8px 12px;
 		font-size: 0.875rem;
 		line-height: 1.4;
@@ -228,7 +297,7 @@
 	/* Arrow for tooltip above trigger */
 	.base-tooltip--above .tooltip-arrow {
 		top: 100%;
-		left: 50%;
+		left: var(--arrow-offset, 50%);
 		transform: translateX(-50%);
 		border-top: 6px solid var(--color-border);
 	}
@@ -246,7 +315,7 @@
 	/* Arrow for tooltip below trigger */
 	.base-tooltip--below .tooltip-arrow {
 		bottom: 100%;
-		left: 50%;
+		left: var(--arrow-offset, 50%);
 		transform: translateX(-50%);
 		border-bottom: 6px solid var(--color-border);
 	}

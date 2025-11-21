@@ -203,7 +203,7 @@
   :global(.bracket-tooltip-content) {
     padding: 12px 16px;
     min-width: 280px;
-    z-index: 9999 !important;
+    /* z-index handled by BaseTooltip */
   }
 
   /* Theme-aware text colors */
