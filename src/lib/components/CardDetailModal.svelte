@@ -7,6 +7,7 @@
 	import CardPreview from './CardPreview.svelte';
 	import CardPreviewInfo from './CardPreviewInfo.svelte';
 	import OracleText from './OracleText.svelte';
+	import { FORMAT_ORDER, FORMAT_DISPLAY_NAMES, getLegalityIcon } from '$lib/formats/format-legality';
 
 	let {
 		card,
@@ -278,68 +279,6 @@
 		if (price === undefined || price === null) return 'N/A';
 		return `$${price.toFixed(2)}`;
 	}
-
-	function getLegalityIcon(legality: string): { icon: string; color: string; title: string } {
-		switch (legality) {
-			case 'legal':
-				return { icon: '✓', color: 'legal-icon', title: 'Legal' };
-			case 'banned':
-				return { icon: '✕', color: 'banned-icon', title: 'Banned' };
-			case 'restricted':
-				return { icon: '1', color: 'restricted-icon', title: 'Restricted: 1 copy only' };
-			case 'not_legal':
-				return { icon: '−', color: 'not-legal-icon', title: 'Not Legal' };
-			default:
-				return { icon: '−', color: 'not-legal-icon', title: 'Not Legal' };
-		}
-	}
-
-	// Format order and display names
-	const formatOrder = [
-		'alchemy',
-		'brawl',
-		'commander',
-		'duel',
-		'gladiator',
-		'historic',
-		'legacy',
-		'modern',
-		'oathbreaker',
-		'oldschool',
-		'pauper',
-		'paupercommander',
-		'penny',
-		'pioneer',
-		'predh',
-		'premodern',
-		'standard',
-		'standardbrawl',
-		'timeless',
-		'vintage'
-	];
-
-	const formatDisplayNames: Record<string, string> = {
-		alchemy: 'Alchemy',
-		brawl: 'Brawl',
-		commander: 'Commander',
-		duel: 'Duel',
-		gladiator: 'Gladiator',
-		historic: 'Historic',
-		legacy: 'Legacy',
-		modern: 'Modern',
-		oathbreaker: 'Oathbreaker',
-		oldschool: 'Oldschool',
-		pauper: 'Pauper',
-		paupercommander: 'Pauper EDH',
-		penny: 'Penny',
-		pioneer: 'Pioneer',
-		predh: 'PreDH',
-		premodern: 'Premodern',
-		standard: 'Standard',
-		standardbrawl: 'Standard Brawl',
-		timeless: 'Timeless',
-		vintage: 'Vintage'
-	};
 </script>
 
 {#if isOpen}
@@ -518,14 +457,14 @@
 								</div>
 
 								<div class="grid grid-cols-3 gap-1 text-sm">
-									{#each formatOrder.filter((format) => scryfallCard?.legalities?.[format as keyof typeof scryfallCard.legalities]) as format}
+									{#each FORMAT_ORDER.filter((format) => scryfallCard?.legalities?.[format as keyof typeof scryfallCard.legalities]) as format}
 										{@const legality = scryfallCard?.legalities?.[format as keyof typeof scryfallCard.legalities]}
 										{@const legalityInfo = legality ? getLegalityIcon(legality) : { icon: '?', color: 'text-gray-500', title: 'Unknown' }}
 										<div class="flex items-center gap-1.5 px-2 py-1 bg-[var(--color-bg-secondary)] rounded" title={legalityInfo.title}>
 											<span class="flex-shrink-0 {legalityInfo.color}">
 												{legalityInfo.icon}
 											</span>
-											<span class="text-[var(--color-text-secondary)] truncate">{formatDisplayNames[format] || format}</span>
+											<span class="text-[var(--color-text-secondary)] truncate">{FORMAT_DISPLAY_NAMES[format] || format}</span>
 										</div>
 									{/each}
 								</div>
