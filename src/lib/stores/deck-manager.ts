@@ -21,7 +21,6 @@ import { DeckFormat } from '$lib/formats/format-registry';
 export interface DeckListItem {
 	name: string;
 	lastModified: Date;
-	size: number;
 }
 
 /**
@@ -34,8 +33,6 @@ interface AppState {
 	isLoading: boolean;
 	error: string | null;
 	isInitialized: boolean;
-	needsMigration: boolean;
-	migrationDirectoryHandle: FileSystemDirectoryHandle | null;
 }
 
 const ACTIVE_DECK_KEY = 'jitte:activeDeckName';
@@ -50,9 +47,7 @@ function createDeckManager() {
 		activeManifest: null,
 		isLoading: false,
 		error: null,
-		isInitialized: false,
-		needsMigration: false,
-		migrationDirectoryHandle: null
+		isInitialized: false
 	};
 
 	const { subscribe, set, update } = writable<AppState>(initialState);
@@ -79,24 +74,6 @@ function createDeckManager() {
 		}
 
 		update((state) => ({ ...state, isInitialized: true }));
-
-		// Check for migration needs
-		const config = storage.getConfig();
-		if (config?.directoryHandle) {
-			const { hasLegacyZipDecks } = await import('$lib/storage/migration');
-			const needsMigration = await hasLegacyZipDecks(config.directoryHandle);
-
-			if (needsMigration) {
-				update((state) => ({
-					...state,
-					needsMigration: true,
-					migrationDirectoryHandle: config.directoryHandle || null
-				}));
-				// Don't load decks yet, wait for migration
-				update((state) => ({ ...state, isLoading: false }));
-				return;
-			}
-		}
 
 		// Load deck list
 		await refreshDeckList();
@@ -125,8 +102,7 @@ function createDeckManager() {
 		if (result.success && result.data) {
 			const deckItems: DeckListItem[] = result.data.map((entry) => ({
 				name: entry.name,
-				lastModified: new Date(entry.lastModified),
-				size: entry.size || 0
+				lastModified: new Date(entry.lastModified)
 			}));
 
 			update((state) => ({ ...state, decks: deckItems }));
@@ -147,12 +123,10 @@ function createDeckManager() {
 		const result = await storage.loadDeck(deckName);
 
 		if (result.success && result.data) {
-			// Decompress the zip file
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
 			const { extractDeckFromArchive } = await import('$lib/utils/deck-serializer');
 
 			try {
-				const archive = await decompressDeckArchive(result.data);
+				const archive = result.data;
 				const { deck, manifest, maybeboard } = await extractDeckFromArchive(archive);
 
 				// Auto-migrate: Add versioningScheme if missing (defaults to semantic for backwards compatibility)
@@ -219,7 +193,6 @@ function createDeckManager() {
 
 			try {
 				const { serializeDeckToJSON, createDeckArchive } = await import('$lib/utils/deck-serializer');
-				const { compressDeckArchive } = await import('$lib/utils/zip');
 
 				const deck = currentState.deck;
 				console.log('[deckManager.saveDeck] Current deck:', deck);
@@ -249,9 +222,7 @@ function createDeckManager() {
 					versionFiles: Object.keys(archive.versions.main || {})
 				});
 
-				const zipBlob = await compressDeckArchive(archive, deck.name);
-
-				const result = await storage.saveDeck(deck.name, zipBlob);
+				const result = await storage.saveDeck(deck.name, archive);
 				console.log('[deckManager.saveDeck] Storage save result:', result.success);
 
 				if (result.success) {
@@ -296,10 +267,9 @@ function createDeckManager() {
 					throw new Error('Failed to load existing deck');
 				}
 
-				const { decompressDeckArchive, compressDeckArchive } = await import('$lib/utils/zip');
 				const { serializeDeckToJSON } = await import('$lib/utils/deck-serializer');
 
-				const archive = await decompressDeckArchive(loadResult.data);
+				const archive = loadResult.data;
 				const deck = currentState.deck;
 
 				// Create new version using the manifest
@@ -326,9 +296,8 @@ function createDeckManager() {
 				// Update maybeboard
 				archive.maybeboard = currentState.maybeboard;
 
-				// Compress and save
-				const zipBlob = await compressDeckArchive(archive, deck.name);
-				const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+				// Save archive
+				const saveResult = await storage.saveDeck(appState.activeDeckName, archive);
 
 				if (saveResult.success) {
 					// Update the deck version (preserves edit state)
@@ -382,11 +351,9 @@ function createDeckManager() {
 				throw new Error('Failed to load deck');
 			}
 
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
 			const { deserializeDeck } = await import('$lib/utils/deck-serializer');
 
-			console.log('[deckManager.loadVersion] Decompressing archive...');
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 			console.log('[deckManager.loadVersion] Archive loaded:', {
 				manifestVersion: archive.manifest.currentVersion,
 				branches: Object.keys(archive.versions),
@@ -600,10 +567,9 @@ function createDeckManager() {
 				return null;
 			}
 
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
 			const { deserializeDeck } = await import('$lib/utils/deck-serializer');
 
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 
 			// Use the provided branch name, or fall back to current branch from deck store or manifest
 			const deckStoreState = get(deckStore);
@@ -673,9 +639,6 @@ function createDeckManager() {
 
 		try {
 			const { createBranch } = await import('$lib/utils/version-control');
-			const { serializeDeckToJSON, createDeckArchive } = await import('$lib/utils/deck-serializer');
-			const { compressDeckArchive } = await import('$lib/utils/zip');
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
 
 			// Load the current deck archive
 			const loadResult = await storage.loadDeck(appState.activeDeckName);
@@ -683,7 +646,7 @@ function createDeckManager() {
 				throw new Error('Failed to load deck for branching');
 			}
 
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 
 			// Create the branch in the manifest
 			const options = {
@@ -730,8 +693,7 @@ function createDeckManager() {
 			};
 
 			// Save the updated archive
-			const zipBlob = await compressDeckArchive(updatedArchive, currentState.deck.name);
-			const result = await storage.saveDeck(appState.activeDeckName, zipBlob);
+			const result = await storage.saveDeck(appState.activeDeckName, updatedArchive);
 
 			if (result.success) {
 				// Update the active manifest
@@ -769,8 +731,6 @@ function createDeckManager() {
 
 		try {
 			const { switchBranch } = await import('$lib/utils/version-control');
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
-			const { compressDeckArchive } = await import('$lib/utils/zip');
 
 			// Update the manifest to switch branches
 			const updatedManifest = switchBranch(appState.activeManifest, branchName);
@@ -781,7 +741,7 @@ function createDeckManager() {
 				throw new Error('Failed to load deck for branch switching');
 			}
 
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 
 			// Update the archive with the new manifest
 			const updatedArchive = {
@@ -790,8 +750,7 @@ function createDeckManager() {
 			};
 
 			// Save the updated archive
-			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
-			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, updatedArchive);
 
 			if (!saveResult.success) {
 				throw new Error('Failed to save branch switch');
@@ -835,8 +794,6 @@ function createDeckManager() {
 
 		try {
 			const { deleteBranch } = await import('$lib/utils/version-control');
-			const { compressDeckArchive } = await import('$lib/utils/zip');
-			const { decompressDeckArchive } = await import('$lib/utils/zip');
 
 			// Load the current deck archive
 			const loadResult = await storage.loadDeck(appState.activeDeckName);
@@ -844,7 +801,7 @@ function createDeckManager() {
 				throw new Error('Failed to load deck for branch deletion');
 			}
 
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 
 			// Delete the branch from manifest (also validates we're not deleting main or current branch)
 			const updatedManifest = deleteBranch(archive.manifest, branchName);
@@ -861,8 +818,7 @@ function createDeckManager() {
 			};
 
 			// Save the updated archive
-			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
-			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, updatedArchive);
 
 			if (!saveResult.success) {
 				throw new Error('Failed to save after branch deletion');
@@ -897,7 +853,6 @@ function createDeckManager() {
 
 		try {
 			const { changeVersioningScheme } = await import('$lib/utils/version-control');
-			const { compressDeckArchive, decompressDeckArchive } = await import('$lib/utils/zip');
 
 			// Load the current deck archive
 			const loadResult = await storage.loadDeck(appState.activeDeckName);
@@ -905,7 +860,7 @@ function createDeckManager() {
 				throw new Error('Failed to load deck for scheme change');
 			}
 
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 
 			// Update the manifest with new versioning scheme
 			const updatedManifest = changeVersioningScheme(archive.manifest, newScheme);
@@ -917,8 +872,7 @@ function createDeckManager() {
 			};
 
 			// Save the updated archive
-			const zipBlob = await compressDeckArchive(updatedArchive, appState.activeDeckName);
-			const saveResult = await storage.saveDeck(appState.activeDeckName, zipBlob);
+			const saveResult = await storage.saveDeck(appState.activeDeckName, updatedArchive);
 
 			if (!saveResult.success) {
 				throw new Error('Failed to save versioning scheme change');
@@ -957,34 +911,6 @@ function createDeckManager() {
 		return storage;
 	}
 
-	/**
-	 * Complete migration and continue loading
-	 */
-	async function completeMigration(): Promise<void> {
-		update((state) => ({
-			...state,
-			needsMigration: false,
-			migrationDirectoryHandle: null,
-			isLoading: true
-		}));
-
-		// Load deck list
-		await refreshDeckList();
-
-		// Load last active deck
-		const lastActiveDeckName = localStorage.getItem(ACTIVE_DECK_KEY);
-		if (lastActiveDeckName) {
-			await loadDeck(lastActiveDeckName);
-
-			// If deck failed to load, clear the stored deck name
-			const currentState = get({ subscribe });
-			if (currentState.error && !currentState.activeDeckName) {
-				localStorage.removeItem(ACTIVE_DECK_KEY);
-			}
-		}
-
-		update((state) => ({ ...state, isLoading: false }));
-	}
 
 	return {
 		subscribe,
@@ -1002,8 +928,7 @@ function createDeckManager() {
 		deleteBranchFromDeck,
 		updateVersioningScheme,
 		clearError,
-		getStorage,
-		completeMigration
+		getStorage
 	};
 }
 

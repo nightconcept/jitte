@@ -3,7 +3,7 @@
  * Abstracts storage operations and manages provider selection
  */
 
-import { FileSystemProvider, isFileSystemSupported } from './filesystem-provider';
+import type { DeckArchive } from '$lib/utils/zip';
 import { FileSystemFolderProvider, isFolderStorageSupported } from './filesystem-folder-provider';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { DeckListEntry, IStorageProvider, StorageConfig, StorageResult } from './types';
@@ -30,8 +30,6 @@ export class StorageManager {
 		} else if (isFolderStorageSupported()) {
 			// Prefer folder-based storage for better dev experience
 			providerType = StorageProvider.FolderStorage;
-		} else if (isFileSystemSupported()) {
-			providerType = StorageProvider.FileSystem;
 		} else {
 			providerType = StorageProvider.LocalStorage;
 		}
@@ -43,28 +41,10 @@ export class StorageManager {
 		const initResult = await this.provider.initialize();
 
 		if (!initResult.success) {
-			// Fallback chain: FolderStorage -> FileSystem -> LocalStorage
+			// Fallback chain: FolderStorage -> LocalStorage
 			if (providerType === StorageProvider.FolderStorage) {
 				console.warn(
 					'FolderStorage initialization failed, falling back to localStorage',
-					initResult.error
-				);
-
-				this.provider = this.createProvider(StorageProvider.LocalStorage);
-				const fallbackResult = await this.provider.initialize();
-
-				if (!fallbackResult.success) {
-					return {
-						success: false,
-						error: 'All storage providers failed to initialize',
-						errorCode: StorageErrorCode.NotSupported
-					};
-				}
-
-				providerType = StorageProvider.LocalStorage;
-			} else if (providerType === StorageProvider.FileSystem) {
-				console.warn(
-					'FileSystem API initialization failed, falling back to localStorage',
 					initResult.error
 				);
 
@@ -93,11 +73,11 @@ export class StorageManager {
 		this.config = {
 			provider: providerType,
 			directoryHandle:
-				this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider
+				this.provider instanceof FileSystemFolderProvider
 					? this.provider.getDirectoryHandle() || undefined
 					: undefined,
 			directoryPath:
-				this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider
+				this.provider instanceof FileSystemFolderProvider
 					? this.provider.getDirectoryPath() || undefined
 					: undefined
 		};
@@ -114,11 +94,8 @@ export class StorageManager {
 	async initializeWithConfig(config: StorageConfig): Promise<StorageResult<void>> {
 		this.provider = this.createProvider(config.provider);
 
-		// If FileSystem or FolderStorage provider and has handle, restore it
-		if (
-			(this.provider instanceof FileSystemProvider || this.provider instanceof FileSystemFolderProvider) &&
-			config.directoryHandle
-		) {
+		// If FolderStorage provider and has handle, restore it
+		if (this.provider instanceof FileSystemFolderProvider && config.directoryHandle) {
 			const result = await this.provider.initializeWithHandle(config.directoryHandle);
 			if (!result.success) {
 				return result;
@@ -161,7 +138,7 @@ export class StorageManager {
 	/**
 	 * Save a deck
 	 */
-	async saveDeck(deckName: string, zipBlob: Blob): Promise<StorageResult<void>> {
+	async saveDeck(deckName: string, archive: DeckArchive): Promise<StorageResult<void>> {
 		if (!this.provider) {
 			return {
 				success: false,
@@ -170,13 +147,13 @@ export class StorageManager {
 			};
 		}
 
-		return await this.provider.saveDeck(deckName, zipBlob);
+		return await this.provider.saveDeck(deckName, archive);
 	}
 
 	/**
 	 * Load a deck
 	 */
-	async loadDeck(deckName: string): Promise<StorageResult<Blob>> {
+	async loadDeck(deckName: string): Promise<StorageResult<DeckArchive>> {
 		if (!this.provider) {
 			return {
 				success: false,
@@ -282,11 +259,11 @@ export class StorageManager {
 		this.config = {
 			provider: newProvider,
 			directoryHandle:
-				provider instanceof FileSystemProvider || provider instanceof FileSystemFolderProvider
+				provider instanceof FileSystemFolderProvider
 					? provider.getDirectoryHandle() || undefined
 					: undefined,
 			directoryPath:
-				provider instanceof FileSystemProvider || provider instanceof FileSystemFolderProvider
+				provider instanceof FileSystemFolderProvider
 					? provider.getDirectoryPath() || undefined
 					: undefined
 		};
@@ -302,8 +279,6 @@ export class StorageManager {
 	 */
 	private createProvider(type: StorageProvider): IStorageProvider {
 		switch (type) {
-			case StorageProvider.FileSystem:
-				return new FileSystemProvider();
 			case StorageProvider.FolderStorage:
 				return new FileSystemFolderProvider();
 			case StorageProvider.LocalStorage:
@@ -333,5 +308,5 @@ export function getStorageManager(): StorageManager {
  * Check if FileSystem API is available
  */
 export function isFileSystemAvailable(): boolean {
-	return isFileSystemSupported();
+	return isFolderStorageSupported();
 }

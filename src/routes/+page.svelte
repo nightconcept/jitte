@@ -21,7 +21,6 @@
 	import RecommendationsModal from '$lib/components/RecommendationsModal.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
-	import MigrationModal from '$lib/components/MigrationModal.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
 	import { CardService } from '$lib/api/card-service';
@@ -621,6 +620,46 @@
 	}
 
 	/**
+	 * Export deck as .jitte file (compressed archive)
+	 */
+	async function handleExportJitte() {
+		if (!$deckManager.activeDeckName) {
+			toastStore.warning('No deck loaded to export');
+			return;
+		}
+
+		try {
+			// Load the deck archive from storage
+			const storage = deckManager.getStorage();
+			const loadResult = await storage.loadDeck($deckManager.activeDeckName);
+
+			if (!loadResult.success || !loadResult.data) {
+				toastStore.error('Failed to load deck for export');
+				return;
+			}
+
+			// Compress the archive into a blob
+			const { compressDeckArchive } = await import('$lib/utils/zip');
+			const zipBlob = await compressDeckArchive(loadResult.data, $deckManager.activeDeckName);
+
+			// Download the file
+			const url = URL.createObjectURL(zipBlob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${$deckManager.activeDeckName}.jitte`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+			toastStore.success('Deck exported as .jitte file!');
+		} catch (error) {
+			console.error('Failed to export .jitte file:', error);
+			toastStore.error('Failed to export deck. Check console for details.');
+		}
+	}
+
+	/**
 	 * Build Archidekt JSON format for deck export
 	 * Format: [{"c":"c","f":0,"q":1,"u":"scryfall-uuid"},...]
 	 * - c: category ("c"=commander, "m"=mainboard)
@@ -975,6 +1014,7 @@
 		onSettings={handleSettings}
 		onNewBranch={handleNewBranch}
 		onExport={handleExport}
+		onExportJitte={handleExportJitte}
 		onCompare={handleBuylist}
 		onSwitchVersion={handleSwitchVersion}
 		onSwitchBranch={handleSwitchBranch}
@@ -1213,11 +1253,6 @@
 	on:complete={handleOnboardingComplete}
 	on:close={handleOnboardingClose}
 />
-
-<MigrationModal
-	bind:isOpen={$deckManager.needsMigration}
-	directoryHandle={$deckManager.migrationDirectoryHandle}
-	onComplete={() => deckManager.completeMigration()}
 />
 
 <style>

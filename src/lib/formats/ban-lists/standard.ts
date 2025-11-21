@@ -4,11 +4,9 @@
  * Last updated: 2025-11-21
  */
 
-import { DeckFormat } from '../format-registry';
 import type { FormatBanList } from './types';
 
 export const standardBanList: FormatBanList = {
-	format: DeckFormat.Standard,
 	lastUpdated: '2025-11-21',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [

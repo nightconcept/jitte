@@ -3,9 +3,8 @@
  * Saves decks as plain folder structures instead of zip files
  */
 
-import { getDeckFolderName } from '$lib/utils/filename';
+import { getDeckFilename, getDeckFolderName } from '$lib/utils/filename';
 import type { DeckArchive } from '$lib/utils/zip';
-import { compressDeckArchive, decompressDeckArchive } from '$lib/utils/zip';
 import type { DeckListEntry, IStorageProvider, StorageCapabilities, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
 
@@ -14,7 +13,7 @@ import { StorageErrorCode, StorageProvider } from './types';
  * Stores decks as folders with JSON files instead of zip archives
  */
 export class FileSystemFolderProvider implements IStorageProvider {
-	readonly type = StorageProvider.FileSystem;
+	readonly type = StorageProvider.FolderStorage;
 
 	private directoryHandle: FileSystemDirectoryHandle | null = null;
 	private directoryPath: string | null = null;
@@ -146,9 +145,8 @@ export class FileSystemFolderProvider implements IStorageProvider {
 
 	/**
 	 * Save a deck as a folder structure
-	 * Takes a zip blob, extracts it, and saves as folder
 	 */
-	async saveDeck(deckName: string, zipBlob: Blob): Promise<StorageResult<void>> {
+	async saveDeck(deckName: string, archive: DeckArchive): Promise<StorageResult<void>> {
 		if (!this.directoryHandle) {
 			return {
 				success: false,
@@ -158,8 +156,6 @@ export class FileSystemFolderProvider implements IStorageProvider {
 		}
 
 		try {
-			// Decompress the zip to get the archive structure
-			const archive = await decompressDeckArchive(zipBlob);
 
 			// Get or create deck folder
 			const deckFolderName = getDeckFolderName(deckName);
@@ -231,10 +227,87 @@ export class FileSystemFolderProvider implements IStorageProvider {
 	}
 
 	/**
-	 * Load a deck from folder structure
-	 * Reads folder and returns as a zip blob
+	 * Migrate a deck from old .zip format to new folder format
 	 */
-	async loadDeck(deckName: string): Promise<StorageResult<Blob>> {
+	private async migrateOldDeck(deckName: string): Promise<StorageResult<DeckArchive>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			// Old format used .zip extension
+			const zipFileName = getDeckFilename(deckName);
+			console.log(`[FileSystemFolderProvider] Looking for old format .zip file: "${zipFileName}"`);
+
+			// Try to get the .zip file
+			let fileHandle: FileSystemFileHandle;
+			try {
+				fileHandle = await this.directoryHandle.getFileHandle(zipFileName);
+			} catch (error) {
+				// .zip file not found either
+				console.log(`[FileSystemFolderProvider] .zip file not found for "${deckName}"`);
+				return {
+					success: false,
+					error: `Deck "${deckName}" not found in old format`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			console.log(`[FileSystemFolderProvider] Found old format .zip file for "${deckName}", migrating...`);
+
+			// Read the .zip file
+			console.log(`[FileSystemFolderProvider] Reading .zip file...`);
+			const file = await fileHandle.getFile();
+			console.log(`[FileSystemFolderProvider] File size: ${file.size} bytes`);
+			const arrayBuffer = await file.arrayBuffer();
+			const blob = new Blob([arrayBuffer], { type: 'application/zip' });
+			console.log(`[FileSystemFolderProvider] Created blob (${blob.size} bytes)`);
+
+			// Decompress the archive
+			console.log(`[FileSystemFolderProvider] Decompressing archive...`);
+			const { decompressDeckArchive } = await import('$lib/utils/zip');
+			const archive = await decompressDeckArchive(blob);
+			console.log(`[FileSystemFolderProvider] Decompression successful, manifest:`, archive.manifest);
+
+			// Save in new folder format
+			console.log(`[FileSystemFolderProvider] Saving in new folder format...`);
+			const saveResult = await this.saveDeck(deckName, archive);
+			if (!saveResult.success) {
+				console.error(`[FileSystemFolderProvider] Save failed:`, saveResult.error);
+				throw new Error(`Failed to save migrated deck: ${saveResult.error}`);
+			}
+			console.log(`[FileSystemFolderProvider] Save successful`);
+
+			// Delete the old .zip file
+			console.log(`[FileSystemFolderProvider] Deleting old .zip file...`);
+			await this.directoryHandle.removeEntry(zipFileName);
+			console.log(`[FileSystemFolderProvider] Migration complete for "${deckName}", old .zip file removed`);
+
+			return {
+				success: true,
+				data: archive
+			};
+		} catch (error) {
+			console.error(`[FileSystemFolderProvider] Migration failed for "${deckName}":`, error);
+			if (error instanceof Error) {
+				console.error(`[FileSystemFolderProvider] Error stack:`, error.stack);
+			}
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Migration failed',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Load a deck from folder structure
+	 */
+	async loadDeck(deckName: string): Promise<StorageResult<DeckArchive>> {
 		if (!this.directoryHandle) {
 			return {
 				success: false,
@@ -246,8 +319,25 @@ export class FileSystemFolderProvider implements IStorageProvider {
 		try {
 			const deckFolderName = getDeckFolderName(deckName);
 
-			// Get deck folder
-			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			// Try to get deck folder
+			let deckFolderHandle: FileSystemDirectoryHandle;
+			try {
+				deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			} catch (error) {
+				// Folder not found, try to migrate from old .zip format
+				console.log(`[FileSystemFolderProvider] Deck folder "${deckFolderName}" not found, checking for old .zip format...`);
+				const migrationResult = await this.migrateOldDeck(deckName);
+				if (migrationResult.success && migrationResult.data) {
+					console.log(`[FileSystemFolderProvider] Successfully migrated "${deckName}" to new format`);
+					return migrationResult;
+				}
+
+				return {
+					success: false,
+					error: `Deck "${deckName}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
 
 			// Read manifest.json
 			const manifest = await this.readJsonFile(deckFolderHandle, 'manifest.json');
@@ -305,12 +395,9 @@ export class FileSystemFolderProvider implements IStorageProvider {
 				stashes: Object.keys(stashes).length > 0 ? stashes : undefined
 			};
 
-			// Compress to zip blob for compatibility with existing code
-			const zipBlob = await compressDeckArchive(archive, deckName);
-
 			return {
 				success: true,
-				data: zipBlob
+				data: archive
 			};
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'NotFoundError') {
@@ -406,13 +493,12 @@ export class FileSystemFolderProvider implements IStorageProvider {
 			}
 
 			// Update manifest with new name
-			const archive = await decompressDeckArchive(loadResult.data);
+			const archive = loadResult.data;
 			archive.manifest.name = newName;
 			archive.manifest.updatedAt = new Date().toISOString();
 
 			// Save with new name
-			const zipBlob = await compressDeckArchive(archive, newName);
-			const saveResult = await this.saveDeck(newName, zipBlob);
+			const saveResult = await this.saveDeck(newName, archive);
 
 			if (!saveResult.success) {
 				return saveResult;
@@ -454,11 +540,14 @@ export class FileSystemFolderProvider implements IStorageProvider {
 		}
 
 		try {
-			const decks: DeckListEntry[] = [];
+			const deckMap = new Map<string, DeckListEntry>();
+			const allEntries: string[] = [];
 
 			// Iterate through directory entries
 			for await (const entry of this.directoryHandle.values()) {
-				// Only include directories (deck folders)
+				allEntries.push(`${entry.name} (${entry.kind})`);
+
+				// Only include directories (deck folders), skip .zip files
 				if (entry.kind === 'directory') {
 					const dirHandle = entry as FileSystemDirectoryHandle;
 
@@ -466,26 +555,33 @@ export class FileSystemFolderProvider implements IStorageProvider {
 						// Read manifest to get deck info
 						const manifest = await this.readJsonFile(dirHandle, 'manifest.json');
 
-						// Calculate folder size (approximate)
-						let size = 0;
-						try {
-							size = await this.calculateFolderSize(dirHandle);
-						} catch {
-							// Ignore size calculation errors
-						}
+						console.log(`[FileSystemFolderProvider] Found deck folder "${entry.name}" with manifest name: "${manifest.name}"`);
 
-						decks.push({
+						// Use manifest.name as the key to prevent duplicates
+						// If the same deck name appears in multiple folders, keep the most recent one
+						const deckEntry = {
 							name: manifest.name,
-							filename: entry.name, // folder name
-							lastModified: new Date(manifest.updatedAt).getTime(),
-							size
-						});
-					} catch {
+							lastModified: new Date(manifest.updatedAt).getTime()
+						};
+
+						const existing = deckMap.get(manifest.name);
+						if (!existing || deckEntry.lastModified > existing.lastModified) {
+							deckMap.set(manifest.name, deckEntry);
+						}
+					} catch (error) {
 						// Skip folders that don't have a valid manifest
+						console.log(`[FileSystemFolderProvider] Skipping folder "${entry.name}" - no valid manifest`);
 						continue;
 					}
+				} else if (entry.kind === 'file' && entry.name.endsWith('.zip')) {
+					console.log(`[FileSystemFolderProvider] Skipping old format .zip file: "${entry.name}"`);
 				}
 			}
+
+			console.log(`[FileSystemFolderProvider] All entries in storage directory:`, allEntries);
+
+			const decks = Array.from(deckMap.values());
+			console.log(`[FileSystemFolderProvider] Listed ${decks.length} unique decks:`, decks.map(d => d.name));
 
 			// Sort by last modified (newest first)
 			decks.sort((a, b) => b.lastModified - a.lastModified);

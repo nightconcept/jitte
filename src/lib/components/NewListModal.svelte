@@ -6,6 +6,7 @@
   import CommanderSearch from "./CommanderSearch.svelte";
   import BaseModal from "./BaseModal.svelte";
   import type { Card } from "$lib/types/card";
+  import { CardCategory } from "$lib/types/card";
   import { cardService } from "$lib/api/card-service";
   import { scryfallToCard } from "$lib/utils/card-converter";
   import { detectPartnerType } from "$lib/utils/partner-detection";
@@ -50,6 +51,7 @@
   let detectionTimeoutId: number | undefined;
   let autoDetectEnabled = true; // Auto-detection enabled by default (bypasses queue)
   let previousCommandersLength = 0; // Track to detect manual clearing
+  let isImportingJitte = false;
 
   const cardServiceInstance = new CardService();
 
@@ -479,11 +481,75 @@
     parseResult = null;
     showErrors = false;
     isDetectingCommanders = false;
+    isImportingJitte = false;
     autoDetectEnabled = true; // Keep auto-detection enabled
     // Clean up detection timeout
     if (detectionTimeoutId) {
       clearTimeout(detectionTimeoutId);
       detectionTimeoutId = undefined;
+    }
+  }
+
+  /**
+   * Import deck from .jitte file
+   */
+  async function handleImportJitteFile() {
+    try {
+      // Create file input
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.jitte';
+
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement)?.files?.[0];
+        if (!file) return;
+
+        isImportingJitte = true;
+        try {
+          // Read the file as blob
+          const blob = file;
+
+          // Decompress the archive
+          const { decompressDeckArchive } = await import('$lib/utils/zip');
+          const { extractDeckFromArchive } = await import('$lib/utils/deck-serializer');
+          const { serializeDeckToPlaintext } = await import('$lib/utils/deck-serializer');
+
+          const archive = await decompressDeckArchive(blob);
+          const { deck, manifest } = await extractDeckFromArchive(archive);
+
+          // Set deck name
+          deckName = deck.name;
+
+          // Set format
+          selectedFormat = deck.format;
+
+          // Convert deck to plaintext for the textarea
+          const plaintext = serializeDeckToPlaintext(deck);
+          decklistInput = plaintext;
+
+          // Extract commanders if it's a Commander deck
+          if (deck.format === DeckFormat.Commander && deck.cards[CardCategory.Commander]) {
+            const commanders = deck.cards[CardCategory.Commander] || [];
+            selectedCommanders = commanders;
+          }
+
+          // Switch to import mode
+          mode = 'import';
+
+          console.log(`[NewListModal] Successfully imported .jitte file: ${deck.name}`);
+        } catch (error) {
+          console.error('[NewListModal] Failed to import .jitte file:', error);
+          alert('Failed to import .jitte file. Please check the file format.');
+        } finally {
+          isImportingJitte = false;
+        }
+      };
+
+      // Trigger file picker
+      input.click();
+    } catch (error) {
+      console.error('[NewListModal] Failed to open file picker:', error);
+      isImportingJitte = false;
     }
   }
 </script>
@@ -571,6 +637,46 @@
           class="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
         />
       </div>
+
+      {#if mode === "import"}
+        <!-- Import .jitte file option -->
+        <div class="mb-4">
+          <div class="flex items-center gap-3 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                Import from .jitte file
+              </p>
+              <p class="text-xs text-[var(--color-text-secondary)]">
+                Select a previously exported .jitte file to automatically fill in all fields
+              </p>
+            </div>
+            <button
+              type="button"
+              onclick={handleImportJitteFile}
+              disabled={isImportingJitte}
+              class="px-4 py-2 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white rounded font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {#if isImportingJitte}
+                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Loading...
+              {:else}
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Browse
+              {/if}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex-1 h-px bg-[var(--color-border)]"></div>
+          <span class="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide">Or paste decklist</span>
+          <div class="flex-1 h-px bg-[var(--color-border)]"></div>
+        </div>
+      {/if}
 
       {#if mode === "empty"}
         <!-- Empty Deck Mode: Commander Search (if needed for format) -->

@@ -51,6 +51,5 @@ export type BrowserItem =
 			type: 'deck';
 			deckName: string;
 			lastModified: Date;
-			size: number;
 			commanders: string[];
 	  };

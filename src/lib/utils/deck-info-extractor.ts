@@ -4,6 +4,7 @@
 
 import type { Card, ManaColor } from '$lib/types/card';
 import type { DeckManifest } from '$lib/types/deck';
+import type { DeckArchive } from './zip';
 import { CardCategory } from '$lib/types/card';
 import { DeckFormat } from '$lib/formats/format-registry';
 
@@ -26,17 +27,14 @@ export interface DeckInfo {
 
 /**
  * Extract commander information (names and colors) from a deck archive
- * @param zipBlob - The deck zip file
+ * @param archive - The deck archive
  * @returns Array of commander info with names and color identities
  */
-export async function extractCommanderInfo(zipBlob: Blob): Promise<CommanderInfo[]> {
+export async function extractCommanderInfo(archive: DeckArchive): Promise<CommanderInfo[]> {
 	try {
-		const { decompressDeckArchive } = await import('./zip');
 		const { deserializeDeck } = await import('./deck-serializer');
 		const { countGameChangers, calculateBracketLevel } = await import('./game-changers');
 
-		// Decompress the archive
-		const archive = await decompressDeckArchive(zipBlob);
 		const manifest: DeckManifest = archive.manifest;
 
 		// Get the current branch and version
@@ -105,27 +103,27 @@ export async function extractCommanderInfo(zipBlob: Blob): Promise<CommanderInfo
 
 /**
  * Extract commander names from a deck archive
- * @param zipBlob - The deck zip file
+ * @param archive - The deck archive
  * @returns Array of commander names
  */
-export async function extractCommanderNames(zipBlob: Blob): Promise<string[]> {
-	const info = await extractCommanderInfo(zipBlob);
+export async function extractCommanderNames(archive: DeckArchive): Promise<string[]> {
+	const info = await extractCommanderInfo(archive);
 	return info.map((cmd) => cmd.name);
 }
 
 /**
  * Batch extract commander names for multiple decks
- * @param deckBlobs - Map of deck name to zip blob
+ * @param deckArchives - Map of deck name to deck archive
  * @returns Map of deck name to commander names
  */
 export async function batchExtractCommanderNames(
-	deckBlobs: Map<string, Blob>
+	deckArchives: Map<string, DeckArchive>
 ): Promise<Map<string, string[]>> {
 	const result = new Map<string, string[]>();
 
 	// Process decks in parallel
-	const promises = Array.from(deckBlobs.entries()).map(async ([deckName, blob]) => {
-		const commanders = await extractCommanderNames(blob);
+	const promises = Array.from(deckArchives.entries()).map(async ([deckName, archive]) => {
+		const commanders = await extractCommanderNames(archive);
 		return { deckName, commanders };
 	});
 
@@ -140,19 +138,18 @@ export async function batchExtractCommanderNames(
 
 /**
  * Extract full deck information including format and commanders
- * @param zipBlob - The deck zip file
+ * @param archive - The deck archive
  * @returns Deck info with format and commanders
  */
-export async function extractDeckInfo(zipBlob: Blob): Promise<DeckInfo> {
+export async function extractDeckInfo(archive: DeckArchive): Promise<DeckInfo> {
 	try {
-		const { decompressDeckArchive } = await import('./zip');
-		const manifest = (await decompressDeckArchive(zipBlob)).manifest;
+		const manifest = archive.manifest;
 
 		// Get the format from the manifest
 		const format = manifest.format || DeckFormat.Commander;
 
 		// Extract commanders (only relevant for Commander format)
-		const commanders = await extractCommanderInfo(zipBlob);
+		const commanders = await extractCommanderInfo(archive);
 
 		return {
 			format,

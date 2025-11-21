@@ -4,11 +4,9 @@
  * Last updated: 2025-11-21
  */
 
-import { DeckFormat } from '../format-registry';
 import type { FormatBanList } from './types';
 
 export const commanderBanList: FormatBanList = {
-	format: DeckFormat.Commander,
 	lastUpdated: '2025-11-21',
 	source: 'https://mtgcommander.net/index.php/banned-list/',
 	banned: [

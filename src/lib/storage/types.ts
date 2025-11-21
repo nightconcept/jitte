@@ -2,14 +2,14 @@
  * Storage layer type definitions
  */
 
+import type { DeckArchive } from '$lib/utils/zip';
+
 /**
  * Storage provider types
  */
 export enum StorageProvider {
 	/** Browser localStorage (fallback) */
 	LocalStorage = 'localStorage',
-	/** File System Access API (zip files) */
-	FileSystem = 'fileSystem',
 	/** File System Access API (folder structure) */
 	FolderStorage = 'folderStorage'
 }
@@ -55,14 +55,8 @@ export interface DeckListEntry {
 	/** Deck name */
 	name: string;
 
-	/** Full filename (with .zip extension) */
-	filename: string;
-
 	/** Last modified timestamp */
 	lastModified: number;
-
-	/** File size in bytes */
-	size?: number;
 }
 
 /**
@@ -113,10 +107,10 @@ export interface IStorageProvider {
 	isInitialized(): boolean;
 
 	/** Save a deck archive */
-	saveDeck(deckName: string, zipBlob: Blob): Promise<StorageResult<void>>;
+	saveDeck(deckName: string, archive: DeckArchive): Promise<StorageResult<void>>;
 
 	/** Load a deck archive */
-	loadDeck(deckName: string): Promise<StorageResult<Blob>>;
+	loadDeck(deckName: string): Promise<StorageResult<DeckArchive>>;
 
 	/** Delete a deck */
 	deleteDeck(deckName: string): Promise<StorageResult<void>>;

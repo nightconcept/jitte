@@ -85,18 +85,13 @@
 				// Create a new Map to trigger reactivity
 				deckInfoCache = new Map(deckInfoCache.set(deckName, deckInfo));
 			} else {
-				console.log('[ListLoadModal] Failed to load deck:', deckName);
-				deckInfoCache = new Map(deckInfoCache.set(deckName, {
-					format: DeckFormat.Commander,
-					commanders: []
-				}));
+				console.warn(`[ListLoadModal] Failed to load deck "${deckName}":`, result.error);
+				// Don't cache failed loads - let it keep showing "Loading..." until it succeeds
+				// This prevents showing incorrect format/commander info
 			}
 		} catch (error) {
-			console.error(`[ListLoadModal] Failed to load deck info for ${deckName}:`, error);
-			deckInfoCache = new Map(deckInfoCache.set(deckName, {
-				format: DeckFormat.Commander,
-				commanders: []
-			}));
+			console.error(`[ListLoadModal] Error loading deck info for ${deckName}:`, error);
+			// Don't cache errors - let it retry on next attempt
 		}
 	}
 
@@ -165,14 +160,13 @@
 		// Get decks at current level
 		// NOTE: We DON'T include commander data here to avoid rebuilding when commanders load
 		// Instead, commanders are read directly from commanderCache in the template
-		const decksInFolder: Array<{ name: string; lastModified: Date; size: number }> = [];
+		const decksInFolder: Array<{ name: string; lastModified: Date }> = [];
 		for (const deck of decks) {
 			const deckFolderId = folderStructure.deckFolderMap[deck.name] || null;
 			if (deckFolderId === currentFolderId) {
 				decksInFolder.push({
 					name: deck.name,
-					lastModified: deck.lastModified,
-					size: deck.size
+					lastModified: deck.lastModified
 				});
 			}
 		}
@@ -188,7 +182,6 @@
 					type: 'deck',
 					deckName: deck.name,
 					lastModified: deck.lastModified,
-					size: deck.size,
 					commanders: [] // Placeholder - will read from cache in template
 				});
 			}
@@ -489,16 +482,6 @@
 		}
 	}
 
-	function formatSize(bytes: number): string {
-		if (bytes < 1024) {
-			return `${bytes} B`;
-		} else if (bytes < 1024 * 1024) {
-			return `${(bytes / 1024).toFixed(1)} KB`;
-		} else {
-			return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-		}
-	}
-
 	// Helper to get mana symbol class for a color
 	function getManaSymbolClass(color: string): string {
 		const colorLower = color.toLowerCase();
@@ -571,7 +554,6 @@
 							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Colors</th>
 							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Format</th>
 							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Modified</th>
-							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider w-24">Size</th>
 							<th class="px-6 py-3 w-10"></th>
 						</tr>
 					</thead>
@@ -591,7 +573,7 @@
 							aria-label="Parent folder drop zone"
 							onclick={navigateUp}
 						>
-							<td class="px-6 py-2" colspan="7">
+							<td class="px-6 py-2" colspan="6">
 								<div class="flex items-center gap-2">
 									<span class="text-lg">⬆️</span>
 									<div class="font-medium text-[var(--color-text-secondary)] text-sm">
@@ -785,13 +767,6 @@
 									</div>
 								</td>
 
-								<!-- Size -->
-								<td class="px-6 py-2">
-									<div class="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
-										{formatSize(item.size)}
-									</div>
-								</td>
-
 								<!-- Three-dot menu -->
 								<td class="px-6 py-2 relative">
 									<button
@@ -837,7 +812,7 @@
 					<!-- Empty folder message -->
 					{#if browserItems.length === 0 && currentFolderId !== null}
 						<tr>
-							<td colspan="7" class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
+							<td colspan="6" class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
 								<p>This folder is empty. Drag lists here or create a subfolder.</p>
 							</td>
 						</tr>

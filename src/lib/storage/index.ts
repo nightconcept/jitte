@@ -2,7 +2,7 @@
  * Storage module exports
  */
 
-export { FileSystemProvider, isFileSystemSupported } from './filesystem-provider';
+export { FileSystemFolderProvider, isFolderStorageSupported } from './filesystem-folder-provider';
 export { LocalStorageProvider } from './local-storage-provider';
 export { getStorageManager, isFileSystemAvailable, StorageManager } from './storage-manager';
 
