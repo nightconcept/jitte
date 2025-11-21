@@ -4,6 +4,71 @@ This directory contains utility scripts for maintaining Jitte's data and tooling
 
 ## Available Scripts
 
+### `update-ban-lists.ts`
+
+Automatically fetches and updates ban lists for all Magic: The Gathering formats from Scryfall API.
+
+**Usage:**
+```bash
+# Run the script
+pnpm update-ban-lists
+```
+
+**What it does:**
+1. Queries Scryfall API for banned/restricted cards in each format
+2. Preserves existing ban dates by merging with current ban list files
+3. Generates updated TypeScript files for all formats
+4. Handles rate limiting (100ms between requests)
+5. Updates timestamps automatically
+
+**Supported formats:**
+- Commander
+- Modern
+- Standard
+- Vintage
+- Legacy
+- Pioneer
+- Pauper
+- Brawl
+- Historic
+- Alchemy
+- Oathbreaker
+- Pre-EDH
+
+**When to run:**
+- **After Wizards announces new bans:** Check Wizards' website for B&R updates
+- **Monthly check:** Ensure ban lists are current
+- **Before major releases:** Keep data fresh for new sets
+
+**Output:**
+```
+🚫 Magic: The Gathering Ban List Updater
+
+Fetching latest ban lists from Scryfall API...
+
+📋 Updating Commander ban list...
+  Fetching banned cards for commander...
+  Found 45 banned cards
+  ✅ Updated commander.ts
+     Latest banned: Nadu, Winged Wisdom, Jeweled Lotus, Mana Crypt
+
+📋 Updating Modern ban list...
+  ...
+
+✅ All ban lists updated successfully!
+```
+
+**Troubleshooting:**
+
+If the script fails with rate limit errors:
+- The script already includes 100ms delays between requests
+- If still failing, increase the delay in the `sleep()` calls
+
+If card names or dates look wrong:
+- The script merges with existing data to preserve ban dates
+- New cards use their release date as a fallback
+- Review changes with `git diff` before committing
+
 ### `fetch-salt-scores.ts`
 
 Fetches the top 200 salt scores from EDHREC and saves them to `src/lib/data/salt-scores.ts`.

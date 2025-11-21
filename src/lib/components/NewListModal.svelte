@@ -11,6 +11,7 @@
   import { detectPartnerType } from "$lib/utils/partner-detection";
   import { parsePlaintext, type ParseResult } from "$lib/utils/decklist-parser";
   import { DeckFormat, FORMAT_METADATA } from "$lib/formats/format-registry";
+  import type { FormatMetadata } from "$lib/formats/format-registry";
 
   export let isOpen = false;
 
@@ -52,8 +53,12 @@
 
   const cardServiceInstance = new CardService();
 
-  // Check if selected format requires commanders
-  $: needsCommander = selectedFormat === DeckFormat.Commander;
+  // Get format metadata for selected format
+  $: formatMeta = FORMAT_METADATA[selectedFormat];
+
+  // Query metadata for format capabilities
+  $: needsCommander = formatMeta.commanderRules?.required ?? false;
+  $: maxCommanders = formatMeta.commanderRules?.maxCount ?? 0;
 
   // Check if selected commander has partner ability
   $: hasPartnerAbility = selectedCommander
@@ -68,14 +73,8 @@
     previousCommandersLength = selectedCommanders.length;
   }
 
-  // Dynamic text based on selected format
-  $: deckNamePlaceholder = {
-    [DeckFormat.Commander]: "My Awesome Commander Deck",
-    [DeckFormat.Cube]: "My Draft Cube",
-    [DeckFormat.Standard]: "My Standard Deck",
-    [DeckFormat.Modern]: "My Modern Deck"
-  }[selectedFormat];
-
+  // Get UI text from metadata
+  $: deckNamePlaceholder = formatMeta.ui.deckNamePlaceholder;
   $: listTypeLabel = selectedFormat === DeckFormat.Cube ? "List" : "Deck";
 
   function checkPartnerAbility(commander: CardSearchResult): boolean {
@@ -785,7 +784,7 @@
               </button>
             </div>
           {:else}
-            <CommanderSearch bind:selectedCommanders maxCommanders={2} />
+            <CommanderSearch bind:selectedCommanders maxCommanders={maxCommanders} />
           {/if}
           {#if showErrors && selectedCommanders.length === 0}
             <div class="mt-3 p-3 bg-red-900/20 border border-red-800 rounded">

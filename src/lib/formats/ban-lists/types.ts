@@ -12,8 +12,10 @@ export interface BanListEntry {
 }
 
 export interface FormatBanList {
-	format: DeckFormat;
+	format?: DeckFormat; // Optional for now
 	lastUpdated: string;
-	source: string; // Official ban list URL
-	banned: BanListEntry[];
+	source?: string; // Official ban list URL
+	banned: BanListEntry[] | string[]; // Support both detailed and simple lists
+	restricted?: BanListEntry[] | string[]; // Vintage restricted list
+	suspended?: BanListEntry[] | string[]; // Historic suspended list
 }

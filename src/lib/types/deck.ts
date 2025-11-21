@@ -87,16 +87,101 @@ export interface ModernDeck extends BaseDeck {
 }
 
 /**
+ * Pioneer-specific deck structure
+ */
+export interface PioneerDeck extends BaseDeck {
+	format: DeckFormat.Pioneer;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Legacy-specific deck structure
+ */
+export interface LegacyDeck extends BaseDeck {
+	format: DeckFormat.Legacy;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Vintage-specific deck structure
+ */
+export interface VintageDeck extends BaseDeck {
+	format: DeckFormat.Vintage;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Oathbreaker-specific deck structure
+ */
+export interface OathbreakerDeck extends BaseDeck {
+	format: DeckFormat.Oathbreaker;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * PreDH-specific deck structure
+ */
+export interface PreDHDeck extends BaseDeck {
+	format: DeckFormat.PreDH;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Pauper-specific deck structure
+ */
+export interface PauperDeck extends BaseDeck {
+	format: DeckFormat.Pauper;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Historic-specific deck structure
+ */
+export interface HistoricDeck extends BaseDeck {
+	format: DeckFormat.Historic;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Brawl-specific deck structure
+ */
+export interface BrawlDeck extends BaseDeck {
+	format: DeckFormat.Brawl;
+	colorIdentity: ManaColor[];
+}
+
+/**
+ * Alchemy-specific deck structure
+ */
+export interface AlchemyDeck extends BaseDeck {
+	format: DeckFormat.Alchemy;
+	colorIdentity: ManaColor[];
+}
+
+/**
  * Main deck type (discriminated union)
  * TypeScript will automatically narrow the type based on the format field
  */
-export type Deck = CommanderDeck | CubeDeck | StandardDeck | ModernDeck;
+export type Deck =
+	| CommanderDeck
+	| CubeDeck
+	| StandardDeck
+	| ModernDeck
+	| PioneerDeck
+	| LegacyDeck
+	| VintageDeck
+	| OathbreakerDeck
+	| PreDHDeck
+	| PauperDeck
+	| HistoricDeck
+	| BrawlDeck
+	| AlchemyDeck;
 
 /**
- * Legacy deck interface (for backward compatibility during migration)
+ * Deprecated deck interface (for backward compatibility during migration)
  * @deprecated Use specific deck types (CommanderDeck, CubeDeck, etc.) instead
  */
-export interface LegacyDeck {
+export interface DeprecatedDeck {
 	/** Deck name */
 	name: string;
 
@@ -387,4 +472,67 @@ export function isStandardDeck(deck: Deck): deck is StandardDeck {
  */
 export function isModernDeck(deck: Deck): deck is ModernDeck {
 	return deck.format === DeckFormat.Modern;
+}
+
+/**
+ * Check if a deck is a Pioneer deck
+ */
+export function isPioneerDeck(deck: Deck): deck is PioneerDeck {
+	return deck.format === DeckFormat.Pioneer;
+}
+
+/**
+ * Check if a deck is a Legacy deck
+ */
+export function isLegacyDeck(deck: Deck): deck is LegacyDeck {
+	return deck.format === DeckFormat.Legacy;
+}
+
+/**
+ * Check if a deck is a Vintage deck
+ */
+export function isVintageDeck(deck: Deck): deck is VintageDeck {
+	return deck.format === DeckFormat.Vintage;
+}
+
+/**
+ * Check if a deck is an Oathbreaker deck
+ */
+export function isOathbreakerDeck(deck: Deck): deck is OathbreakerDeck {
+	return deck.format === DeckFormat.Oathbreaker;
+}
+
+/**
+ * Check if a deck is a PreDH deck
+ */
+export function isPreDHDeck(deck: Deck): deck is PreDHDeck {
+	return deck.format === DeckFormat.PreDH;
+}
+
+/**
+ * Check if a deck is a Pauper deck
+ */
+export function isPauperDeck(deck: Deck): deck is PauperDeck {
+	return deck.format === DeckFormat.Pauper;
+}
+
+/**
+ * Check if a deck is a Historic deck
+ */
+export function isHistoricDeck(deck: Deck): deck is HistoricDeck {
+	return deck.format === DeckFormat.Historic;
+}
+
+/**
+ * Check if a deck is a Brawl deck
+ */
+export function isBrawlDeck(deck: Deck): deck is BrawlDeck {
+	return deck.format === DeckFormat.Brawl;
+}
+
+/**
+ * Check if a deck is an Alchemy deck
+ */
+export function isAlchemyDeck(deck: Deck): deck is AlchemyDeck {
+	return deck.format === DeckFormat.Alchemy;
 }

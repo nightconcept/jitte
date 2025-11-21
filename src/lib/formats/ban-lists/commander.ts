@@ -1,7 +1,7 @@
 /**
  * Commander format ban list
  * Source: https://mtgcommander.net/index.php/banned-list/
- * Last updated: 2024-09-23
+ * Last updated: 2025-11-21
  */
 
 import { DeckFormat } from '../format-registry';
@@ -9,29 +9,51 @@ import type { FormatBanList } from './types';
 
 export const commanderBanList: FormatBanList = {
 	format: DeckFormat.Commander,
-	lastUpdated: '2024-09-23',
+	lastUpdated: '2025-11-21',
 	source: 'https://mtgcommander.net/index.php/banned-list/',
 	banned: [
+		{ cardName: 'Adriana's Valor', bannedDate: '2016-08-26' },
+		{ cardName: 'Advantageous Proclamation', bannedDate: '2014-06-06' },
+		{ cardName: 'Amulet of Quoz', bannedDate: '1995-06-03' },
 		{ cardName: 'Ancestral Recall', bannedDate: '2011-09-20' },
+		{ cardName: 'Assemble the Rank and Vile', bannedDate: '2016-08-26' },
+		{ cardName: 'Backup Plan', bannedDate: '2014-06-06' },
 		{ cardName: 'Balance', bannedDate: '2011-09-20' },
 		{ cardName: 'Biorhythm', bannedDate: '2011-09-20' },
 		{ cardName: 'Black Lotus', bannedDate: '2011-09-20' },
-		{ cardName: 'Braids, Cabal Minion', bannedDate: '2011-09-20' },
-		{ cardName: 'Chaos Orb', bannedDate: '2011-09-20' },
-		{ cardName: 'Coalition Victory', bannedDate: '2011-09-20' },
+		{ cardName: 'Brago's Favor', bannedDate: '2014-06-06' },
+		{ cardName: 'Bronze Tablet', bannedDate: '1995-04-01' },
 		{ cardName: 'Channel', bannedDate: '2011-09-20' },
+		{ cardName: 'Chaos Orb', bannedDate: '2011-09-20' },
+		{ cardName: 'Cleanse', bannedDate: '2009-09-07' },
+		{ cardName: 'Contract from Below', bannedDate: '1994-06-21' },
+		{ cardName: 'Crusade', bannedDate: '2010-09-03' },
+		{ cardName: 'Darkpact', bannedDate: '1994-06-21' },
+		{ cardName: 'Demonic Attorney', bannedDate: '1994-06-21' },
 		{ cardName: 'Dockside Extortionist', bannedDate: '2024-09-23' },
+		{ cardName: 'Double Stroke', bannedDate: '2014-06-06' },
+		{ cardName: 'Echoing Boon', bannedDate: '2016-08-26' },
+		{ cardName: 'Emissary's Ploy', bannedDate: '2016-08-26' },
 		{ cardName: 'Emrakul, the Aeons Torn', bannedDate: '2011-09-20' },
-		{ cardName: 'Erayo, Soratami Ascendant', bannedDate: '2011-09-20' },
+		{ cardName: 'Erayo, Soratami Ascendant // Erayo's Essence', bannedDate: '2005-06-03' },
 		{ cardName: 'Falling Star', bannedDate: '2011-09-20' },
 		{ cardName: 'Fastbond', bannedDate: '2011-09-20' },
 		{ cardName: 'Flash', bannedDate: '2020-02-24' },
-		{ cardName: 'Gifts Ungiven', bannedDate: '2011-09-20' },
 		{ cardName: 'Golos, Tireless Pilgrim', bannedDate: '2021-09-27' },
 		{ cardName: 'Griselbrand', bannedDate: '2012-09-20' },
+		{ cardName: 'Hired Heist', bannedDate: '2016-08-26' },
+		{ cardName: 'Hold the Perimeter', bannedDate: '2016-08-26' },
 		{ cardName: 'Hullbreacher', bannedDate: '2021-04-16' },
+		{ cardName: 'Hymn of the Wilds', bannedDate: '2016-08-26' },
+		{ cardName: 'Immediate Action', bannedDate: '2014-06-06' },
+		{ cardName: 'Imprison', bannedDate: '1994-06-01' },
+		{ cardName: 'Incendiary Dissent', bannedDate: '2016-08-26' },
+		{ cardName: 'Invoke Prejudice', bannedDate: '1994-06-01' },
 		{ cardName: 'Iona, Shield of Emeria', bannedDate: '2019-07-08' },
+		{ cardName: 'Iterative Analysis', bannedDate: '2014-06-06' },
+		{ cardName: 'Jeweled Bird', bannedDate: '1995-07-01' },
 		{ cardName: 'Jeweled Lotus', bannedDate: '2024-09-23' },
+		{ cardName: 'Jihad', bannedDate: '1993-12-17' },
 		{ cardName: 'Karakas', bannedDate: '2011-09-20' },
 		{ cardName: 'Leovold, Emissary of Trest', bannedDate: '2017-04-24' },
 		{ cardName: 'Library of Alexandria', bannedDate: '2011-09-20' },
@@ -43,24 +65,42 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Mox Pearl', bannedDate: '2011-09-20' },
 		{ cardName: 'Mox Ruby', bannedDate: '2011-09-20' },
 		{ cardName: 'Mox Sapphire', bannedDate: '2011-09-20' },
+		{ cardName: 'Muzzio's Preparations', bannedDate: '2014-06-06' },
 		{ cardName: 'Nadu, Winged Wisdom', bannedDate: '2024-09-23' },
-		{ cardName: 'Panoptic Mirror', bannedDate: '2011-09-20' },
+		{ cardName: 'Natural Unity', bannedDate: '2016-08-26' },
 		{ cardName: 'Paradox Engine', bannedDate: '2019-07-08' },
+		{ cardName: 'Power Play', bannedDate: '2014-06-06' },
+		{ cardName: 'Pradesh Gypsies', bannedDate: '1999-04-21' },
 		{ cardName: 'Primeval Titan', bannedDate: '2012-09-20' },
 		{ cardName: 'Prophet of Kruphix', bannedDate: '2014-02-01' },
+		{ cardName: 'Rebirth', bannedDate: '1995-04-01' },
 		{ cardName: 'Recurring Nightmare', bannedDate: '2011-09-20' },
 		{ cardName: 'Rofellos, Llanowar Emissary', bannedDate: '2011-09-20' },
+		{ cardName: 'Secret Summoning', bannedDate: '2014-06-06' },
+		{ cardName: 'Secrets of Paradise', bannedDate: '2014-06-06' },
+		{ cardName: 'Sentinel Dispatch', bannedDate: '2014-06-06' },
 		{ cardName: 'Shahrazad', bannedDate: '2011-09-20' },
+		{ cardName: 'Sovereign's Realm', bannedDate: '2016-08-26' },
+		{ cardName: 'Stone-Throwing Devils', bannedDate: '1993-12-17' },
+		{ cardName: 'Summoner's Bond', bannedDate: '2016-08-26' },
 		{ cardName: 'Sundering Titan', bannedDate: '2011-09-20' },
-		{ cardName: 'Sway of the Stars', bannedDate: '2011-09-20' },
 		{ cardName: 'Sylvan Primordial', bannedDate: '2014-02-01' },
+		{ cardName: 'Tempest Efreet', bannedDate: '1995-04-01' },
 		{ cardName: 'Time Vault', bannedDate: '2011-09-20' },
 		{ cardName: 'Time Walk', bannedDate: '2011-09-20' },
+		{ cardName: 'Timmerian Fiends', bannedDate: '1995-10-01' },
 		{ cardName: 'Tinker', bannedDate: '2011-09-20' },
 		{ cardName: 'Tolarian Academy', bannedDate: '2011-09-20' },
 		{ cardName: 'Trade Secrets', bannedDate: '2011-09-20' },
+		{ cardName: 'Unexpected Potential', bannedDate: '2014-06-06' },
 		{ cardName: 'Upheaval', bannedDate: '2011-09-20' },
-		{ cardName: 'Worldfire', bannedDate: '2012-09-20' },
-		{ cardName: "Yawgmoth's Bargain", bannedDate: '2011-09-20' }
+		{ cardName: 'Weight Advantage', bannedDate: '2016-08-26' },
+		{ cardName: 'Worldknit', bannedDate: '2014-06-06' },
+		{ cardName: 'Yawgmoth's Bargain', bannedDate: '2014-06-16' }
 	]
 };
+
+// Simple export for FORMAT_METADATA embedding
+export const commanderBanned: string[] = commanderBanList.banned.map((entry) =>
+	typeof entry === 'string' ? entry : entry.cardName
+);

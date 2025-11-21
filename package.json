@@ -19,7 +19,8 @@
     "test:ui": "vitest --ui",
     "theme:generate": "node theme/parse-schemes.js",
     "theme:list": "node theme/parse-schemes.js --check",
-    "fetch-salt-scores": "tsx scripts/fetch-salt-scores.ts"
+    "fetch-salt-scores": "tsx scripts/fetch-salt-scores.ts",
+    "update-ban-lists": "tsx scripts/update-ban-lists.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.4",

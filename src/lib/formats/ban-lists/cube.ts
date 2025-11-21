@@ -13,3 +13,6 @@ export const cubeBanList: FormatBanList = {
 	lastUpdated: '2024-01-01',
 	source: 'N/A - No ban list for Cube format'
 };
+
+// Simple export for FORMAT_METADATA embedding
+export const cubeBanned: string[] = [];
