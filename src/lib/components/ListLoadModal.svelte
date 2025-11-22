@@ -235,6 +235,8 @@
 					deckInfoCache = newCache;
 				}
 			}
+			// Reload deck info for renamed decks
+			scheduleCommanderLoading();
 		}
 	});
 
