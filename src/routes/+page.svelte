@@ -1263,7 +1263,6 @@
 	on:complete={handleOnboardingComplete}
 	on:close={handleOnboardingClose}
 />
-/>
 
 <style>
 	@keyframes spin-slow {
