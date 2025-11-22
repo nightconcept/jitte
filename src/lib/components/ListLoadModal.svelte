@@ -62,7 +62,6 @@
 	let commanderLoadHandle: ReturnType<typeof setTimeout> | null = null;
 	let openMenuDeckName = $state<string | null>(null);
 	let openMenuFolderId = $state<string | null>(null);
-	let menuPositionAbove = $state(false);
 
 	// Drag and drop state
 	let draggedDeckName = $state<string | null>(null);
@@ -592,7 +591,7 @@
 					<p>No lists found. Create a new list to get started!</p>
 				</div>
 			{:else}
-				<table class="w-full">
+				<table class="w-full pb-32">
 					<thead class="sticky top-0 bg-[var(--color-bg-secondary)] border-b-2 border-[var(--color-border)] z-10">
 						<tr>
 							<th class="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">List Name</th>
@@ -666,17 +665,6 @@
 										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
 										onclick={(e) => {
 											e.stopPropagation();
-											const target = e.currentTarget as HTMLElement;
-											const rect = target.getBoundingClientRect();
-											const viewportHeight = window.innerHeight;
-
-											// Estimate dropdown height (2 items * ~40px each)
-											const dropdownHeight = 100;
-											const spaceAbove = rect.top;
-											const spaceBelow = viewportHeight - rect.bottom;
-
-											// Position upward only if there's enough space above AND more space above than below
-											menuPositionAbove = spaceAbove > dropdownHeight && spaceAbove > spaceBelow;
 											openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
 										}}
 										aria-label="Folder options"
@@ -690,7 +678,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuFolderId === item.folder.id}
-										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
@@ -831,17 +819,6 @@
 										class="p-2 rounded hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
 										onclick={(e) => {
 											e.stopPropagation();
-											const target = e.currentTarget as HTMLElement;
-											const rect = target.getBoundingClientRect();
-											const viewportHeight = window.innerHeight;
-
-											// Estimate dropdown height (2 items * ~40px each)
-											const dropdownHeight = 100;
-											const spaceAbove = rect.top;
-											const spaceBelow = viewportHeight - rect.bottom;
-
-											// Position upward only if there's enough space above AND more space above than below
-											menuPositionAbove = spaceAbove > dropdownHeight && spaceAbove > spaceBelow;
 											openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
 										}}
 										aria-label="List options"
@@ -855,7 +832,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuDeckName === item.deckName}
-										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
+										<div class="absolute right-0 top-full mt-1 min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
