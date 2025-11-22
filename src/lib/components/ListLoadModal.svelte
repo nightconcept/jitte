@@ -555,7 +555,7 @@
 >
 	{#snippet children()}
 		<!-- Breadcrumbs & Actions -->
-		<div class="px-6 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-4 relative z-[5]">
+		<div class="px-6 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-4">
 			<!-- Breadcrumbs -->
 			<div class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] min-w-0">
 				{#each breadcrumbs as crumb, index}
@@ -585,7 +585,7 @@
 		</div>
 
 		<!-- Body -->
-		<div class="flex-1 overflow-y-auto" ondragover={handleDragOver} ondrop={() => handleDrop(currentFolderId)} role="region" aria-label="List browser">
+		<div class="flex-1 overflow-y-auto relative z-10" ondragover={handleDragOver} ondrop={() => handleDrop(currentFolderId)} role="region" aria-label="List browser">
 			{#if browserItems.length === 0 && decks.length === 0 && currentFolderId === null}
 				<!-- No lists at all in the system -->
 				<div class="px-6 py-8 text-center text-[var(--color-text-secondary)]">
