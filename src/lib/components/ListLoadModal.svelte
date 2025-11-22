@@ -669,8 +669,14 @@
 											const target = e.currentTarget as HTMLElement;
 											const rect = target.getBoundingClientRect();
 											const viewportHeight = window.innerHeight;
-											// Position menu above if button is in lower half of viewport
-											menuPositionAbove = rect.bottom > viewportHeight / 2;
+
+											// Estimate dropdown height (2 items * ~40px each)
+											const dropdownHeight = 100;
+											const spaceAbove = rect.top;
+											const spaceBelow = viewportHeight - rect.bottom;
+
+											// Position upward only if there's enough space above AND more space above than below
+											menuPositionAbove = spaceAbove > dropdownHeight && spaceAbove > spaceBelow;
 											openMenuFolderId = openMenuFolderId === item.folder.id ? null : item.folder.id;
 										}}
 										aria-label="Folder options"
@@ -828,8 +834,14 @@
 											const target = e.currentTarget as HTMLElement;
 											const rect = target.getBoundingClientRect();
 											const viewportHeight = window.innerHeight;
-											// Position menu above if button is in lower half of viewport
-											menuPositionAbove = rect.bottom > viewportHeight / 2;
+
+											// Estimate dropdown height (2 items * ~40px each)
+											const dropdownHeight = 100;
+											const spaceAbove = rect.top;
+											const spaceBelow = viewportHeight - rect.bottom;
+
+											// Position upward only if there's enough space above AND more space above than below
+											menuPositionAbove = spaceAbove > dropdownHeight && spaceAbove > spaceBelow;
 											openMenuDeckName = openMenuDeckName === item.deckName ? null : item.deckName;
 										}}
 										aria-label="List options"
