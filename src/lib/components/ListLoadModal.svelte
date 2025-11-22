@@ -219,6 +219,25 @@
 		}
 	});
 
+	// Rebuild browser items when decks change (e.g., after delete/rename)
+	$effect(() => {
+		if (isOpen) {
+			console.log('[ListLoadModal] Decks changed, rebuilding browser items...', decks.length, 'decks');
+			buildBrowserItems();
+			// Clean up cache for deleted decks
+			const deckNames = new Set(decks.map(d => d.name));
+			const cacheKeys = Array.from(deckInfoCache.keys());
+			for (const key of cacheKeys) {
+				if (!deckNames.has(key)) {
+					console.log('[ListLoadModal] Removing deleted deck from cache:', key);
+					const newCache = new Map(deckInfoCache);
+					newCache.delete(key);
+					deckInfoCache = newCache;
+				}
+			}
+		}
+	});
+
 	// Close dropdown menu when clicking outside
 	$effect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -549,7 +568,7 @@
 	subtitle="{decks.length} list{decks.length === 1 ? '' : 's'} available"
 	size="custom"
 	customSize="w-[80vw]"
-	height="max-h-[90vh]"
+	height="h-[95vh]"
 	contentClass="flex flex-col"
 >
 	{#snippet children()}

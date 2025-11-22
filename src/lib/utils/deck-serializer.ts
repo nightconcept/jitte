@@ -4,11 +4,11 @@
  */
 
 import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
-import { isCommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CardsByCategory } from '$lib/types/card';
 import { serializePlaintext, parsePlaintext } from './decklist-parser';
-import { CardCategory } from '$lib/types/card';
+import { CardCategory, CubeCardCategory } from '$lib/types/card';
 import type { DeckArchive } from './zip';
 import { scryfallToCard } from './card-converter';
 import { DeckFormat } from '$lib/formats/format-registry';
@@ -41,19 +41,35 @@ export function serializeDeckToJSON(deck: Deck): string {
 export function serializeDeckToPlaintext(deck: Deck, includeSetCodes = false): string {
 	const allCards: Card[] = [];
 
-	// Add cards in canonical order
-	const categories = [
-		CardCategory.Commander,
-		CardCategory.Companion,
-		CardCategory.Planeswalker,
-		CardCategory.Creature,
-		CardCategory.Instant,
-		CardCategory.Sorcery,
-		CardCategory.Artifact,
-		CardCategory.Enchantment,
-		CardCategory.Land,
-		CardCategory.Other
-	];
+	// Determine which categories to use based on deck format
+	let categories: string[];
+	if (isCubeDeck(deck)) {
+		// Cube decks use color-based categories
+		categories = [
+			CubeCardCategory.White,
+			CubeCardCategory.Blue,
+			CubeCardCategory.Black,
+			CubeCardCategory.Red,
+			CubeCardCategory.Green,
+			CubeCardCategory.Colorless,
+			CubeCardCategory.Multicolored,
+			CubeCardCategory.Lands
+		];
+	} else {
+		// Commander/Standard/Modern use type-based categories
+		categories = [
+			CardCategory.Commander,
+			CardCategory.Companion,
+			CardCategory.Planeswalker,
+			CardCategory.Creature,
+			CardCategory.Instant,
+			CardCategory.Sorcery,
+			CardCategory.Artifact,
+			CardCategory.Enchantment,
+			CardCategory.Land,
+			CardCategory.Other
+		];
+	}
 
 	for (const category of categories) {
 		const cards = deck.cards[category] || [];

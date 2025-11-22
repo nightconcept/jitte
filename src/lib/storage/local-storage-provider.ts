@@ -3,7 +3,7 @@
  * Used as fallback when FileSystem API is not available
  */
 
-import { getDeckFilename } from '$lib/utils/filename';
+import { getDeckFilename, extractDeckName } from '$lib/utils/filename';
 import type { DeckArchive } from '$lib/utils/zip';
 import type { DeckListEntry, IStorageProvider, StorageCapabilities, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
@@ -126,9 +126,10 @@ export class LocalStorageProvider implements IStorageProvider {
 			const archive = await decompressDeckArchive(blob);
 			console.log(`[LocalStorageProvider] Decompression successful, manifest:`, archive.manifest);
 
-			// Save in new format
-			console.log(`[LocalStorageProvider] Saving in new format...`);
-			const saveResult = await this.saveDeck(deckName, archive);
+			// Save in new format (strip .zip extension from name)
+			const cleanDeckName = extractDeckName(deckName);
+			console.log(`[LocalStorageProvider] Saving in new format as "${cleanDeckName}"...`);
+			const saveResult = await this.saveDeck(cleanDeckName, archive);
 			if (!saveResult.success) {
 				console.error(`[LocalStorageProvider] Save failed:`, saveResult.error);
 				throw new Error(`Failed to save migrated deck: ${saveResult.error}`);
@@ -514,19 +515,28 @@ export class LocalStorageProvider implements IStorageProvider {
 		}
 
 		try {
-			const oldPrefix = `${STORAGE_KEY_PREFIX}${oldName}/`;
-			const newPrefix = `${STORAGE_KEY_PREFIX}${newName}/`;
+			// Strip .zip extension from both names for comparison
+			const cleanOldName = extractDeckName(oldName);
+			const cleanNewName = extractDeckName(newName);
 
-			// Check if new name already exists
-			if (localStorage.getItem(`${newPrefix}manifest`) !== null) {
+			// If they're the same after cleaning, nothing to do
+			if (cleanOldName === cleanNewName) {
+				console.log(`[LocalStorageProvider] Rename skipped: "${oldName}" and "${newName}" are the same after normalization`);
+				// Just delete the old .zip version if it exists
+				const oldPrefix = `${STORAGE_KEY_PREFIX}${oldName}/`;
+				const keysToRemove = Object.keys(localStorage).filter((key) => key.startsWith(oldPrefix));
+				for (const key of keysToRemove) {
+					localStorage.removeItem(key);
+				}
 				return {
-					success: false,
-					error: `A deck with the name "${newName}" already exists`,
-					errorCode: StorageErrorCode.AlreadyExists
+					success: true
 				};
 			}
 
-			// Load the deck
+			const oldPrefix = `${STORAGE_KEY_PREFIX}${cleanOldName}/`;
+			const newPrefix = `${STORAGE_KEY_PREFIX}${cleanNewName}/`;
+
+			// Load the deck (may trigger migration which creates cleanOldName)
 			const loadResult = await this.loadDeck(oldName);
 			if (!loadResult.success || !loadResult.data) {
 				return {
@@ -536,19 +546,33 @@ export class LocalStorageProvider implements IStorageProvider {
 				};
 			}
 
+			// Check if new name already exists (after migration)
+			if (localStorage.getItem(`${newPrefix}manifest`) !== null) {
+				return {
+					success: false,
+					error: `A deck with the name "${cleanNewName}" already exists`,
+					errorCode: StorageErrorCode.AlreadyExists
+				};
+			}
+
 			// Update manifest name
 			const archive = loadResult.data;
-			archive.manifest.name = newName;
+			archive.manifest.name = cleanNewName;
 			archive.manifest.updatedAt = new Date().toISOString();
 
 			// Save with new name
-			const saveResult = await this.saveDeck(newName, archive);
+			const saveResult = await this.saveDeck(cleanNewName, archive);
 			if (!saveResult.success) {
 				return saveResult;
 			}
 
-			// Delete old deck
-			await this.deleteDeck(oldName);
+			// Delete old deck - need to delete both the cleaned name and original name
+			// in case the deck was stored with .zip in the key prefix
+			await this.deleteDeck(cleanOldName);
+			if (oldName !== cleanOldName) {
+				// Also delete using original name in case keys have .zip in prefix
+				await this.deleteDeck(oldName);
+			}
 
 			return {
 				success: true

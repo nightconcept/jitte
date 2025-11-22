@@ -31,6 +31,7 @@
 	import { isAutoVersionEnabled } from '$lib/utils/auto-version-settings';
 	import { applyBump } from '$lib/utils/semver';
 	import { getInitialVersion } from '$lib/utils/versioning';
+	import { extractDeckName } from '$lib/utils/filename';
 
 	// 🚨 CRITICAL: Use $state() for all reactive variables in runes mode!
 	// Regular `let` variables are NOT reactive in Svelte 5 runes mode
@@ -546,6 +547,8 @@
 
 	async function handleDeleteDeck(deckName: string) {
 		await deckManager.deleteDeck(deckName);
+		// Refresh the deck list after delete
+		await deckManager.refreshDeckList();
 		// Deck picker stays open to allow selecting another deck
 	}
 
@@ -648,11 +651,11 @@
 			const { compressDeckArchive } = await import('$lib/utils/zip');
 			const zipBlob = await compressDeckArchive(loadResult.data, $deckManager.activeDeckName);
 
-			// Download the file
+			// Download the file (strip .zip extension if present)
 			const url = URL.createObjectURL(zipBlob);
 			const a = document.createElement('a');
 			a.href = url;
-			a.download = `${$deckManager.activeDeckName}.jitte`;
+			a.download = `${extractDeckName($deckManager.activeDeckName)}.jitte`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);

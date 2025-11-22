@@ -3,7 +3,7 @@
  * Saves decks as plain folder structures instead of zip files
  */
 
-import { getDeckFilename, getDeckFolderName } from '$lib/utils/filename';
+import { getDeckFilename, getDeckFolderName, extractDeckName } from '$lib/utils/filename';
 import type { DeckArchive } from '$lib/utils/zip';
 import type { DeckListEntry, IStorageProvider, StorageCapabilities, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
@@ -273,9 +273,10 @@ export class FileSystemFolderProvider implements IStorageProvider {
 			const archive = await decompressDeckArchive(blob);
 			console.log(`[FileSystemFolderProvider] Decompression successful, manifest:`, archive.manifest);
 
-			// Save in new folder format
-			console.log(`[FileSystemFolderProvider] Saving in new folder format...`);
-			const saveResult = await this.saveDeck(deckName, archive);
+			// Save in new folder format (strip .zip extension from name)
+			const cleanDeckName = extractDeckName(deckName);
+			console.log(`[FileSystemFolderProvider] Saving in new folder format as "${cleanDeckName}"...`);
+			const saveResult = await this.saveDeck(cleanDeckName, archive);
 			if (!saveResult.success) {
 				console.error(`[FileSystemFolderProvider] Save failed:`, saveResult.error);
 				throw new Error(`Failed to save migrated deck: ${saveResult.error}`);
@@ -467,22 +468,30 @@ export class FileSystemFolderProvider implements IStorageProvider {
 		}
 
 		try {
-			const oldFolderName = getDeckFolderName(oldName);
-			const newFolderName = getDeckFolderName(newName);
+			// Strip .zip extension from both names for comparison
+			const cleanOldName = extractDeckName(oldName);
+			const cleanNewName = extractDeckName(newName);
 
-			// Check if new name already exists
-			try {
-				await this.directoryHandle.getDirectoryHandle(newFolderName);
+			// If they're the same after cleaning, nothing to do
+			if (cleanOldName === cleanNewName) {
+				console.log(`[FileSystemFolderProvider] Rename skipped: "${oldName}" and "${newName}" are the same after normalization`);
+				// Just delete the old .zip file if it exists
+				try {
+					const zipFileName = getDeckFilename(oldName);
+					await this.directoryHandle.removeEntry(zipFileName);
+					console.log(`[FileSystemFolderProvider] Removed old .zip file: ${zipFileName}`);
+				} catch {
+					// .zip file doesn't exist, that's fine
+				}
 				return {
-					success: false,
-					error: `A deck with the name "${newName}" already exists`,
-					errorCode: StorageErrorCode.AlreadyExists
+					success: true
 				};
-			} catch {
-				// New name doesn't exist - this is good
 			}
 
-			// Load the deck
+			const oldFolderName = getDeckFolderName(cleanOldName);
+			const newFolderName = getDeckFolderName(cleanNewName);
+
+			// Load the deck (may trigger migration which creates cleanOldName)
 			const loadResult = await this.loadDeck(oldName);
 			if (!loadResult.success || !loadResult.data) {
 				return {
@@ -492,20 +501,47 @@ export class FileSystemFolderProvider implements IStorageProvider {
 				};
 			}
 
+			// Check if new name already exists (after migration)
+			try {
+				await this.directoryHandle.getDirectoryHandle(newFolderName);
+				return {
+					success: false,
+					error: `A deck with the name "${cleanNewName}" already exists`,
+					errorCode: StorageErrorCode.AlreadyExists
+				};
+			} catch {
+				// New name doesn't exist - this is good
+			}
+
 			// Update manifest with new name
 			const archive = loadResult.data;
-			archive.manifest.name = newName;
+			archive.manifest.name = cleanNewName;
 			archive.manifest.updatedAt = new Date().toISOString();
 
 			// Save with new name
-			const saveResult = await this.saveDeck(newName, archive);
+			const saveResult = await this.saveDeck(cleanNewName, archive);
 
 			if (!saveResult.success) {
 				return saveResult;
 			}
 
-			// Delete old folder
-			await this.directoryHandle.removeEntry(oldFolderName, { recursive: true });
+			// Delete old folder - try both cleaned and original names
+			// in case the folder has .zip in its name
+			try {
+				await this.directoryHandle.removeEntry(oldFolderName, { recursive: true });
+			} catch (e) {
+				console.log(`[FileSystemFolderProvider] Could not delete folder "${oldFolderName}", trying original name...`);
+			}
+
+			if (oldName !== cleanOldName) {
+				// Also try deleting using original name
+				const originalFolderName = getDeckFolderName(oldName);
+				try {
+					await this.directoryHandle.removeEntry(originalFolderName, { recursive: true });
+				} catch (e) {
+					console.log(`[FileSystemFolderProvider] Could not delete folder "${originalFolderName}"`);
+				}
+			}
 
 			return {
 				success: true
