@@ -555,7 +555,7 @@
 >
 	{#snippet children()}
 		<!-- Breadcrumbs & Actions -->
-		<div class="px-6 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-4">
+		<div class="px-6 py-3 border-b border-[var(--color-border)] flex items-center justify-between gap-4 relative z-[5]">
 			<!-- Breadcrumbs -->
 			<div class="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] min-w-0">
 				{#each breadcrumbs as crumb, index}
@@ -690,7 +690,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuFolderId === item.folder.id}
-										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
+										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
@@ -855,7 +855,7 @@
 
 									<!-- Dropdown menu -->
 									{#if openMenuDeckName === item.deckName}
-										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[{Z_INDEX.CONTEXT_MENU}]">
+										<div class="absolute right-0 {menuPositionAbove ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[160px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded shadow-xl z-[100]">
 											<button
 												type="button"
 												class="w-full px-4 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
