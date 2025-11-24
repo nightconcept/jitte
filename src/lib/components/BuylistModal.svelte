@@ -158,6 +158,114 @@
 	let diff: VersionDiff | null = $state(null);
 	let priceDiff = $state(0);
 
+	// Proxy shopping state
+	let proxyShoppingEnabled = $state(false);
+	let selectedPreset = $state<number | 'custom'>(5);
+	let customThreshold = $state('5.00');
+	let selectedProxyCostPreset = $state<number | 'custom'>(1);
+	let customProxyCost = $state('1.00');
+
+	// Derived price threshold
+	let priceThreshold = $derived(
+		selectedPreset === 'custom' ? parseFloat(customThreshold) || 0 : selectedPreset
+	);
+
+	// Derived proxy cost per card
+	let proxyCostPerCard = $derived(
+		selectedProxyCostPreset === 'custom' ? parseFloat(customProxyCost) || 1 : selectedProxyCostPreset
+	);
+
+	// Helper to get quantity from either Card or DiffCard
+	function getCardQuantity(card: Card | DiffCard): number {
+		if (mode === 'compare') {
+			// DiffCard
+			const diffCard = card as DiffCard;
+			return diffCard.quantityDelta || diffCard.newQuantity || 1;
+		} else {
+			// Card
+			const normalCard = card as Card;
+			return normalCard.quantity || 1;
+		}
+	}
+
+	// Cards to split between shopping and proxy lists
+	let cardsToSplit = $derived(() => {
+		if (!proxyShoppingEnabled) return [];
+
+		if (mode === 'compare' && diff) {
+			const cards: DiffCard[] = [...diff.added];
+			for (const card of diff.modified) {
+				if (card.quantityDelta && card.quantityDelta > 0) {
+					cards.push(card);
+				}
+			}
+			return cards;
+		} else if (mode === 'current' && currentDeck) {
+			// Flatten all cards from all categories
+			const allCards: Card[] = [];
+			for (const category of Object.values(currentDeck.cards)) {
+				allCards.push(...category);
+			}
+			return allCards;
+		}
+		return [];
+	});
+
+	// Shopping list: cards <= threshold with pricing data
+	let shoppingListCards = $derived(() => {
+		return cardsToSplit()
+			.filter(card => {
+				const price = card.price;
+				// Cards without price go to proxy list
+				if (price === undefined || price === null) return false;
+				return price <= priceThreshold;
+			})
+			.sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	// Proxy list: cards > threshold OR without pricing data
+	let proxyListCards = $derived(() => {
+		return cardsToSplit()
+			.filter(card => {
+				const price = card.price;
+				// Cards without price go to proxy list (usually expensive)
+				if (price === undefined || price === null) return true;
+				return price > priceThreshold;
+			})
+			.sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	// Calculate totals
+	let shoppingListTotal = $derived(() => {
+		return shoppingListCards().reduce((sum, card) => {
+			const quantity = getCardQuantity(card);
+			return sum + (card.price || 0) * quantity;
+		}, 0);
+	});
+
+	let proxyListTotal = $derived(() => {
+		return proxyListCards().reduce((sum, card) => {
+			const quantity = getCardQuantity(card);
+			return sum + (card.price || 0) * quantity;
+		}, 0);
+	});
+
+	let proxyListCardCount = $derived(() => {
+		return proxyListCards().reduce((sum, card) => {
+			const quantity = getCardQuantity(card);
+			return sum + quantity;
+		}, 0);
+	});
+
+	// Estimated proxy cost (MakePlayingCards/PrintingProxies): using user-selected cost per card
+	let estimatedProxyCost = $derived(() => {
+		return proxyListCardCount() * proxyCostPerCard;
+	});
+
+	let totalSavings = $derived(() => {
+		return proxyListTotal() - estimatedProxyCost();
+	});
+
 	// Load and compare versions
 	async function loadComparison() {
 		if (!$deckManager.activeDeckName || !fromVersion || !toVersion) return;
@@ -249,6 +357,58 @@
 		try {
 			await navigator.clipboard.writeText(buylistText);
 			toastStore.success(`Copied ${buylistText.split('\n').length} cards to clipboard`);
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			toastStore.error('Failed to copy to clipboard');
+		}
+	}
+
+	/**
+	 * Copy the shopping list to clipboard (for TCGPlayer, etc.)
+	 */
+	async function copyShoppingList() {
+		const cards = shoppingListCards();
+		if (cards.length === 0) {
+			toastStore.warning('No cards in shopping list');
+			return;
+		}
+
+		const buylistText = cards
+			.map(card => {
+				const quantity = getCardQuantity(card);
+				return `${quantity} ${card.name}`;
+			})
+			.join('\n');
+
+		try {
+			await navigator.clipboard.writeText(buylistText);
+			toastStore.success(`Copied ${cards.length} cards to clipboard for shopping`);
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			toastStore.error('Failed to copy to clipboard');
+		}
+	}
+
+	/**
+	 * Copy the proxy list to clipboard
+	 */
+	async function copyProxyList() {
+		const cards = proxyListCards();
+		if (cards.length === 0) {
+			toastStore.warning('No cards in proxy list');
+			return;
+		}
+
+		const proxyText = cards
+			.map(card => {
+				const quantity = getCardQuantity(card);
+				return `${quantity} ${card.name}`;
+			})
+			.join('\n');
+
+		try {
+			await navigator.clipboard.writeText(proxyText);
+			toastStore.success(`Copied ${cards.length} cards to clipboard for proxying`);
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
 			toastStore.error('Failed to copy to clipboard');
@@ -381,9 +541,216 @@
 		</div>
 		{/if}
 
+		<!-- Proxy Shopping Controls -->
+		<div class="px-6 py-4 border-b border-[var(--color-border)] space-y-4">
+			<!-- Enable Toggle -->
+			<div class="flex items-center gap-3">
+				<input
+					type="checkbox"
+					id="proxy-shopping-toggle"
+					bind:checked={proxyShoppingEnabled}
+					class="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+				/>
+				<label for="proxy-shopping-toggle" class="text-sm font-medium text-[var(--color-text-primary)] cursor-pointer">
+					Enable Proxy Shopping
+				</label>
+			</div>
+
+			<!-- Threshold Selector -->
+			{#if proxyShoppingEnabled}
+				<div class="space-y-2">
+					<label class="block text-sm font-medium text-[var(--color-text-primary)]">
+						Price Threshold
+					</label>
+					<div class="flex items-center gap-2 flex-wrap">
+						{#each [1, 1.5, 2, 5, 10] as preset}
+							<button
+								onclick={() => selectedPreset = preset}
+								class="px-3 py-1.5 text-sm rounded border {selectedPreset === preset
+									? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+									: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+							>
+								${preset.toFixed(2)}
+							</button>
+						{/each}
+						<button
+							onclick={() => selectedPreset = 'custom'}
+							class="px-3 py-1.5 text-sm rounded border {selectedPreset === 'custom'
+								? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+								: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+						>
+							Custom
+						</button>
+						{#if selectedPreset === 'custom'}
+							<input
+								type="number"
+								bind:value={customThreshold}
+								min="0.01"
+								max="999.99"
+								step="0.01"
+								class="w-24 px-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+								placeholder="5.00"
+							/>
+						{/if}
+					</div>
+					<p class="text-xs text-[var(--color-text-secondary)]">
+						Cards above ${priceThreshold.toFixed(2)} will be proxied. Cards without pricing data will be proxied (usually expensive).
+					</p>
+				</div>
+
+				<div class="space-y-2">
+					<label class="block text-sm font-medium text-[var(--color-text-primary)]">
+						Proxy Cost Per Card
+					</label>
+					<div class="flex items-center gap-2 flex-wrap">
+						{#each [1, 1.5, 2, 4] as preset}
+							<button
+								onclick={() => selectedProxyCostPreset = preset}
+								class="px-3 py-1.5 text-sm rounded border {selectedProxyCostPreset === preset
+									? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+									: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+							>
+								${preset.toFixed(2)}
+							</button>
+						{/each}
+						<button
+							onclick={() => selectedProxyCostPreset = 'custom'}
+							class="px-3 py-1.5 text-sm rounded border {selectedProxyCostPreset === 'custom'
+								? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)] text-white'
+								: 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'}"
+						>
+							Custom
+						</button>
+						{#if selectedProxyCostPreset === 'custom'}
+							<input
+								type="number"
+								bind:value={customProxyCost}
+								min="0.01"
+								max="99.99"
+								step="0.01"
+								class="w-24 px-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+								placeholder="1.00"
+							/>
+						{/if}
+					</div>
+					<p class="text-xs text-[var(--color-text-secondary)]">
+						Estimated cost per proxy card. Note: Consider shipping for both lists. Proxy shipping is usually cheaper (single vendor) vs. shopping list (potentially multiple vendors).
+					</p>
+				</div>
+			{/if}
+		</div>
+
 		<!-- Body -->
 		<div class="px-6 py-4 overflow-y-auto flex-1">
-			{#if mode === 'current' && currentDeck}
+			{#if proxyShoppingEnabled && (mode === 'current' || (mode === 'compare' && diff))}
+				<!-- Proxy Shopping View -->
+				<div class="space-y-4">
+					<!-- Summary with savings -->
+					{#if totalSavings() > 0}
+						<div class="p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)]">
+							<div class="flex items-center justify-between">
+								<div class="text-sm text-[var(--color-text-secondary)]">
+									Total Savings by Proxying
+								</div>
+								<div class="text-xl font-bold text-green-500">
+									${totalSavings().toFixed(2)}
+								</div>
+							</div>
+							<div class="text-xs text-[var(--color-text-tertiary)] mt-1">
+								Proxy cost estimate: ${estimatedProxyCost().toFixed(2)} ({proxyListCardCount()} cards @ ${proxyCostPerCard.toFixed(2)}/card)
+							</div>
+						</div>
+					{/if}
+
+					<!-- Two-column layout -->
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<!-- Shopping List -->
+						<div class="space-y-3">
+							<div class="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+								<h3 class="text-lg font-semibold text-green-500">Shopping List</h3>
+								<div class="text-right">
+									<div class="text-sm font-semibold text-green-500">
+										{shoppingListCards().reduce((sum, card) => sum + getCardQuantity(card), 0)} cards
+									</div>
+									<div class="text-lg font-bold text-green-500">
+										${shoppingListTotal().toFixed(2)}
+									</div>
+								</div>
+							</div>
+
+							<div class="space-y-2 max-h-96 overflow-y-auto">
+								{#if shoppingListCards().length === 0}
+									<div class="text-center py-8 text-[var(--color-text-secondary)] text-sm">
+										No cards in shopping list
+									</div>
+								{:else}
+									{#each shoppingListCards() as card}
+										<div class="flex items-center justify-between py-2 px-3 bg-[var(--color-bg-primary)] rounded border border-[var(--color-border)]">
+											<div class="flex items-center gap-3">
+												<span class="text-sm font-semibold text-[var(--color-text-primary)] w-8">
+													{getCardQuantity(card)}
+												</span>
+												<span class="text-sm text-[var(--color-text-primary)]">{card.name}</span>
+											</div>
+											{#if card.price !== undefined && card.price !== null}
+												<span class="text-sm text-green-500 font-medium">
+													${(card.price * getCardQuantity(card)).toFixed(2)}
+												</span>
+											{/if}
+										</div>
+									{/each}
+								{/if}
+							</div>
+
+							<p class="text-xs text-[var(--color-text-tertiary)] italic">
+								Note: Shipping costs may vary by retailer
+							</p>
+						</div>
+
+						<!-- Proxy List -->
+						<div class="space-y-3">
+							<div class="flex items-center justify-between p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
+								<h3 class="text-lg font-semibold text-purple-500">Proxy List</h3>
+								<div class="text-right">
+									<div class="text-sm font-semibold text-purple-500">
+										{proxyListCards().reduce((sum, card) => sum + getCardQuantity(card), 0)} cards
+									</div>
+									<div class="text-lg font-bold text-purple-500">
+										${proxyListTotal().toFixed(2)}
+									</div>
+								</div>
+							</div>
+
+							<div class="space-y-2 max-h-96 overflow-y-auto">
+								{#if proxyListCards().length === 0}
+									<div class="text-center py-8 text-[var(--color-text-secondary)] text-sm">
+										No cards in proxy list
+									</div>
+								{:else}
+									{#each proxyListCards() as card}
+										<div class="flex items-center justify-between py-2 px-3 bg-[var(--color-bg-primary)] rounded border border-[var(--color-border)]">
+											<div class="flex items-center gap-3">
+												<span class="text-sm font-semibold text-[var(--color-text-primary)] w-8">
+													{getCardQuantity(card)}
+												</span>
+												<span class="text-sm text-[var(--color-text-primary)]">{card.name}</span>
+												{#if card.price === undefined || card.price === null}
+													<span class="text-xs text-[var(--color-text-tertiary)] italic">(no price data)</span>
+												{/if}
+											</div>
+											{#if card.price !== undefined && card.price !== null}
+												<span class="text-sm text-purple-500 font-medium">
+													${(card.price * getCardQuantity(card)).toFixed(2)}
+												</span>
+											{/if}
+										</div>
+									{/each}
+								{/if}
+							</div>
+						</div>
+					</div>
+				</div>
+			{:else if mode === 'current' && currentDeck}
 				<!-- Current Deck Display -->
 				<div class="mb-6 p-4 bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)]">
 					<div class="flex items-center justify-between">
@@ -534,13 +901,32 @@
 
 		<!-- Footer -->
 		<div class="px-6 py-4 border-t border-[var(--color-border)] flex justify-between">
-			<button
-				onclick={copyBuylist}
-				disabled={mode === 'compare' ? (!diff || (diff.added.length === 0 && !diff.modified.some(c => c.quantityDelta && c.quantityDelta > 0))) : !currentDeck}
-				class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-			>
-				Copy Buylist
-			</button>
+			<div class="flex gap-2">
+				{#if proxyShoppingEnabled}
+					<button
+						onclick={copyShoppingList}
+						disabled={shoppingListCards().length === 0}
+						class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Copy Shopping List
+					</button>
+					<button
+						onclick={copyProxyList}
+						disabled={proxyListCards().length === 0}
+						class="px-4 py-2 rounded bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Copy Proxy List
+					</button>
+				{:else}
+					<button
+						onclick={copyBuylist}
+						disabled={mode === 'compare' ? (!diff || (diff.added.length === 0 && !diff.modified.some(c => c.quantityDelta && c.quantityDelta > 0))) : !currentDeck}
+						class="px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Copy Buylist
+					</button>
+				{/if}
+			</div>
 			<button
 				onclick={handleClose}
 				class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)]"
