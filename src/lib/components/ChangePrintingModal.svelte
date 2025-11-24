@@ -5,6 +5,7 @@
 	import type { ScryfallCard } from '$lib/types/scryfall';
 	import GameChangerBadge from './GameChangerBadge.svelte';
 	import { isGameChanger } from '$lib/utils/game-changers';
+	import { scryfallToCard } from '$lib/utils/card-converter';
 
 	let {
 		card,
@@ -84,51 +85,8 @@
 	});
 
 	function selectPrinting(printing: ScryfallCard) {
-		// Convert Scryfall card to our Card type
-		const newCard: Card = {
-			name: printing.name,
-			quantity: card.quantity, // Keep the same quantity
-			setCode: printing.set.toUpperCase(),
-			collectorNumber: printing.collector_number,
-			scryfallId: printing.id,
-			oracleId: printing.oracle_id,
-			types: printing.type_line
-				.split(/[\s—]+/)
-				.filter((t) =>
-					[
-						'Creature',
-						'Instant',
-						'Sorcery',
-						'Enchantment',
-						'Artifact',
-						'Planeswalker',
-						'Land'
-					].includes(t)
-				),
-			cmc: printing.cmc,
-			manaCost: printing.mana_cost || printing.card_faces?.[0]?.mana_cost,
-			colorIdentity: printing.color_identity as Card['colorIdentity'],
-			oracleText: printing.oracle_text || printing.card_faces?.[0]?.oracle_text,
-			imageUrls: {
-				small: printing.image_uris?.small || printing.card_faces?.[0]?.image_uris?.small,
-				normal: printing.image_uris?.normal || printing.card_faces?.[0]?.image_uris?.normal,
-				large: printing.image_uris?.large || printing.card_faces?.[0]?.image_uris?.large,
-				png: printing.image_uris?.png || printing.card_faces?.[0]?.image_uris?.png,
-				artCrop:
-					printing.image_uris?.art_crop || printing.card_faces?.[0]?.image_uris?.art_crop,
-				borderCrop:
-					printing.image_uris?.border_crop || printing.card_faces?.[0]?.image_uris?.border_crop
-			},
-			price: printing.prices.usd ? parseFloat(printing.prices.usd) : undefined,
-			prices: printing.prices.usd
-				? {
-						cardkingdom: parseFloat(printing.prices.usd) * 1.05,
-						tcgplayer: parseFloat(printing.prices.usd),
-						manapool: parseFloat(printing.prices.usd) * 0.95
-					}
-				: undefined,
-			priceUpdatedAt: Date.now()
-		};
+		// Convert Scryfall card to our Card type (pricing already enriched by cardService)
+		const newCard = scryfallToCard(printing, card.quantity);
 
 		onConfirm(newCard);
 		handleClose();

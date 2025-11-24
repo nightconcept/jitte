@@ -157,7 +157,7 @@
 				return;
 			}
 
-			// Convert to our Card type
+			// Convert to our Card type (pricing already enriched by cardService)
 			const card = scryfallToCard(scryfallCard);
 
 			selectedCardFull = card;

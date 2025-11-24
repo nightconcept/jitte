@@ -7,6 +7,10 @@ import { scryfallClient, ScryfallApiError } from './scryfall-client';
 import { cardCache } from './cache';
 import type { ScryfallCard, ScryfallSet } from '../types/scryfall';
 import { MIN_SEARCH_CHARACTERS } from '../constants/search';
+import {
+	enrichScryfallCardPricing,
+	enrichScryfallCardsPricing
+} from '$lib/utils/pricing-enrichment';
 
 export interface CardSearchResult {
 	id: string;
@@ -158,6 +162,10 @@ export class CardService {
 			// Scryfall's named endpoint handles front face lookups better
 			const cardName = name.includes(' // ') ? name.split(' // ')[0].trim() : name;
 			const card = await scryfallClient.getCardNamed(cardName, exact, requestType);
+
+			// Enrich pricing with fallback if needed
+			await enrichScryfallCardPricing(card);
+
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
@@ -182,12 +190,16 @@ export class CardService {
 				collectorNumber,
 				requestType
 			);
+
+			// Enrich pricing with fallback if needed
+			await enrichScryfallCardPricing(card);
+
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
 			console.error(`Get card by set/collector error (${setCode} ${collectorNumber}):`, error);
 
-			// Fall back to name lookup if provided
+			// Fall back to name lookup if provided (will enrich pricing there)
 			if (fallbackName) {
 				console.log(`Falling back to name lookup: ${fallbackName}`);
 				return this.getCardByName(fallbackName, requestType);
@@ -226,6 +238,9 @@ export class CardService {
 					return { name: cardName };
 				});
 				const result = await scryfallClient.getCardCollection(identifiers);
+
+				// Enrich pricing for all cards in batch (efficient bulk operation)
+				await enrichScryfallCardsPricing(result.data);
 
 				// Add found cards to map (keyed by lowercase name for easy lookup)
 				for (const card of result.data) {
@@ -310,6 +325,9 @@ export class CardService {
 
 				const result = await scryfallClient.getCardCollection(identifiers);
 
+				// Enrich pricing for all cards in batch (efficient bulk operation)
+				await enrichScryfallCardsPricing(result.data);
+
 				// Add found cards to map
 				for (const card of result.data) {
 					await cardCache.cacheCard(card);
@@ -373,12 +391,22 @@ export class CardService {
 		// Try cache first
 		const cached = await cardCache.getCard(id);
 		if (cached) {
+			console.log(`[cardService] Retrieved ${cached.name} from cache, prices.usd:`, cached.prices.usd);
+			// Enrich pricing for cached cards if missing (handles legacy cache entries)
+			await enrichScryfallCardPricing(cached);
+			console.log(`[cardService] After enrichment, prices.usd:`, cached.prices.usd);
 			return cached;
 		}
 
 		// Fetch from API
 		try {
 			const card = await scryfallClient.getCard(id, requestType);
+			console.log(`[cardService] Fetched ${card.name} from API, prices.usd:`, card.prices.usd);
+
+			// Enrich pricing with fallback if needed
+			await enrichScryfallCardPricing(card);
+			console.log(`[cardService] After enrichment, prices.usd:`, card.prices.usd);
+
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
@@ -393,6 +421,10 @@ export class CardService {
 	async getCardPrintings(oracleId: string): Promise<ScryfallCard[]> {
 		try {
 			const results = await scryfallClient.getCardPrintings(oracleId);
+
+			// Enrich pricing for all printings (efficient bulk operation)
+			await enrichScryfallCardsPricing(results.data);
+
 			// Cache all printings
 			await Promise.all(results.data.map((card) => cardCache.cacheCard(card)));
 			return results.data;

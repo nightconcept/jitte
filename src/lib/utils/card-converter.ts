@@ -7,7 +7,12 @@ import type { ScryfallCard } from '$lib/types/scryfall';
 
 /**
  * Convert a Scryfall card to our internal Card type
- * @param scryfallCard - The Scryfall card data
+ *
+ * IMPORTANT: This function expects ScryfallCard to already have enriched pricing
+ * from cardService. Pricing fallback is handled at the API boundary (cardService),
+ * not here. Do not call this with raw Scryfall API responses.
+ *
+ * @param scryfallCard - The Scryfall card data (with enriched pricing from cardService)
  * @param quantity - The quantity of this card (default: 1)
  * @param overrides - Optional overrides for setCode and collectorNumber
  * @returns Card object with all fields populated
@@ -20,6 +25,17 @@ export function scryfallToCard(
 		collectorNumber?: string;
 	}
 ): Card {
+	// Extract pricing directly from the enriched ScryfallCard
+	// Pricing fallback has already been applied by cardService
+	const basePrice = scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined;
+	const pricing = basePrice
+		? {
+				cardkingdom: basePrice * 1.05, // Card Kingdom typically 5% higher
+				tcgplayer: basePrice, // TCGPlayer as baseline
+				manapool: basePrice * 0.95 // Mana Pool typically 5% lower
+			}
+		: undefined;
+
 	const card: Card = {
 		name: scryfallCard.name,
 		quantity,
@@ -30,7 +46,9 @@ export function scryfallToCard(
 		types: scryfallCard.type_line
 			.split(/[\s—]+/)
 			.filter((t) =>
-				['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(t)
+				['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Planeswalker', 'Land'].includes(
+					t
+				)
 			),
 		cmc: scryfallCard.cmc,
 		manaCost: scryfallCard.mana_cost || scryfallCard.card_faces?.[0]?.mana_cost,
@@ -45,7 +63,8 @@ export function scryfallToCard(
 			artCrop:
 				scryfallCard.image_uris?.art_crop || scryfallCard.card_faces?.[0]?.image_uris?.art_crop,
 			borderCrop:
-				scryfallCard.image_uris?.border_crop || scryfallCard.card_faces?.[0]?.image_uris?.border_crop
+				scryfallCard.image_uris?.border_crop ||
+				scryfallCard.card_faces?.[0]?.image_uris?.border_crop
 		},
 		layout: scryfallCard.layout,
 		cardFaces: scryfallCard.card_faces?.map((face) => ({
@@ -55,27 +74,23 @@ export function scryfallToCard(
 			oracleText: face.oracle_text,
 			// Only include imageUrls if the face actually has image_uris
 			// Adventure cards have images at the top level, not on individual faces
-			imageUrls: face.image_uris ? {
-				small: face.image_uris.small,
-				normal: face.image_uris.normal,
-				large: face.image_uris.large,
-				png: face.image_uris.png,
-				artCrop: face.image_uris.art_crop,
-				borderCrop: face.image_uris.border_crop
-			} : undefined,
+			imageUrls: face.image_uris
+				? {
+						small: face.image_uris.small,
+						normal: face.image_uris.normal,
+						large: face.image_uris.large,
+						png: face.image_uris.png,
+						artCrop: face.image_uris.art_crop,
+						borderCrop: face.image_uris.border_crop
+					}
+				: undefined,
 			colors: face.colors,
 			power: face.power,
 			toughness: face.toughness,
 			loyalty: face.loyalty
 		})),
-		price: scryfallCard.prices.usd ? parseFloat(scryfallCard.prices.usd) : undefined,
-		prices: scryfallCard.prices.usd
-			? {
-					cardkingdom: parseFloat(scryfallCard.prices.usd) * 1.05, // Card Kingdom typically 5% higher
-					tcgplayer: parseFloat(scryfallCard.prices.usd), // TCGPlayer as baseline
-					manapool: parseFloat(scryfallCard.prices.usd) * 0.95 // Mana Pool typically 5% lower
-				}
-			: undefined,
+		price: basePrice,
+		prices: pricing,
 		priceUpdatedAt: Date.now(),
 		legalities: scryfallCard.legalities as unknown as Card['legalities']
 	};

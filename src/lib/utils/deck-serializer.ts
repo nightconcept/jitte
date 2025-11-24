@@ -101,10 +101,12 @@ function hasCompleteMetadata(card: Card): boolean {
 
 /**
  * Enrich a card with Scryfall data if needed
+ * This will re-fetch cards that have metadata but no pricing (for fallback pricing)
  */
 async function enrichCard(card: Card): Promise<Card> {
-	// Skip if card already has complete metadata
-	if (hasCompleteMetadata(card)) {
+	// Skip if card already has complete metadata AND pricing
+	// If pricing is missing, we need to re-fetch to get fallback pricing
+	if (hasCompleteMetadata(card) && card.price !== undefined) {
 		return card;
 	}
 
@@ -114,6 +116,7 @@ async function enrichCard(card: Card): Promise<Card> {
 		const scryfallCard = await cardService.getCardByName(card.name);
 
 		if (scryfallCard) {
+			// Pricing already enriched by cardService (including fallback)
 			return scryfallToCard(scryfallCard, card.quantity, {
 				setCode: card.setCode,
 				collectorNumber: card.collectorNumber
@@ -129,6 +132,7 @@ async function enrichCard(card: Card): Promise<Card> {
 
 /**
  * Parse JSON deck format
+ * Cards are returned as-is from storage (use deserializeDeckFromJSONWithEnrichment for pricing enrichment)
  */
 export function deserializeDeckFromJSON(jsonContent: string): CardsByCategory {
 	try {
@@ -144,6 +148,28 @@ export function deserializeDeckFromJSON(jsonContent: string): CardsByCategory {
 		console.error('Failed to parse deck JSON:', error);
 		throw new Error('Invalid deck JSON format');
 	}
+}
+
+/**
+ * Parse JSON deck format and enrich cards missing pricing
+ * This ensures cards get fallback pricing if their specific edition has no pricing
+ */
+export async function deserializeDeckFromJSONWithEnrichment(jsonContent: string): Promise<CardsByCategory> {
+	const cards = deserializeDeckFromJSON(jsonContent);
+
+	// Check each category for cards missing pricing
+	for (const [category, categoryCards] of Object.entries(cards)) {
+		for (let i = 0; i < categoryCards.length; i++) {
+			const card = categoryCards[i];
+			// If card has no pricing, re-fetch to get enriched pricing
+			if (card.price === undefined) {
+				console.log(`[deserializeDeckFromJSON] Enriching ${card.name} - missing pricing`);
+				categoryCards[i] = await enrichCard(card);
+			}
+		}
+	}
+
+	return cards;
 }
 
 /**
@@ -188,13 +214,14 @@ export async function deserializeDeckFromPlaintext(text: string): Promise<CardsB
 /**
  * Auto-detect format and deserialize deck
  * Supports both JSON (new format) and plaintext (legacy format)
+ * JSON decks will be enriched if cards are missing pricing
  */
 export async function deserializeDeck(content: string): Promise<CardsByCategory> {
 	// Try to detect if it's JSON
 	const trimmed = content.trim();
 	if (trimmed.startsWith('{')) {
-		// JSON format - fast, no API calls
-		return deserializeDeckFromJSON(content);
+		// JSON format - enrich cards missing pricing (for fallback pricing)
+		return deserializeDeckFromJSONWithEnrichment(content);
 	} else {
 		// Plaintext format - legacy, requires API calls
 		console.log('Loading legacy plaintext deck format, fetching card data from Scryfall...');

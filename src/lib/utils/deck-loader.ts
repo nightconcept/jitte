@@ -40,7 +40,7 @@ export async function loadDeckFromPlaintext(
 			const scryfallCard = await cardService.getCardByName(card.name);
 
 			if (scryfallCard) {
-				// Convert Scryfall card to our Card type
+				// Convert Scryfall card to our Card type (pricing already enriched by cardService)
 				const enrichedCard = scryfallToCard(scryfallCard, card.quantity, {
 					setCode: card.setCode,
 					collectorNumber: card.collectorNumber

@@ -137,7 +137,7 @@ export async function detectTokensInDeck(
 				return null;
 			}
 
-			const token = scryfallToCard(scryfallToken, 1);
+			const token = scryfallToCard(scryfallToken);
 			const createdBy = Array.from(createdBySet).sort();
 
 			// Suggest quantity based on number of cards that create it

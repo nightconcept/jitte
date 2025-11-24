@@ -186,13 +186,15 @@
 			}
 
 			if (fullCard) {
+				// Card pricing has already been enriched by cardService
 				scryfallCard = fullCard;
 				console.log('[CardDetailModal] Loaded card:', {
 					id: fullCard.id,
 					name: fullCard.name,
 					set: fullCard.set,
 					set_name: fullCard.set_name,
-					collector_number: fullCard.collector_number
+					collector_number: fullCard.collector_number,
+					hasPrice: !!fullCard.prices.usd
 				});
 
 				// Fetch rulings if available

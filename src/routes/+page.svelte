@@ -407,7 +407,7 @@
 				console.log(`[handleImportDeck] Processing: "${parsedCard.name}", lookupKey: "${lookupKey}", found: ${!!scryfallCard}${scryfallCard ? `, scryfall name: "${scryfallCard.name}"` : ''}`);
 
 				if (scryfallCard) {
-					// Convert to our Card type
+					// Convert to our Card type (pricing already enriched by cardService)
 					const fullCard = scryfallToCard(scryfallCard, parsedCard.quantity, {
 						setCode: parsedCard.setCode,
 						collectorNumber: parsedCard.collectorNumber
@@ -809,7 +809,7 @@
 				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
 
 				if (scryfallCard) {
-					// Convert to our Card type
+					// Convert to our Card type (pricing already enriched by cardService)
 					const fullCard = scryfallToCard(scryfallCard, parsedCard.quantity, {
 						setCode: parsedCard.setCode,
 						collectorNumber: parsedCard.collectorNumber

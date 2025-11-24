@@ -281,7 +281,7 @@
         return null;
       }
 
-      // Convert to our Card type
+      // Convert to our Card type (pricing already enriched by cardService)
       const card = scryfallToCard(scryfallCard);
       console.log(`[fetchAndValidateCommander] ✓ Valid commander: "${card.name}"`, {
         hasImageUrls: !!card.imageUrls,

@@ -469,7 +469,8 @@ function createDeckManager() {
 
 					if (commanderCard) {
 						// Convert ScryfallCard to Card type using the utility (handles double-faced cards correctly)
-						const card = scryfallToCard(commanderCard, 1);
+						// Pricing already enriched by cardService
+						const card = scryfallToCard(commanderCard);
 						commanders.push(card);
 					}
 				}

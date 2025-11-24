@@ -23,11 +23,24 @@
     scryfallCard.card_faces && scryfallCard.card_faces.length > 1
   );
 
+  // Parse pricing from scryfallCard
+  let normalPrice = $derived(
+    scryfallCard.prices?.usd ? parseFloat(scryfallCard.prices.usd) : undefined
+  );
+  let foilPrice = $derived(
+    scryfallCard.prices?.usd_foil ? parseFloat(scryfallCard.prices.usd_foil) : undefined
+  );
+
   async function loadSetData() {
     if (setData || setLoading) return;
     setLoading = true;
     setData = await cardService.getSetByCode(scryfallCard.set);
     setLoading = false;
+  }
+
+  function formatPrice(price: number | undefined): string {
+    if (price === undefined || price === null) return 'N/A';
+    return `$${price.toFixed(2)}`;
   }
 </script>
 
@@ -191,4 +204,23 @@
       </div>
     {/if}
   {/if}
+
+  <!-- Pricing Section -->
+  <div class="border-t border-[var(--color-border)] pt-3">
+    <h4 class="text-sm font-semibold text-[var(--color-text-primary)] mb-2">Pricing (USD)</h4>
+    <div class="grid grid-cols-2 gap-2 text-sm">
+      <div class="flex justify-between p-2 bg-[var(--color-bg-secondary)] rounded">
+        <span class="text-[var(--color-text-secondary)]">Normal:</span>
+        <span class="font-semibold text-[var(--color-text-primary)]">
+          {formatPrice(normalPrice)}
+        </span>
+      </div>
+      <div class="flex justify-between p-2 bg-[var(--color-bg-secondary)] rounded">
+        <span class="text-[var(--color-text-secondary)]">Foil:</span>
+        <span class="font-semibold text-[var(--color-text-primary)]">
+          {formatPrice(foilPrice)}
+        </span>
+      </div>
+    </div>
+  </div>
 </div>

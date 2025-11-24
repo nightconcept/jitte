@@ -292,7 +292,7 @@
           continue;
         }
 
-        // Convert to our Card type
+        // Convert to our Card type (pricing already enriched by cardService)
         const card = scryfallToCard(scryfallCard);
 
         // Add to deck
@@ -347,7 +347,7 @@
           continue;
         }
 
-        // Convert to our Card type
+        // Convert to our Card type (pricing already enriched by cardService)
         const card = scryfallToCard(scryfallCard);
 
         // Add to maybeboard (no category specified)
