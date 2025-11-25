@@ -591,7 +591,7 @@
 		}
 	}
 
-	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt' | 'mpc') {
+	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt') {
 		const plaintext = deckStore.exportToPlaintext(true);
 		if (!plaintext) {
 			toastStore.warning('No deck loaded to export');
@@ -621,15 +621,6 @@
 				const archidektUrl = `https://archidekt.com/sandbox?deck=${encodedJson}`;
 				window.open(archidektUrl, '_blank');
 				toastStore.success('Opening Archidekt with your deck...');
-			} else if (platform === 'mpc') {
-				// MPC Autofill format: "1x Card Name" per line
-				const mpcText = deckStore.exportToMpcAutofill();
-				if (!mpcText) {
-					toastStore.warning('No deck loaded to export');
-					return;
-				}
-				await navigator.clipboard.writeText(mpcText);
-				toastStore.success('Deck exported to clipboard in MPC Autofill format!');
 			}
 		} catch (error) {
 			console.error('Failed to export deck:', error);

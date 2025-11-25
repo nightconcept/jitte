@@ -390,7 +390,7 @@
 	}
 
 	/**
-	 * Copy the proxy list to clipboard
+	 * Copy the proxy list to clipboard in MPC Autofill format
 	 */
 	async function copyProxyList() {
 		const cards = proxyListCards();
@@ -399,16 +399,17 @@
 			return;
 		}
 
+		// MPC Autofill format: "1x Card Name"
 		const proxyText = cards
 			.map(card => {
 				const quantity = getCardQuantity(card);
-				return `${quantity} ${card.name}`;
+				return `${quantity}x ${card.name}`;
 			})
 			.join('\n');
 
 		try {
 			await navigator.clipboard.writeText(proxyText);
-			toastStore.success(`Copied ${cards.length} cards to clipboard for proxying`);
+			toastStore.success(`Copied ${cards.length} cards to clipboard (MPC Autofill format)`);
 		} catch (error) {
 			console.error('Failed to copy to clipboard:', error);
 			toastStore.error('Failed to copy to clipboard');
