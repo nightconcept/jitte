@@ -16,27 +16,3 @@
  * Default: false (disabled to avoid EDHREC throttling)
  */
 export const ENABLE_SALT_SCORES = false;
-
-/**
- * Enable EDHREC recommendations for commanders.
- *
- * When disabled:
- * - No EDHREC recommendation API calls will be made
- * - Recommendations modal will not show EDHREC data
- * - Prevents CORS/throttling issues
- *
- * Default: false (disabled - corsproxy.io is unreliable)
- */
-export const ENABLE_EDHREC_RECOMMENDATIONS = false;
-
-/**
- * Enable Commander Spellbook combo detection.
- *
- * When disabled:
- * - No Commander Spellbook API calls will be made
- * - Combo detection will not be shown
- * - Prevents CORS/throttling issues
- *
- * Default: false (disabled - corsproxy.io is unreliable)
- */
-export const ENABLE_COMBO_DETECTION = false;
