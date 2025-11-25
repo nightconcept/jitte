@@ -11,6 +11,7 @@
 	import BracketTooltip from './BracketTooltip.svelte';
 	import SaltTooltip from './SaltTooltip.svelte';
 	import { calculateDeckSaltScore } from '$lib/utils/salt-calculator';
+	import { ENABLE_SALT_SCORES } from '$lib/config/features';
 
 	// Store subscriptions using Svelte 5 runes
 	let deckStoreState = $state($deckStore);
@@ -47,7 +48,7 @@
 
 	// Fetch salt score when deck changes (Commander format only)
 	$effect(() => {
-		if (isCommanderFormat && deck) {
+		if (ENABLE_SALT_SCORES && isCommanderFormat && deck) {
 			loadSaltScore(deck);
 		} else {
 			saltScore = null;
