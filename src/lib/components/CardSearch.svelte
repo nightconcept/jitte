@@ -31,27 +31,13 @@
       return [];
     }
 
-    console.log(
-      "[CardSearch] Recalculating commander colors. Commanders:",
-      commanders,
-    );
-
     if (commanders.length === 0) {
-      console.log(
-        "[CardSearch] No commanders found, returning empty color array",
-      );
       return [];
     }
 
     // Combine all commander color identities
     const allColors = new Set<string>();
     for (const commander of commanders) {
-      console.log("[CardSearch] Processing commander:", {
-        name: commander.name,
-        hasColorIdentity: !!commander.colorIdentity,
-        colorIdentity: commander.colorIdentity,
-      });
-
       if (commander.colorIdentity) {
         for (const color of commander.colorIdentity) {
           allColors.add(color);
@@ -64,7 +50,6 @@
     const result = Array.from(allColors).sort(
       (a, b) => colorOrder.indexOf(a) - colorOrder.indexOf(b),
     );
-    console.log("[CardSearch] Final commander colors:", result);
     return result;
   })();
 

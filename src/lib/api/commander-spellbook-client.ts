@@ -290,8 +290,8 @@ export class CommanderSpellbookClient {
 					}
 				}
 			} catch (error) {
-				console.error(`Error searching for combos with ${cardName}:`, error);
-				// Continue with other cards
+				// Silently continue with other cards - combo detection is optional
+				// (CORS proxy failures are common and non-critical)
 			}
 		}
 
@@ -388,8 +388,8 @@ let clientInstance: CommanderSpellbookClient | null = null;
 export function getCommanderSpellbookClient(): CommanderSpellbookClient {
 	if (!clientInstance) {
 		clientInstance = new CommanderSpellbookClient({
-			useCorsProxy: true, // Required for browser access - API has no CORS headers
-			corsProxyUrl: 'https://corsproxy.io/?' // Use same proxy as EDHREC
+			useCorsProxy: false, // Disabled - corsproxy.io is unreliable/down
+			corsProxyUrl: 'https://corsproxy.io/?' // Not used when useCorsProxy is false
 		});
 	}
 	return clientInstance;

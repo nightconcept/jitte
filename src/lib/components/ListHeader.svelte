@@ -220,7 +220,7 @@
 							</BracketTooltip>
 						</div>
 					{/if}
-					<!-- Salt Score - Only for Commander -->
+					<!-- Salt Score - Temporarily hidden
 					{#if isCommanderFormat && deck}
 						<div class="flex items-center gap-2">
 							<span class="text-[var(--color-text-tertiary)]">Salt:</span>
@@ -292,6 +292,7 @@
 							</SaltTooltip>
 						</div>
 					{/if}
+					-->
 				</div>
 			</div>
 
