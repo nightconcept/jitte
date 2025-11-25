@@ -638,8 +638,6 @@
         />
       </div>
 
-      {/if}
-
       {#if mode === "empty"}
         <!-- Empty Deck Mode: Commander Search (if needed for format) -->
 
