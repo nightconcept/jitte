@@ -388,8 +388,8 @@ let clientInstance: CommanderSpellbookClient | null = null;
 export function getCommanderSpellbookClient(): CommanderSpellbookClient {
 	if (!clientInstance) {
 		clientInstance = new CommanderSpellbookClient({
-			useCorsProxy: false, // Disabled - corsproxy.io is unreliable/down
-			corsProxyUrl: 'https://corsproxy.io/?' // Not used when useCorsProxy is false
+			useCorsProxy: true, // Required for browser access - API has no CORS headers
+			corsProxyUrl: 'https://corsproxy.io/?'
 		});
 	}
 	return clientInstance;
