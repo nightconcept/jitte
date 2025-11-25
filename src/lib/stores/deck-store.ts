@@ -25,6 +25,7 @@ import { validateDeck } from '$lib/utils/deck-validation';
 import { categorizeDeck } from '$lib/utils/deck-categorization';
 import { calculateDiff } from '$lib/utils/diff';
 import { serializePlaintext } from '$lib/utils/decklist-parser';
+import { deckToMpcAutofill } from '$lib/utils/deck-to-mpc-autofill';
 
 /**
  * The main deck store
@@ -1082,6 +1083,17 @@ function createDeckStore() {
 			}
 
 			return serializePlaintext(allCards, includeSetCodes);
+		},
+
+		/**
+		 * Export the current deck to MPC Autofill format
+		 * Returns plaintext decklist in format: "1x Card Name" per line
+		 */
+		exportToMpcAutofill(): string | null {
+			const state = get({ subscribe });
+			if (!state) return null;
+
+			return deckToMpcAutofill(state.deck, state.maybeboard);
 		},
 
 		/**
