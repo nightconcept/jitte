@@ -23,6 +23,7 @@
 	import OnboardingOverlay from '$lib/components/OnboardingOverlay.svelte';
 	import type { Card } from '$lib/types/card';
 	import { CardCategory } from '$lib/types/card';
+	import { isCommanderDeck } from '$lib/types/deck';
 	import { CardService } from '$lib/api/card-service';
 	import { parsePlaintext, type ParseResult } from '$lib/utils/decklist-parser';
 	import { hasCompletedOnboarding, markOnboardingComplete } from '$lib/utils/onboarding';
@@ -835,8 +836,20 @@
 			}
 		}
 
-		// Replace the entire deck with the new cards
-		deckStore.replaceDeck(finalCards);
+		// Sanitize cards for Commander decks - remove duplicate commanders
+		// This prevents commanders from appearing in both Commander and Creature categories
+		let cardsToReplace = finalCards;
+		if (isCommanderDeck($deckStore.deck)) {
+			const commanderNames = $deckStore.deck.cards[CardCategory.Commander]
+				.map(c => c.name.toLowerCase());
+
+			cardsToReplace = finalCards.filter(card =>
+				!commanderNames.includes(card.name.toLowerCase())
+			);
+		}
+
+		// Replace the entire deck with the sanitized cards
+		deckStore.replaceDeck(cardsToReplace);
 
 		// Handle maybeboard cards if present
 		if (parseResult.maybeboardCards && parseResult.maybeboardCards.length > 0) {
