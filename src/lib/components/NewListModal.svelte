@@ -104,8 +104,9 @@
     }
 
     // Auto-detect commanders if enabled, haven't already selected any, and user hasn't manually selected any
+    // IMPORTANT: Only run for Commander format!
     // Debounce to avoid triggering on every keystroke
-    if (autoDetectEnabled && selectedCommanders.length === 0 && newParseResult && !isDetectingCommanders) {
+    if (selectedFormat === DeckFormat.Commander && autoDetectEnabled && selectedCommanders.length === 0 && newParseResult && !isDetectingCommanders) {
       detectionTimeoutId = window.setTimeout(() => {
         detectCommanders(newParseResult);
       }, 500); // Wait 500ms after user stops typing

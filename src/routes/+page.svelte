@@ -327,6 +327,20 @@
 			const fullParseResult = parsePlaintext(decklist);
 			const parseResult = fullParseResult;
 
+			// Log parsing results
+			console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+			console.log('📋 PARSING DECKLIST');
+			console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+			console.log(`Parsed ${parseResult.cards.length} cards from ${parseResult.totalLines} lines`);
+
+			if (parseResult.errors.length > 0) {
+				console.log(`\n⚠️  ${parseResult.errors.length} lines failed to parse:`);
+				parseResult.errors.forEach(error => {
+					console.log(`  Line ${error.line}: "${error.text}"`);
+					console.log(`    → ${error.reason}`);
+				});
+			}
+
 			if (parseResult.cards.length === 0) {
 				toastStore.warning('No cards found in decklist (excluding commander)');
 				isLoadingCards = false;
@@ -376,25 +390,25 @@
 				!commanderNamesToFilter.has(card.name.toLowerCase())
 			);
 
+			// Log filtering results
+			const filteredCount = parseResult.cards.length - cardsToImport.length;
+
 			// Fetch all cards from Scryfall using batch API
-			console.log(`[handleImportDeck] Fetching ${cardsToImport.length} cards from Scryfall`);
-			console.log('[handleImportDeck] Cards to import:', cardsToImport.map(c => c.name).join(', '));
+			console.log(`\nFetching ${cardsToImport.length} cards from Scryfall...`);
 			const batchResult = await cardService.getCardsBatch(cardsToImport);
 
 			// Count unique cards (Map has multiple keys per card for different lookup strategies)
 			const uniqueCards = new Set(batchResult.cards.values());
-			console.log(`[handleImportDeck] Batch result: ${uniqueCards.size} unique cards found (${batchResult.cards.size} lookup keys), ${batchResult.notFound.length} not found`);
+
 			if (batchResult.notFound.length > 0) {
-				console.log('[handleImportDeck] Not found cards:', batchResult.notFound.map(c => c.name));
+				console.log(`\n⚠️  ${batchResult.notFound.length} cards not found in batch fetch:`);
+				batchResult.notFound.forEach(card => {
+					const displayName = card.setCode && card.collectorNumber
+						? `${card.name} (${card.setCode}) ${card.collectorNumber}`
+						: card.name;
+					console.log(`  - ${displayName}`);
+				});
 			}
-
-			// Log all card names returned by Scryfall
-			console.log('[handleImportDeck] All Scryfall card names:',
-				Array.from(uniqueCards).map(c => c.name).join(', ')
-			);
-
-			// Log all lookup keys in the map
-			console.log('[handleImportDeck] All lookup keys:', Array.from(batchResult.cards.keys()));
 
 			// Process found cards
 			for (const parsedCard of cardsToImport) {
@@ -404,8 +418,6 @@
 					: parsedCard.name.toLowerCase();
 
 				const scryfallCard = batchResult.cards.get(lookupKey) || batchResult.cards.get(parsedCard.name.toLowerCase());
-
-				console.log(`[handleImportDeck] Processing: "${parsedCard.name}", lookupKey: "${lookupKey}", found: ${!!scryfallCard}${scryfallCard ? `, scryfall name: "${scryfallCard.name}"` : ''}`);
 
 				if (scryfallCard) {
 					// Convert to our Card type (pricing already enriched by cardService)
@@ -417,50 +429,43 @@
 					finalCards.push(fullCard);
 					successCount++;
 				} else {
-					// Card not found - log for debugging
-					console.log(`[handleImportDeck] Card not found in batch result: "${parsedCard.name}" (lookup key: "${lookupKey}")`);
+					// Card not found - will be tracked in batch notFound or retry
 					failedCards.push(parsedCard.name);
 				}
 			}
 
 			// Retry not_found cards individually (handles alternate/serialized names)
-			console.log('[handleImportDeck] Retrying not_found cards individually...', {
-				notFoundCount: batchResult.notFound.length,
-				notFoundNames: batchResult.notFound.map(c => c.name)
-			});
+			if (batchResult.notFound.length > 0) {
+				console.log(`\nRetrying ${batchResult.notFound.length} cards individually with fuzzy matching...`);
+			}
+			let retrySuccessCount = 0;
+			let retryFailCount = 0;
 			for (const notFoundCard of batchResult.notFound) {
 				try {
-					console.log(`[handleImportDeck] Retrying: "${notFoundCard.name}"`);
 					// Try individual lookup with fuzzy matching - supports alternate names like "Mina Harker"
 					const scryfallCard = await cardService.getCardByName(notFoundCard.name, 'import-retry', false);
 
 					if (scryfallCard) {
-						console.log(`[handleImportDeck] ✓ Found via retry: "${notFoundCard.name}" → "${scryfallCard.name}"`);
 						// Find the original parsed card to get quantity
 						const originalCard = cardsToImport.find(c => c.name.toLowerCase() === notFoundCard.name.toLowerCase());
-						console.log(`[handleImportDeck]   Original card lookup:`, {
-							searchingFor: notFoundCard.name.toLowerCase(),
-							found: !!originalCard,
-							originalCard: originalCard ? { name: originalCard.name, quantity: originalCard.quantity } : null
-						});
 						if (originalCard) {
 							const fullCard = scryfallToCard(scryfallCard, originalCard.quantity, {
 								setCode: originalCard.setCode,
 								collectorNumber: originalCard.collectorNumber
 							});
-							console.log(`[handleImportDeck]   Converted card:`, {
-								name: fullCard.name,
-								quantity: fullCard.quantity,
-								imageUrls: !!fullCard.imageUrls,
-								cardFaces: fullCard.cardFaces?.length
-							});
 							finalCards.push(fullCard);
 							successCount++;
+							retrySuccessCount++;
+							// Remove from failed cards since we found it
+							const idx = failedCards.indexOf(notFoundCard.name);
+							if (idx !== -1) {
+								failedCards.splice(idx, 1);
+							}
 						} else {
-							console.warn(`[handleImportDeck]   Could not find original card for "${notFoundCard.name}"`);
+							console.warn(`⚠️  Could not find original parsed card for "${notFoundCard.name}"`);
 						}
 					} else {
-						console.log(`[handleImportDeck] ✗ Still not found after retry: "${notFoundCard.name}"`);
+						retryFailCount++;
 
 						// Still not found after retry
 						const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
@@ -471,7 +476,8 @@
 						}
 					}
 				} catch (error) {
-					console.error(`[handleImportDeck] Error retrying ${notFoundCard.name}:`, error);
+					console.error(`✗ Error retrying "${notFoundCard.name}":`, error);
+					retryFailCount++;
 					const displayName = notFoundCard.setCode && notFoundCard.collectorNumber
 						? `${notFoundCard.name} (${notFoundCard.setCode}) ${notFoundCard.collectorNumber}`
 						: notFoundCard.name;
@@ -481,13 +487,54 @@
 				}
 			}
 
+			if (retrySuccessCount > 0) {
+				console.log(`✓ Retry successful: found ${retrySuccessCount} additional cards`);
+			}
+
 			// Add all imported cards to the deck
+			console.log(`\nAdding ${finalCards.length} cards to deck...`);
 			for (const card of finalCards) {
+				// Log problematic cards for debugging
+				if (card.name.toLowerCase().includes('omnath')) {
+					console.log(`Adding Omnath:`, {
+						name: card.name,
+						colorIdentity: card.colorIdentity,
+						types: card.types,
+						quantity: card.quantity
+					});
+				}
 				deckStore.addCard(card);
 			}
 
 			// Hide loading
 			isLoadingCards = false;
+
+			// Print failure summary if any
+			if (parseResult.errors.length > 0 || failedCards.length > 0) {
+				console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+				console.log('⚠️  IMPORT FAILURES');
+				console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+				console.log(`Total cards attempted: ${cardsToImport.length}`);
+				console.log(`Parse errors: ${parseResult.errors.length}`);
+				console.log(`Cards not found: ${failedCards.length}`);
+
+				if (parseResult.errors.length > 0) {
+					console.log('\n❌ PARSE FAILURES:');
+					parseResult.errors.forEach(error => {
+						console.log(`  Line ${error.line}: "${error.text}"`);
+						console.log(`    → ${error.reason}`);
+					});
+				}
+
+				if (failedCards.length > 0) {
+					console.log('\n❌ CARDS NOT FOUND IN SCRYFALL:');
+					failedCards.forEach(name => {
+						console.log(`  - ${name}`);
+					});
+				}
+
+				console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+			}
 
 			// Show result summary
 			if (parseResult.errors.length > 0 || failedCards.length > 0) {
@@ -740,6 +787,20 @@
 		loadingMessage = 'Processing decklist...';
 		toastStore.info('Loading cards from Scryfall...');
 
+		// Log parsing results
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log('📋 PARSING BULK EDIT');
+		console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+		console.log(`Parsed ${parseResult.cards.length} cards from ${parseResult.totalLines} lines`);
+
+		if (parseResult.errors.length > 0) {
+			console.log(`\n⚠️  ${parseResult.errors.length} lines failed to parse:`);
+			parseResult.errors.forEach(error => {
+				console.log(`  Line ${error.line}: "${error.text}"`);
+				console.log(`    → ${error.reason}`);
+			});
+		}
+
 		if (parseResult.cards.length === 0) {
 			isLoadingCards = false;
 			toastStore.warning('No valid cards found in decklist');
@@ -798,7 +859,19 @@
 
 		// Second pass: fetch only new cards from Scryfall (using batch API with set/collector support)
 		if (newCardsNeeded.length > 0) {
+			console.log(`\nFetching ${newCardsNeeded.length} new cards from Scryfall...`);
+
 			const batchResult = await cardService.getCardsBatch(newCardsNeeded);
+
+			if (batchResult.notFound.length > 0) {
+				console.log(`\n⚠️  ${batchResult.notFound.length} cards not found in batch fetch:`);
+				batchResult.notFound.forEach(card => {
+					const displayName = card.setCode && card.collectorNumber
+						? `${card.name} (${card.setCode}) ${card.collectorNumber}`
+						: card.name;
+					console.log(`  - ${displayName}`);
+				});
+			}
 
 			// Process found cards
 			for (const parsedCard of newCardsNeeded) {
@@ -924,6 +997,33 @@
 
 		// Hide loading
 		isLoadingCards = false;
+
+		// Print failure summary if any
+		if (parseResult.errors.length > 0 || failedCards.length > 0) {
+			console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+			console.log('⚠️  BULK EDIT IMPORT FAILURES');
+			console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+			console.log(`Total cards processed: ${parseResult.cards.length}`);
+			console.log(`Parse errors: ${parseResult.errors.length}`);
+			console.log(`Cards not found: ${failedCards.length}`);
+
+			if (parseResult.errors.length > 0) {
+				console.log('\n❌ PARSE FAILURES:');
+				parseResult.errors.forEach(error => {
+					console.log(`  Line ${error.line}: "${error.text}"`);
+					console.log(`    → ${error.reason}`);
+				});
+			}
+
+			if (failedCards.length > 0) {
+				console.log('\n❌ CARDS NOT FOUND IN SCRYFALL:');
+				failedCards.forEach(name => {
+					console.log(`  - ${name}`);
+				});
+			}
+
+			console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+		}
 
 		// Show result summary
 		if (parseResult.errors.length > 0 || failedCards.length > 0) {

@@ -169,6 +169,31 @@ export class CardService {
 			await cardCache.cacheCard(card);
 			return card;
 		} catch (error) {
+			// If fuzzy matching failed and this is not already an exact match request,
+			// try searching for the card (handles Secret Lair alternate names)
+			if (!exact) {
+				try {
+					console.log(`Fuzzy match failed for "${name}", trying search fallback...`);
+					const searchResults = await scryfallClient.search(`!"${name}"`, {
+						unique: 'cards',
+						order: 'released',
+						dir: 'desc'
+					});
+
+					if (searchResults.data.length > 0) {
+						const card = searchResults.data[0];
+						console.log(`✓ Search fallback found: "${name}" → "${card.name}"`);
+						await enrichScryfallCardPricing(card);
+						await cardCache.cacheCard(card);
+						return card;
+					} else {
+						console.log(`✗ Search fallback found no results for "${name}"`);
+					}
+				} catch (searchError) {
+					console.error(`✗ Search fallback error for "${name}":`, searchError);
+				}
+			}
+
 			console.error('Get card by name error:', error);
 			return null;
 		}

@@ -50,50 +50,47 @@ export const TYPE_SUBCATEGORY_LABELS: Record<CubeCardType, string> = {
 /**
  * Two-color guild combinations in display order
  */
+// Two-color guild combinations (in WUBRG sorted order to match getColorCombinationKey)
 export const TWO_COLOR_GUILDS = [
 	'WU', // Azorius
 	'UB', // Dimir
 	'BR', // Rakdos
 	'RG', // Gruul
-	'GW', // Selesnya
+	'WG', // Selesnya - was GW
 	'WB', // Orzhov
 	'UR', // Izzet
 	'BG', // Golgari
-	'RW', // Boros
-	'GU' // Simic
+	'WR', // Boros - was RW
+	'UG' // Simic - was GU
 ];
 
 /**
- * Three-color combinations (shards and wedges) in display order
+ * Three-color combinations in WUBRG sorted order
+ * 5 Shards (allied colors): WUG (Bant), WUB (Esper), UBR (Grixis), BRG (Jund), WRG (Naya)
+ * 5 Wedges (enemy colors): WBG (Abzan), WUR (Jeskai), UBG (Sultai), WBR (Mardu), URG (Temur)
  */
 export const THREE_COLOR_COMBINATIONS = [
-	'WUB', // Esper
-	'UBR', // Grixis
-	'BRG', // Jund
-	'RGW', // Naya
-	'GWU', // Bant
-	'WBG', // Abzan
-	'URW', // Jeskai
-	'BRG', // Jund (duplicate? Let me check)
-	'RGU', // Temur
-	'GWB' // Abzan (duplicate?)
+	'WUG', // Bant (shard)
+	'WUB', // Esper (shard)
+	'UBR', // Grixis (shard)
+	'BRG', // Jund (shard)
+	'WRG', // Naya (shard)
+	'WBG', // Abzan (wedge)
+	'WUR', // Jeskai (wedge)
+	'UBG', // Sultai (wedge)
+	'WBR', // Mardu (wedge)
+	'URG' // Temur (wedge)
 ];
 
-// Actually, let me fix the three-color list - there are 10 unique three-color combinations:
-// 5 Shards (adjacent colors): WUB, UBR, BRG, RGW, GWU
-// 5 Wedges (enemy colors): WBG, URW, BRU, RGU, GWB
-export const THREE_COLOR_SHARDS = ['WUB', 'UBR', 'BRG', 'RGW', 'GWU'];
-export const THREE_COLOR_WEDGES = ['WBG', 'URW', 'BRU', 'RGU', 'GWB'];
-
 /**
- * Four-color combinations
+ * Four-color combinations (in WUBRG sorted order to match getColorCombinationKey)
  */
 export const FOUR_COLOR_COMBINATIONS = [
 	'WUBR', // Yore (no Green)
 	'UBRG', // Glint (no White)
-	'BRGW', // Dune (no Blue)
-	'RGWU', // Ink (no Black)
-	'GWUB' // Witch (no Red)
+	'WBRG', // Dune (no Blue) - was BRGW, now WUBRG sorted
+	'WURG', // Ink (no Black) - was RGWU, now WUBRG sorted
+	'WUBG' // Witch (no Red) - was GWUB, now WUBRG sorted
 ];
 
 /**
@@ -109,134 +106,41 @@ export const GUILD_NAMES: Record<string, string> = {
 	UB: 'Dimir',
 	BR: 'Rakdos',
 	RG: 'Gruul',
-	GW: 'Selesnya',
+	WG: 'Selesnya', // Was GW, now WUBRG sorted
 	WB: 'Orzhov',
 	UR: 'Izzet',
 	BG: 'Golgari',
-	RW: 'Boros',
-	GU: 'Simic'
+	WR: 'Boros', // Was RW, now WUBRG sorted
+	UG: 'Simic' // Was GU, now WUBRG sorted
 };
 
 /**
- * Shard names for three-color combinations
+ * Three-color names (keys in WUBRG sorted order)
  */
-export const SHARD_NAMES: Record<string, string> = {
-	WUB: 'Esper',
-	UBR: 'Grixis',
-	BRG: 'Jund',
-	RGW: 'Naya',
-	GWU: 'Bant',
-	WBG: 'Abzan',
-	URW: 'Jeskai',
-	BRU: 'Grixis', // Duplicate, let me check
-	RGU: 'Temur',
-	GWB: 'Abzan' // Duplicate
-};
-
-// Let me fix the shard names:
 export const THREE_COLOR_NAMES: Record<string, string> = {
 	// Shards (allied colors)
+	WUG: 'Bant',
 	WUB: 'Esper',
 	UBR: 'Grixis',
 	BRG: 'Jund',
-	RGW: 'Naya',
-	GWU: 'Bant',
+	WRG: 'Naya',
 	// Wedges (enemy colors)
 	WBG: 'Abzan',
-	URW: 'Jeskai',
-	BRU: 'Grixis', // Actually BRU should be Grixis which is UBR, let me reconsider
-	RGU: 'Temur',
-	GWB: 'Abzan' // Actually GWB is same as WBG
-};
-
-// Let me properly define the wedges:
-// WBG = White, Black, Green = Abzan
-// URW = Blue, Red, White = Jeskai
-// BRG = Black, Red, Green = Jund (this is a shard, not wedge)
-// RGU = Red, Green, Blue = Temur
-// GWB = same as WBG
-
-// Actually, I need to be more careful here. Let me list all 10 three-color combinations:
-// Shards (adjacent): WUB, UBR, BRG, RGW, GWU
-// Wedges (two allies + one enemy): WBG, URW, BRU, RGU, GWB
-
-// Wait, BRU should be UBR (sorted), and GWB should be WBG (sorted). Let me reconsider...
-// The user said: WUB, UBR, BRG, RGW, GWU (shards), WBG, URW, BRU, RGU, GWB
-// BRU is Black-Red-Blue, which when sorted is BRU... but that's not a standard combination name.
-// I think the user meant to list the enemy-centered wedges.
-
-// Let me think about this more carefully:
-// Shards: WUB (Esper), UBR (Grixis), BRG (Jund), RGW (Naya), GWU (Bant)
-// Wedges: WBR (Mardu), UGW (Bant - no this is wrong), WRG (Naya - no)...
-
-// Actually, the 10 three-color combinations are:
-// 1. WUB - Esper (W primary, U, B)
-// 2. UBR - Grixis (U primary, B, R)
-// 3. BRG - Jund (B primary, R, G)
-// 4. RGW - Naya (R primary, G, W)
-// 5. GWU - Bant (G primary, W, U)
-// 6. WBG - Abzan (W primary, B, G) - wedge
-// 7. URW - Jeskai (U primary, R, W) - wedge
-// 8. BRU - this would be UBR sorted, so same as Grixis
-// 9. RGU - Temur (R primary, G, U) - wedge
-// 10. GWB - same as WBG
-
-// I think there's a misunderstanding. Let me list the actual 10 three-color combinations correctly:
-// Shards (allied colors centered on one color):
-// - Bant: GWU
-// - Esper: WUB
-// - Grixis: UBR
-// - Jund: BRG
-// - Naya: RGW
-
-// Wedges (enemy colors):
-// - Abzan: WBG
-// - Jeskai: URW
-// - Sultai: UBG
-// - Mardu: RWB
-// - Temur: GUR
-
-// So the correct 10 are:
-const CORRECT_THREE_COLOR_COMBINATIONS = [
-	'GWU', // Bant (shard)
-	'WUB', // Esper (shard)
-	'UBR', // Grixis (shard)
-	'BRG', // Jund (shard)
-	'RGW', // Naya (shard)
-	'WBG', // Abzan (wedge)
-	'URW', // Jeskai (wedge)
-	'UBG', // Sultai (wedge)
-	'RWB', // Mardu (wedge)
-	'GUR' // Temur (wedge)
-];
-
-// And the names:
-const CORRECT_THREE_COLOR_NAMES: Record<string, string> = {
-	GWU: 'Bant',
-	WUB: 'Esper',
-	UBR: 'Grixis',
-	BRG: 'Jund',
-	RGW: 'Naya',
-	WBG: 'Abzan',
-	URW: 'Jeskai',
+	WUR: 'Jeskai',
 	UBG: 'Sultai',
-	RWB: 'Mardu',
-	GUR: 'Temur'
+	WBR: 'Mardu',
+	URG: 'Temur'
 };
-
-// Wait, the user specifically said: "WUB, UBR, BRG, RGW, GWU, WBG, URW, BRU, RGU, GWB"
-// Let me respect what the user said exactly. Maybe they want a specific ordering.
-// I'll implement it as they specified and we can adjust later if needed.
 
 /**
- * Four-color combination names
+ * Four-color combination names (keys in WUBRG sorted order)
  */
 export const FOUR_COLOR_NAMES: Record<string, string> = {
-	WUBR: 'Yore',
-	UBRG: 'Glint',
-	BRGW: 'Dune',
-	RGWU: 'Ink',
-	GWUB: 'Witch'
+	WUBR: 'Yore',   // No Green
+	UBRG: 'Glint',  // No White
+	WBRG: 'Dune',   // No Blue
+	WURG: 'Ink',    // No Black
+	WUBG: 'Witch'   // No Red
 };
 
 /**
@@ -307,8 +211,8 @@ export function getColorCombinationLabel(combination: string): string {
 	}
 
 	// Three-color combinations
-	if (combination.length === 3 && CORRECT_THREE_COLOR_NAMES[combination]) {
-		return `${CORRECT_THREE_COLOR_NAMES[combination]} (${combination})`;
+	if (combination.length === 3 && THREE_COLOR_NAMES[combination]) {
+		return `${THREE_COLOR_NAMES[combination]} (${combination})`;
 	}
 
 	// Four-color combinations
@@ -331,7 +235,7 @@ export function getColorCombinationLabel(combination: string): string {
 export function getMulticolorSubcategoryOrder(): string[] {
 	return [
 		...TWO_COLOR_GUILDS,
-		...CORRECT_THREE_COLOR_COMBINATIONS,
+		...THREE_COLOR_COMBINATIONS,
 		...FOUR_COLOR_COMBINATIONS,
 		FIVE_COLOR
 	];
