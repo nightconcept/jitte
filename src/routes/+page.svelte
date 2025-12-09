@@ -640,7 +640,11 @@
 	}
 
 	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt') {
-		const plaintext = deckStore.exportToPlaintext(true);
+		// Use cube-specific format for plaintext export when deck is a cube
+		const plaintext =
+			platform === 'plaintext' && isCube
+				? deckStore.exportToCubePlaintext()
+				: deckStore.exportToPlaintext(true);
 		if (!plaintext) {
 			toastStore.warning('No deck loaded to export');
 			return;
@@ -1138,6 +1142,7 @@
 		onExport={handleExport}
 		onExportJitte={handleExportJitte}
 		onCompare={handleBuylist}
+		{isCube}
 		onSwitchVersion={handleSwitchVersion}
 		onSwitchBranch={handleSwitchBranch}
 		onDeleteBranch={handleDeleteBranch}

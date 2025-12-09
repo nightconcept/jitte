@@ -1086,6 +1086,43 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Export the current deck to cube plaintext format
+		 * Returns plaintext with "# mainboard" header and card names only (no quantities)
+		 * Format: # mainboard\n\nCard Name\n\nCard Name\n...
+		 */
+		exportToCubePlaintext(): string | null {
+			const state = get({ subscribe });
+			if (!state) return null;
+
+			const allCards: Card[] = [];
+
+			// For cube, we use CubeCardCategory order
+			const categories = [
+				CubeCardCategory.White,
+				CubeCardCategory.Blue,
+				CubeCardCategory.Black,
+				CubeCardCategory.Red,
+				CubeCardCategory.Green,
+				CubeCardCategory.Colorless,
+				CubeCardCategory.Multicolored,
+				CubeCardCategory.Lands
+			];
+
+			for (const category of categories) {
+				const categoryCards = state.deck.cards[category] || [];
+				allCards.push(...categoryCards);
+			}
+
+			// Build the plaintext with "# mainboard" header and card names only
+			const lines: string[] = ['# mainboard', ''];
+			for (const card of allCards) {
+				lines.push(card.name);
+			}
+
+			return lines.join('\n');
+		},
+
+		/**
 		 * Export the current deck to MPC Autofill format
 		 * Returns plaintext decklist in format: "1x Card Name" per line
 		 */
