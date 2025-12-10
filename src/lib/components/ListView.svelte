@@ -37,6 +37,13 @@
     getSortedCmcKeys,
     sortCardsAlphabetically,
   } from "$lib/utils/cube-text-view-helpers";
+  import {
+    CUBE_LANDS_DISPLAY_CATEGORY,
+    getAllLandCards,
+    getLandCardsBySubcategory,
+    getLandSubcategoryDisplayOrder,
+    getCubeCategoryLabel,
+  } from "$lib/utils/cube-categorization";
 
   let {
     onCardHover = undefined,
@@ -367,7 +374,14 @@
   }
 
   function getCategoryCards(category: string): Card[] {
-    const cards = deck?.cards[category] || [];
+    let cards: Card[];
+
+    // Handle virtual 'lands' category by aggregating all land subcategories
+    if (category === CUBE_LANDS_DISPLAY_CATEGORY && deck) {
+      cards = getAllLandCards(deck.cards);
+    } else {
+      cards = deck?.cards[category] || [];
+    }
 
     // Sort cards based on sortMode
     if (sortMode === "name") {
@@ -1218,29 +1232,33 @@
                 <!-- Column Content (Always expanded) -->
                 <div class="cube-column-content">
                     {#if category === 'lands'}
-                      <!-- Lands: Group by CMC, sort alphabetically -->
-                      {@const cmcGrouped = groupCardsByCmc(cards)}
-                      {@const cmcKeys = getSortedCmcKeys(cmcGrouped)}
-                      {#each cmcKeys as cmcKey, cmcIndex}
-                        {@const cmcCards = cmcGrouped[cmcKey]}
-                        {@const sortedCards = sortCardsAlphabetically(cmcCards)}
-                        <div class="cube-cmc-group">
-                          {#if cmcIndex > 0}
-                            <div class="cube-cmc-separator"></div>
-                          {/if}
-                          {#each sortedCards as card}
-                            <div
-                              class="cube-card-row {viewMode === 'condensed' ? 'cube-card-row-condensed' : ''}"
-                              onmouseenter={(e) => handleCubeCardHover(card, e)}
-                              onmouseleave={() => handleCubeCardHover(null)}
-                              onclick={() => (detailModalCard = { name: card.name, category })}
-                              role="button"
-                              tabindex="0"
-                            >
-                              <span class="cube-card-name">{card.name}</span>
+                      <!-- Lands: Group by guild/shard/wedge subcategory, sort alphabetically within each -->
+                      {@const landsBySubcategory = deck ? getLandCardsBySubcategory(deck.cards) : {}}
+                      {#each getLandSubcategoryDisplayOrder() as subcategory}
+                        {@const subcategoryCards = landsBySubcategory[subcategory] || []}
+                        {@const sortedCards = sortCardsAlphabetically(subcategoryCards)}
+                        {#if subcategoryCards.length > 0}
+                          <div class="cube-subcategory">
+                            <div class="cube-subcategory-header">
+                              <span>{getCubeCategoryLabel(subcategory)}</span>
+                              <span class="text-xs text-[var(--color-text-tertiary)]">
+                                ({getSubcategoryCount(subcategoryCards)})
+                              </span>
                             </div>
-                          {/each}
-                        </div>
+                            {#each sortedCards as card}
+                              <div
+                                class="cube-card-row {viewMode === 'condensed' ? 'cube-card-row-condensed' : ''}"
+                                onmouseenter={(e) => handleCubeCardHover(card, e)}
+                                onmouseleave={() => handleCubeCardHover(null)}
+                                onclick={() => (detailModalCard = { name: card.name, category: subcategory })}
+                                role="button"
+                                tabindex="0"
+                              >
+                                <span class="cube-card-name">{card.name}</span>
+                              </div>
+                            {/each}
+                          </div>
+                        {/if}
                       {/each}
                     {:else if category === 'multicolored'}
                       <!-- Multicolored: Group by color combination, then CMC -->

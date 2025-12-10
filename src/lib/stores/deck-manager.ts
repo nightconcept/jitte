@@ -5,7 +5,8 @@
 
 import { writable, get } from 'svelte/store';
 import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
-import { isCommanderDeck } from '$lib/types/deck';
+import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
+import { migrateLandsCategory } from '$lib/utils/cube-categorization';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card } from '$lib/types/card';
 import { getStorageManager } from '$lib/storage/storage-manager';
@@ -127,7 +128,16 @@ function createDeckManager() {
 
 			try {
 				const archive = result.data;
-				const { deck, manifest, maybeboard } = await extractDeckFromArchive(archive);
+				let { deck, manifest, maybeboard } = await extractDeckFromArchive(archive);
+
+				// Auto-migrate: Migrate cube lands from old categories to new subcategories
+				if (isCubeDeck(deck) && (deck.cards['lands'] || deck.cards['land-fivecolor'] || deck.cards['land-utility'])) {
+					console.log('[deckManager.loadDeck] Auto-migrating cube lands to subcategories');
+					deck = {
+						...deck,
+						cards: migrateLandsCategory(deck.cards)
+					};
+				}
 
 				// Auto-migrate: Add versioningScheme if missing (defaults to semantic for backwards compatibility)
 				let migratedManifest = manifest;

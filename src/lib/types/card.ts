@@ -164,7 +164,33 @@ export enum CubeCardCategory {
 	Green = 'green',
 	Colorless = 'colorless',
 	Multicolored = 'multicolored',
-	Lands = 'lands'
+	// Land subcategories - Guilds (2-color)
+	LandAzorius = 'land-azorius', // WU
+	LandDimir = 'land-dimir', // UB
+	LandRakdos = 'land-rakdos', // BR
+	LandGruul = 'land-gruul', // RG
+	LandSelesnya = 'land-selesnya', // GW
+	LandOrzhov = 'land-orzhov', // WB
+	LandIzzet = 'land-izzet', // UR
+	LandGolgari = 'land-golgari', // BG
+	LandBoros = 'land-boros', // RW
+	LandSimic = 'land-simic', // GU
+	// Land subcategories - Shards (3-color allied)
+	LandEsper = 'land-esper', // WUB
+	LandGrixis = 'land-grixis', // UBR
+	LandJund = 'land-jund', // BRG
+	LandNaya = 'land-naya', // RGW
+	LandBant = 'land-bant', // GWU
+	// Land subcategories - Wedges (3-color enemy)
+	LandAbzan = 'land-abzan', // WBG
+	LandJeskai = 'land-jeskai', // URW
+	LandSultai = 'land-sultai', // BGU
+	LandMardu = 'land-mardu', // RWB
+	LandTemur = 'land-temur', // GUR
+	// Land subcategories - 4-color and generic
+	LandFourColor = 'land-fourcolor',
+	// Generic lands (5-color, colorless, mono-color, utility)
+	LandGeneric = 'land-generic'
 }
 
 /**
@@ -196,7 +222,29 @@ export interface CubeCategorizedCards extends CardsByCategory {
 	[CubeCardCategory.Green]: Card[];
 	[CubeCardCategory.Colorless]: Card[];
 	[CubeCardCategory.Multicolored]: Card[];
-	[CubeCardCategory.Lands]: Card[];
+	// Land subcategories
+	[CubeCardCategory.LandAzorius]: Card[];
+	[CubeCardCategory.LandDimir]: Card[];
+	[CubeCardCategory.LandRakdos]: Card[];
+	[CubeCardCategory.LandGruul]: Card[];
+	[CubeCardCategory.LandSelesnya]: Card[];
+	[CubeCardCategory.LandOrzhov]: Card[];
+	[CubeCardCategory.LandIzzet]: Card[];
+	[CubeCardCategory.LandGolgari]: Card[];
+	[CubeCardCategory.LandBoros]: Card[];
+	[CubeCardCategory.LandSimic]: Card[];
+	[CubeCardCategory.LandEsper]: Card[];
+	[CubeCardCategory.LandGrixis]: Card[];
+	[CubeCardCategory.LandJund]: Card[];
+	[CubeCardCategory.LandNaya]: Card[];
+	[CubeCardCategory.LandBant]: Card[];
+	[CubeCardCategory.LandAbzan]: Card[];
+	[CubeCardCategory.LandJeskai]: Card[];
+	[CubeCardCategory.LandSultai]: Card[];
+	[CubeCardCategory.LandMardu]: Card[];
+	[CubeCardCategory.LandTemur]: Card[];
+	[CubeCardCategory.LandFourColor]: Card[];
+	[CubeCardCategory.LandGeneric]: Card[];
 }
 
 /**

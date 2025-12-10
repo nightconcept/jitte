@@ -12,6 +12,7 @@
 	import { deckManager } from '$lib/stores/deck-manager';
 	import { CardCategory, CubeCardCategory } from '$lib/types/card';
 	import { DeckFormat } from '$lib/formats/format-registry';
+	import { getLandCategories } from '$lib/utils/cube-categorization';
 
 	let {
 		currentBranch = 'main',
@@ -92,6 +93,11 @@
 	let cubeColorCounts = $derived.by(() => {
 		if (!isCubeFormat || !deck) return null;
 		const cards = deck.cards;
+		// Sum all land subcategories for total lands count
+		const landCategories = getLandCategories();
+		const landsTotal = landCategories.reduce((total, cat) => {
+			return total + (cards[cat]?.reduce((sum, c) => sum + c.quantity, 0) || 0);
+		}, 0);
 		return {
 			white: cards[CubeCardCategory.White]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
 			blue: cards[CubeCardCategory.Blue]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
@@ -100,7 +106,7 @@
 			green: cards[CubeCardCategory.Green]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
 			colorless: cards[CubeCardCategory.Colorless]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
 			multicolored: cards[CubeCardCategory.Multicolored]?.reduce((sum, c) => sum + c.quantity, 0) || 0,
-			lands: cards[CubeCardCategory.Lands]?.reduce((sum, c) => sum + c.quantity, 0) || 0
+			lands: landsTotal
 		};
 	});
 

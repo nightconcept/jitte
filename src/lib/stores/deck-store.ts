@@ -16,6 +16,7 @@ import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CategorizedCards, CardsByCategory, CategoryDefinition, ManaColor } from '$lib/types/card';
 import { CardCategory, CubeCardCategory, UNCATEGORIZED_CATEGORY_ID } from '$lib/types/card';
+import { getAllCubeCategories } from '$lib/utils/cube-categorization';
 import type { VersionDiff } from '$lib/types/version';
 import { DeckFormat } from '$lib/formats/format-registry';
 import { getFormatService } from '$lib/formats/services/format-service-factory';
@@ -1096,17 +1097,8 @@ function createDeckStore() {
 
 			const allCards: Card[] = [];
 
-			// For cube, we use CubeCardCategory order
-			const categories = [
-				CubeCardCategory.White,
-				CubeCardCategory.Blue,
-				CubeCardCategory.Black,
-				CubeCardCategory.Red,
-				CubeCardCategory.Green,
-				CubeCardCategory.Colorless,
-				CubeCardCategory.Multicolored,
-				CubeCardCategory.Lands
-			];
+			// For cube, we use all CubeCardCategories (including land subcategories)
+			const categories = getAllCubeCategories();
 
 			for (const category of categories) {
 				const categoryCards = state.deck.cards[category] || [];

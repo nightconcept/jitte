@@ -8,7 +8,8 @@ import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card, CardsByCategory } from '$lib/types/card';
 import { serializePlaintext, parsePlaintext } from './decklist-parser';
-import { CardCategory, CubeCardCategory } from '$lib/types/card';
+import { CardCategory } from '$lib/types/card';
+import { getAllCubeCategories } from './cube-categorization';
 import type { DeckArchive } from './zip';
 import { scryfallToCard } from './card-converter';
 import { DeckFormat } from '$lib/formats/format-registry';
@@ -44,17 +45,8 @@ export function serializeDeckToPlaintext(deck: Deck, includeSetCodes = false): s
 	// Determine which categories to use based on deck format
 	let categories: string[];
 	if (isCubeDeck(deck)) {
-		// Cube decks use color-based categories
-		categories = [
-			CubeCardCategory.White,
-			CubeCardCategory.Blue,
-			CubeCardCategory.Black,
-			CubeCardCategory.Red,
-			CubeCardCategory.Green,
-			CubeCardCategory.Colorless,
-			CubeCardCategory.Multicolored,
-			CubeCardCategory.Lands
-		];
+		// Cube decks use color-based categories (including land subcategories)
+		categories = getAllCubeCategories();
 	} else {
 		// Commander/Standard/Modern use type-based categories
 		categories = [
