@@ -29,6 +29,7 @@
     groupMulticoloredCardsByColorCombination,
     getMulticolorSubcategoryOrder,
     getColorCombinationLabel,
+    getColorCombinationIcon,
     sortCardsInSubcategory,
     getSubcategoryCount,
     TYPE_SUBCATEGORY_ORDER,
@@ -43,6 +44,7 @@
     getLandCardsBySubcategory,
     getLandSubcategoryDisplayOrder,
     getCubeCategoryLabel,
+    getCubeCategoryIcon,
   } from "$lib/utils/cube-categorization";
 
   let {
@@ -326,6 +328,8 @@
       for (const category of formatService.getAllCategories()) {
         labels[category.id] = category.label;
       }
+      // Add virtual 'lands' category for cube display
+      labels[CUBE_LANDS_DISPLAY_CATEGORY] = 'Lands';
       return labels;
     }
   });
@@ -356,6 +360,8 @@
       for (const category of formatService.getAllCategories()) {
         icons[category.id] = category.icon || "";
       }
+      // Add virtual 'lands' category for cube display
+      icons[CUBE_LANDS_DISPLAY_CATEGORY] = 'ms-land';
       return icons;
     }
   });
@@ -1238,9 +1244,13 @@
                         {@const subcategoryCards = landsBySubcategory[subcategory] || []}
                         {@const sortedCards = sortCardsAlphabetically(subcategoryCards)}
                         {#if subcategoryCards.length > 0}
+                          {@const icon = getCubeCategoryIcon(subcategory)}
                           <div class="cube-subcategory">
                             <div class="cube-subcategory-header">
                               <span>{getCubeCategoryLabel(subcategory)}</span>
+                              {#if icon && icon !== 'ms-land'}
+                                <i class="ms {icon} ms-cost"></i>
+                              {/if}
                               <span class="text-xs text-[var(--color-text-tertiary)]">
                                 ({getSubcategoryCount(subcategoryCards)})
                               </span>
@@ -1268,9 +1278,13 @@
                         {@const cmcGrouped = groupCardsByCmc(subcategoryCards)}
                         {@const cmcKeys = getSortedCmcKeys(cmcGrouped)}
                         {#if subcategoryCards.length > 0}
+                          {@const icon = getColorCombinationIcon(subcategory)}
                           <div class="cube-subcategory">
                             <div class="cube-subcategory-header">
                               <span>{getColorCombinationLabel(subcategory)}</span>
+                              {#if icon}
+                                <i class="ms {icon} ms-cost"></i>
+                              {/if}
                               <span class="text-xs text-[var(--color-text-tertiary)]">
                                 ({getSubcategoryCount(subcategoryCards)})
                               </span>

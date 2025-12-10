@@ -284,31 +284,31 @@ export function getCubeCategoryLabel(category: CubeCardCategory | string): strin
 		[CubeCardCategory.Colorless]: 'Colorless',
 		[CubeCardCategory.Multicolored]: 'Multicolored',
 		// Land subcategories - Guilds
-		[CubeCardCategory.LandAzorius]: 'Azorius (WU)',
-		[CubeCardCategory.LandDimir]: 'Dimir (UB)',
-		[CubeCardCategory.LandRakdos]: 'Rakdos (BR)',
-		[CubeCardCategory.LandGruul]: 'Gruul (RG)',
-		[CubeCardCategory.LandSelesnya]: 'Selesnya (GW)',
-		[CubeCardCategory.LandOrzhov]: 'Orzhov (WB)',
-		[CubeCardCategory.LandIzzet]: 'Izzet (UR)',
-		[CubeCardCategory.LandGolgari]: 'Golgari (BG)',
-		[CubeCardCategory.LandBoros]: 'Boros (RW)',
-		[CubeCardCategory.LandSimic]: 'Simic (GU)',
+		[CubeCardCategory.LandAzorius]: 'Azorius',
+		[CubeCardCategory.LandDimir]: 'Dimir',
+		[CubeCardCategory.LandRakdos]: 'Rakdos',
+		[CubeCardCategory.LandGruul]: 'Gruul',
+		[CubeCardCategory.LandSelesnya]: 'Selesnya',
+		[CubeCardCategory.LandOrzhov]: 'Orzhov',
+		[CubeCardCategory.LandIzzet]: 'Izzet',
+		[CubeCardCategory.LandGolgari]: 'Golgari',
+		[CubeCardCategory.LandBoros]: 'Boros',
+		[CubeCardCategory.LandSimic]: 'Simic',
 		// Land subcategories - Shards
-		[CubeCardCategory.LandEsper]: 'Esper (WUB)',
-		[CubeCardCategory.LandGrixis]: 'Grixis (UBR)',
-		[CubeCardCategory.LandJund]: 'Jund (BRG)',
-		[CubeCardCategory.LandNaya]: 'Naya (RGW)',
-		[CubeCardCategory.LandBant]: 'Bant (GWU)',
+		[CubeCardCategory.LandEsper]: 'Esper',
+		[CubeCardCategory.LandGrixis]: 'Grixis',
+		[CubeCardCategory.LandJund]: 'Jund',
+		[CubeCardCategory.LandNaya]: 'Naya',
+		[CubeCardCategory.LandBant]: 'Bant',
 		// Land subcategories - Wedges
-		[CubeCardCategory.LandAbzan]: 'Abzan (WBG)',
-		[CubeCardCategory.LandJeskai]: 'Jeskai (URW)',
-		[CubeCardCategory.LandSultai]: 'Sultai (BGU)',
-		[CubeCardCategory.LandMardu]: 'Mardu (RWB)',
-		[CubeCardCategory.LandTemur]: 'Temur (GUR)',
+		[CubeCardCategory.LandAbzan]: 'Abzan',
+		[CubeCardCategory.LandJeskai]: 'Jeskai',
+		[CubeCardCategory.LandSultai]: 'Sultai',
+		[CubeCardCategory.LandMardu]: 'Mardu',
+		[CubeCardCategory.LandTemur]: 'Temur',
 		// Land subcategories - 4-color and generic
 		[CubeCardCategory.LandFourColor]: '4-Color',
-		[CubeCardCategory.LandGeneric]: 'Lands'
+		[CubeCardCategory.LandGeneric]: 'Other'
 	};
 	return labels[category as CubeCardCategory] || category;
 }

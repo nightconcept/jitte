@@ -70,7 +70,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	// Land subcategories - Guilds (2-color)
 	{
 		id: CubeCardCategory.LandAzorius,
-		label: 'Azorius (WU)',
+		label: 'Azorius',
 		icon: 'ms-wu',
 		order: 10,
 		isRequired: false,
@@ -78,7 +78,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandDimir,
-		label: 'Dimir (UB)',
+		label: 'Dimir',
 		icon: 'ms-ub',
 		order: 11,
 		isRequired: false,
@@ -86,7 +86,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandRakdos,
-		label: 'Rakdos (BR)',
+		label: 'Rakdos',
 		icon: 'ms-br',
 		order: 12,
 		isRequired: false,
@@ -94,7 +94,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandGruul,
-		label: 'Gruul (RG)',
+		label: 'Gruul',
 		icon: 'ms-rg',
 		order: 13,
 		isRequired: false,
@@ -102,7 +102,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandSelesnya,
-		label: 'Selesnya (GW)',
+		label: 'Selesnya',
 		icon: 'ms-gw',
 		order: 14,
 		isRequired: false,
@@ -110,7 +110,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandOrzhov,
-		label: 'Orzhov (WB)',
+		label: 'Orzhov',
 		icon: 'ms-wb',
 		order: 15,
 		isRequired: false,
@@ -118,7 +118,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandIzzet,
-		label: 'Izzet (UR)',
+		label: 'Izzet',
 		icon: 'ms-ur',
 		order: 16,
 		isRequired: false,
@@ -126,7 +126,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandGolgari,
-		label: 'Golgari (BG)',
+		label: 'Golgari',
 		icon: 'ms-bg',
 		order: 17,
 		isRequired: false,
@@ -134,7 +134,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandBoros,
-		label: 'Boros (RW)',
+		label: 'Boros',
 		icon: 'ms-rw',
 		order: 18,
 		isRequired: false,
@@ -142,7 +142,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandSimic,
-		label: 'Simic (GU)',
+		label: 'Simic',
 		icon: 'ms-gu',
 		order: 19,
 		isRequired: false,
@@ -151,7 +151,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	// Land subcategories - Shards (3-color allied)
 	{
 		id: CubeCardCategory.LandEsper,
-		label: 'Esper (WUB)',
+		label: 'Esper',
 		icon: 'ms-land',
 		order: 20,
 		isRequired: false,
@@ -159,7 +159,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandGrixis,
-		label: 'Grixis (UBR)',
+		label: 'Grixis',
 		icon: 'ms-land',
 		order: 21,
 		isRequired: false,
@@ -167,7 +167,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandJund,
-		label: 'Jund (BRG)',
+		label: 'Jund',
 		icon: 'ms-land',
 		order: 22,
 		isRequired: false,
@@ -175,7 +175,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandNaya,
-		label: 'Naya (RGW)',
+		label: 'Naya',
 		icon: 'ms-land',
 		order: 23,
 		isRequired: false,
@@ -183,7 +183,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandBant,
-		label: 'Bant (GWU)',
+		label: 'Bant',
 		icon: 'ms-land',
 		order: 24,
 		isRequired: false,
@@ -192,7 +192,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	// Land subcategories - Wedges (3-color enemy)
 	{
 		id: CubeCardCategory.LandAbzan,
-		label: 'Abzan (WBG)',
+		label: 'Abzan',
 		icon: 'ms-land',
 		order: 25,
 		isRequired: false,
@@ -200,7 +200,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandJeskai,
-		label: 'Jeskai (URW)',
+		label: 'Jeskai',
 		icon: 'ms-land',
 		order: 26,
 		isRequired: false,
@@ -208,7 +208,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandSultai,
-		label: 'Sultai (BGU)',
+		label: 'Sultai',
 		icon: 'ms-land',
 		order: 27,
 		isRequired: false,
@@ -216,7 +216,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandMardu,
-		label: 'Mardu (RWB)',
+		label: 'Mardu',
 		icon: 'ms-land',
 		order: 28,
 		isRequired: false,
@@ -224,7 +224,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandTemur,
-		label: 'Temur (GUR)',
+		label: 'Temur',
 		icon: 'ms-land',
 		order: 29,
 		isRequired: false,
@@ -241,7 +241,7 @@ export const CUBE_CATEGORIES: CategoryDefinition[] = [
 	},
 	{
 		id: CubeCardCategory.LandGeneric,
-		label: 'Lands',
+		label: 'Other',
 		icon: 'ms-land',
 		order: 31,
 		isRequired: false,

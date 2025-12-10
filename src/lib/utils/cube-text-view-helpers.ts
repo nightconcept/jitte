@@ -207,26 +207,53 @@ export function getColorCombinationKey(colors: ManaColor[]): string {
 export function getColorCombinationLabel(combination: string): string {
 	// Two-color guilds
 	if (combination.length === 2 && GUILD_NAMES[combination]) {
-		return `${GUILD_NAMES[combination]} (${combination})`;
+		return GUILD_NAMES[combination];
 	}
 
 	// Three-color combinations
 	if (combination.length === 3 && THREE_COLOR_NAMES[combination]) {
-		return `${THREE_COLOR_NAMES[combination]} (${combination})`;
+		return THREE_COLOR_NAMES[combination];
 	}
 
 	// Four-color combinations
 	if (combination.length === 4 && FOUR_COLOR_NAMES[combination]) {
-		return `${FOUR_COLOR_NAMES[combination]} (${combination})`;
+		return FOUR_COLOR_NAMES[combination];
 	}
 
 	// Five-color
 	if (combination === FIVE_COLOR) {
-		return 'Five-Color (WUBRG)';
+		return 'Five-Color';
 	}
 
 	// Fallback: just show the color combination
 	return combination;
+}
+
+/**
+ * Mapping of color combinations to hybrid mana icons
+ * Only 2-color guilds have hybrid icons
+ */
+const COLOR_COMBINATION_ICONS: Record<string, string> = {
+	// Two-color guilds (have hybrid mana icons)
+	'WU': 'ms-wu',
+	'UB': 'ms-ub',
+	'BR': 'ms-br',
+	'RG': 'ms-rg',
+	'GW': 'ms-gw',
+	'WB': 'ms-wb',
+	'UR': 'ms-ur',
+	'BG': 'ms-bg',
+	'RW': 'ms-rw',
+	'GU': 'ms-gu'
+	// 3-color, 4-color, and 5-color don't have specific icons
+};
+
+/**
+ * Get mana icon class for a color combination
+ * Returns empty string for combinations without icons (3+ colors)
+ */
+export function getColorCombinationIcon(combination: string): string {
+	return COLOR_COMBINATION_ICONS[combination] || '';
 }
 
 /**
