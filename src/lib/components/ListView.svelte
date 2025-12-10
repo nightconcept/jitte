@@ -528,6 +528,60 @@
   let mouseX = $state(0);
   let mouseY = $state(0);
 
+  // Cube text view context menu state (floating menu for right-click)
+  let cubeContextMenu = $state<{ card: Card; category: string; x: number; y: number } | null>(null);
+  let cubeContextMenuRef = $state<HTMLDivElement>();
+
+  function handleCubeContextMenu(event: MouseEvent, card: Card, category: string) {
+    if (!isEditing) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    cubeContextMenu = {
+      card,
+      category,
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+
+  function closeCubeContextMenu() {
+    cubeContextMenu = null;
+  }
+
+  // Click outside handler for cube context menu
+  $effect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      if (cubeContextMenu && cubeContextMenuRef && !cubeContextMenuRef.contains(target)) {
+        closeCubeContextMenu();
+      }
+    }
+
+    if (cubeContextMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  });
+
+  // Close cube context menu on escape
+  $effect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && cubeContextMenu) {
+        closeCubeContextMenu();
+      }
+    }
+
+    if (cubeContextMenu) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  });
+
   // Tooltip positioning constants
   const TOOLTIP_OFFSET = 5; // px from cursor
   const TOOLTIP_WIDTH = 300; // max-width from CSS
@@ -1152,6 +1206,7 @@
               {category}
               categoryLabel={categoryLabels[category]}
               categoryIcon={categoryIcons[category]}
+              format={deck!.format}
               {isEditing}
               onCardClick={(card) => {
                 detailModalCard = { name: card.name, category };
@@ -1193,6 +1248,7 @@
               {category}
               categoryLabel={categoryLabels[category]}
               categoryIcon={categoryIcons[category]}
+              format={deck!.format}
               {isEditing}
               {isDraggableCategory}
               isDraggedCategory={draggedCategory === category}
@@ -1261,6 +1317,7 @@
                                 onmouseenter={(e) => handleCubeCardHover(card, e)}
                                 onmouseleave={() => handleCubeCardHover(null)}
                                 onclick={() => (detailModalCard = { name: card.name, category: subcategory })}
+                                oncontextmenu={(e) => handleCubeContextMenu(e, card, subcategory)}
                                 role="button"
                                 tabindex="0"
                               >
@@ -1302,6 +1359,7 @@
                                     onmouseenter={(e) => handleCubeCardHover(card, e)}
                                     onmouseleave={() => handleCubeCardHover(null)}
                                     onclick={() => (detailModalCard = { name: card.name, category })}
+                                    oncontextmenu={(e) => handleCubeContextMenu(e, card, category)}
                                     role="button"
                                     tabindex="0"
                                   >
@@ -1341,6 +1399,7 @@
                                     onmouseenter={(e) => handleCubeCardHover(card, e)}
                                     onmouseleave={() => handleCubeCardHover(null)}
                                     onclick={() => (detailModalCard = { name: card.name, category })}
+                                    oncontextmenu={(e) => handleCubeContextMenu(e, card, category)}
                                     role="button"
                                     tabindex="0"
                                   >
@@ -1358,6 +1417,29 @@
             {/if}
           {/each}
         </div>
+
+        <!-- Cube Text View Context Menu -->
+        {#if cubeContextMenu}
+          <div
+            bind:this={cubeContextMenuRef}
+            class="fixed z-[100] min-w-[12rem] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-xl p-1"
+            style="left: {cubeContextMenu.x}px; top: {cubeContextMenu.y}px;"
+          >
+            <button
+              onclick={(e) => {
+                e.stopPropagation();
+                handleRemove(cubeContextMenu!.card, cubeContextMenu!.category);
+                closeCubeContextMenu();
+              }}
+              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2 rounded"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+              </svg>
+              Remove
+            </button>
+          </div>
+        {/if}
 
         <!-- Card Art Hover Tooltip -->
         {#if cubeHoveredCard}
@@ -1463,6 +1545,13 @@
                       }}
                       onclick={() => {
                         detailModalCard = { name: card.name, category };
+                      }}
+                      oncontextmenu={(e) => {
+                        if (isEditing) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleCardMenu(card.name, category);
+                        }
                       }}
                       onkeydown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -1717,119 +1806,146 @@
                             {/if}
                           {:else}
                             <!-- Regular card menu -->
-                            <button
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                handleAddOne(card, category);
-                              }}
-                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                            >
-                              <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                            {#if deck?.format === DeckFormat.Cube}
+                              <!-- Cube format: Only show Remove option -->
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemove(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                              </svg>
-                              Add one
-                            </button>
-                            <button
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                showAddMoreModal(card, category);
-                              }}
-                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                            >
-                              <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M20 12H4"
+                                  />
+                                </svg>
+                                Remove
+                              </button>
+                            {:else}
+                              <!-- Other formats: Show all options -->
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddOne(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                              </svg>
-                              Add more...
-                            </button>
-                            <button
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                handleRemove(card, category);
-                              }}
-                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                            >
-                              <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                  />
+                                </svg>
+                                Add one
+                              </button>
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  showAddMoreModal(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M20 12H4"
-                                />
-                              </svg>
-                              Remove
-                            </button>
-                            <div
-                              class="border-t border-[var(--color-border)] my-1"
-                            ></div>
-                            <button
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                showChangePrintingModal(card, category);
-                              }}
-                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                            >
-                              <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                  />
+                                </svg>
+                                Add more...
+                              </button>
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemove(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
-                              Change printing
-                            </button>
-                            <button
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                handleMoveToMaybeboard(card, category);
-                              }}
-                              class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
-                            >
-                              <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M20 12H4"
+                                  />
+                                </svg>
+                                Remove
+                              </button>
+                              <div
+                                class="border-t border-[var(--color-border)] my-1"
+                              ></div>
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  showChangePrintingModal(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                                />
-                              </svg>
-                              Move to Maybeboard
-                            </button>
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                Change printing
+                              </button>
+                              <button
+                                onclick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveToMaybeboard(card, category);
+                                }}
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] flex items-center gap-2"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                                  />
+                                </svg>
+                                Move to Maybeboard
+                              </button>
+                            {/if}
                           {/if}
                         </div>
                       {/if}
