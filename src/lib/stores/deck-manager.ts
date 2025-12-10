@@ -6,7 +6,7 @@
 import { writable, get } from 'svelte/store';
 import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
 import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
-import { migrateLandsCategory } from '$lib/utils/cube-categorization';
+import { migrateLandsCategory, recategorizeLands } from '$lib/utils/cube-categorization';
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card } from '$lib/types/card';
 import { getStorageManager } from '$lib/storage/storage-manager';
@@ -136,6 +136,15 @@ function createDeckManager() {
 					deck = {
 						...deck,
 						cards: migrateLandsCategory(deck.cards)
+					};
+				}
+
+				// Auto-migrate: Re-categorize all lands to fix miscategorizations from previous bugs
+				if (isCubeDeck(deck)) {
+					console.log('[deckManager.loadDeck] Re-categorizing all cube lands with current logic');
+					deck = {
+						...deck,
+						cards: recategorizeLands(deck.cards)
 					};
 				}
 

@@ -56,35 +56,35 @@ function determineLandCategory(card: Card): CubeCardCategory {
 	// 3-color lands (shards and wedges)
 	if (colorCount === 3) {
 		const shardWedgeMap: Record<string, CubeCardCategory> = {
-			// Shards (allied)
+			// Shards (allied) - all keys are in WUBRG sorted order
 			'WUB': CubeCardCategory.LandEsper,
 			'UBR': CubeCardCategory.LandGrixis,
 			'BRG': CubeCardCategory.LandJund,
-			'RGW': CubeCardCategory.LandNaya,
-			'GWU': CubeCardCategory.LandBant,
-			// Wedges (enemy)
+			'WRG': CubeCardCategory.LandNaya,
+			'WUG': CubeCardCategory.LandBant,
+			// Wedges (enemy) - all keys are in WUBRG sorted order
 			'WBG': CubeCardCategory.LandAbzan,
-			'URW': CubeCardCategory.LandJeskai,
-			'BGU': CubeCardCategory.LandSultai,
-			'RWB': CubeCardCategory.LandMardu,
-			'GUR': CubeCardCategory.LandTemur
+			'WUR': CubeCardCategory.LandJeskai,
+			'UBG': CubeCardCategory.LandSultai,
+			'WBR': CubeCardCategory.LandMardu,
+			'URG': CubeCardCategory.LandTemur
 		};
 		return shardWedgeMap[colorKey] || CubeCardCategory.LandGeneric;
 	}
 
-	// 2-color lands (guilds)
+	// 2-color lands (guilds) - all keys are in WUBRG sorted order
 	if (colorCount === 2) {
 		const guildMap: Record<string, CubeCardCategory> = {
 			'WU': CubeCardCategory.LandAzorius,
 			'UB': CubeCardCategory.LandDimir,
 			'BR': CubeCardCategory.LandRakdos,
 			'RG': CubeCardCategory.LandGruul,
-			'GW': CubeCardCategory.LandSelesnya,
+			'WG': CubeCardCategory.LandSelesnya,
 			'WB': CubeCardCategory.LandOrzhov,
 			'UR': CubeCardCategory.LandIzzet,
 			'BG': CubeCardCategory.LandGolgari,
-			'RW': CubeCardCategory.LandBoros,
-			'GU': CubeCardCategory.LandSimic
+			'WR': CubeCardCategory.LandBoros,
+			'UG': CubeCardCategory.LandSimic
 		};
 		return guildMap[colorKey] || CubeCardCategory.LandGeneric;
 	}
@@ -390,6 +390,36 @@ export function migrateLandsCategory(cards: Record<string, Card[]>): Record<stri
 			// Remove the old category
 			delete cards[oldCat];
 		}
+	}
+
+	return cards;
+}
+
+/**
+ * Re-categorize all lands to fix any miscategorizations from previous bugs
+ * This should be run when loading decks to ensure all lands are in the correct subcategories
+ * based on the current categorization logic
+ */
+export function recategorizeLands(cards: Record<string, Card[]>): Record<string, Card[]> {
+	const landCategories = getLandCategories();
+
+	// Collect all lands from all land categories
+	const allLands: Card[] = [];
+	for (const category of landCategories) {
+		if (cards[category] && cards[category].length > 0) {
+			allLands.push(...cards[category]);
+			// Clear the category - we'll repopulate it
+			cards[category] = [];
+		}
+	}
+
+	// Re-categorize each land
+	for (const card of allLands) {
+		const correctCategory = determineLandCategory(card);
+		if (!cards[correctCategory]) {
+			cards[correctCategory] = [];
+		}
+		cards[correctCategory].push(card);
 	}
 
 	return cards;
