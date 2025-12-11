@@ -8,6 +8,12 @@ import { FileSystemFolderProvider, isFolderStorageSupported } from './filesystem
 import { LocalStorageProvider } from './local-storage-provider';
 import type { DeckListEntry, IStorageProvider, StorageConfig, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
+import {
+	runMigrations,
+	needsMigration,
+	getMigrationStatus
+} from './migrations';
+import type { MigrationProgressCallback, MigrationStatus, MigrationResult } from './migrations';
 
 /**
  * Storage Manager class
@@ -273,6 +279,87 @@ export class StorageManager {
 			data: this.config
 		};
 	}
+
+	// ==================== Migration Methods ====================
+
+	/**
+	 * Check if migrations are needed
+	 * Call this after storage initialization
+	 */
+	async checkMigrations(): Promise<boolean> {
+		return await needsMigration();
+	}
+
+	/**
+	 * Get detailed migration status
+	 */
+	async getMigrationStatus(): Promise<MigrationStatus> {
+		return await getMigrationStatus();
+	}
+
+	/**
+	 * Run all pending migrations
+	 * @param onProgress - Optional callback for migration progress
+	 * @returns Migration result
+	 */
+	async runMigrations(onProgress?: MigrationProgressCallback): Promise<MigrationResult> {
+		console.log('[StorageManager] Running migrations...');
+		const result = await runMigrations(onProgress);
+
+		if (result.success) {
+			console.log(`[StorageManager] Migrations complete. ${result.itemsMigrated || 0} items migrated.`);
+		} else {
+			console.error('[StorageManager] Migration failed:', result.error);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Initialize storage and run migrations if needed
+	 * This is the recommended way to start the storage system
+	 */
+	async initializeWithMigrations(
+		preferredProvider?: StorageProvider,
+		onMigrationProgress?: MigrationProgressCallback
+	): Promise<StorageResult<StorageConfig & { migrationResult?: MigrationResult }>> {
+		// First initialize storage
+		const initResult = await this.initialize(preferredProvider);
+		if (!initResult.success) {
+			return initResult;
+		}
+
+		// Check and run migrations
+		const needsMigrations = await this.checkMigrations();
+		let migrationResult: MigrationResult | undefined;
+
+		if (needsMigrations) {
+			console.log('[StorageManager] Migrations needed, running...');
+			migrationResult = await this.runMigrations(onMigrationProgress);
+
+			if (!migrationResult.success) {
+				// Return migration failure but storage is still initialized
+				return {
+					success: false,
+					error: `Storage initialized but migration failed: ${migrationResult.error}`,
+					data: {
+						...initResult.data!,
+						migrationResult
+					}
+				};
+			}
+		}
+
+		return {
+			success: true,
+			data: {
+				...initResult.data!,
+				migrationResult
+			}
+		};
+	}
+
+	// ==================== Private Methods ====================
 
 	/**
 	 * Create a provider instance

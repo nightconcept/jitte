@@ -1,11 +1,11 @@
 # Storage Redesign: Slim Format + Delta-Based Versioning
 
-> **Status**: In Progress (Phases 1-5 Complete)
+> **Status**: In Progress (Phases 1-6 Complete)
 > **Created**: 2024-12-10
 > **Last Updated**: 2024-12-10
 >
-> **Completed**: Phase 1 (Foundation), Phase 2 (Card Reference), Phase 3 (Delta System), Phase 4 (Storage Providers), Phase 5 (Serialization)
-> **Next**: Phase 6 (Migration), Phase 7 (Store Updates), Phase 8 (UI Integration)
+> **Completed**: Phase 1 (Foundation), Phase 2 (Card Reference), Phase 3 (Delta System), Phase 4 (Storage Providers), Phase 5 (Serialization), Phase 6 (Migration)
+> **Next**: Phase 7 (Store Updates), Phase 8 (UI Integration)
 
 ## Problem Statement
 
@@ -299,19 +299,22 @@ interface StoredFolderHandle {
   - `detectVersionFormat()` / `convertLegacyToSlim()` - format detection + migration
 - [ ] **5.2** Update `src/lib/utils/zip.ts` for new archive structure (optional - providers work with DeckArchive)
 
-### Phase 6: Migration System
+### Phase 6: Migration System ✅
 
-- [ ] **6.1** Create `src/lib/storage/migrations/v1-to-v2.ts`:
+- [x] **6.1** Create `src/lib/storage/migrations/v1-to-v2.ts`:
   - Detect old format (full card data, no delta)
   - Convert cards to CardReference format
   - Cache full card data in `jitte-card-cache`
   - Create initial base version
   - Update manifest to V2
-- [ ] **6.2** Create `src/lib/storage/migrations/localstorage-to-indexeddb.ts`:
-  - Move deck data from localStorage to IndexedDB
-  - Clean up old localStorage keys
-- [ ] **6.3** Create `src/lib/storage/migrations/import-old-jitte.ts`:
+- [x] **6.2** Create `src/lib/storage/migrations/localstorage-cleanup.ts`:
+  - Remove old localStorage keys after migration
+  - Verify decks exist in new storage before cleanup
+- [x] **6.3** Create `src/lib/storage/migrations/import-old-jitte.ts`:
   - Handle importing old .jitte files with full card data
+- [x] **6.4** Wire migrations into storage manager:
+  - Add `checkMigrations()`, `runMigrations()`, `getMigrationStatus()` methods
+  - Add `initializeWithMigrations()` for combined init + migrate flow
 
 ### Phase 7: Store Updates
 
@@ -356,9 +359,9 @@ src/lib/storage/indexeddb-deck-provider.ts   ✅ Created
 src/lib/storage/deck-serializer.ts           ✅ Created
 src/lib/storage/migrations/types.ts          ✅ Created
 src/lib/storage/migrations/index.ts          ✅ Created
-src/lib/storage/migrations/v1-to-v2.ts       (Phase 6)
-src/lib/storage/migrations/localstorage-to-indexeddb.ts  (Phase 6)
-src/lib/storage/migrations/import-old-jitte.ts           (Phase 6)
+src/lib/storage/migrations/v1-to-v2.ts       ✅ Created
+src/lib/storage/migrations/localstorage-cleanup.ts   ✅ Created
+src/lib/storage/migrations/import-old-jitte.ts       ✅ Created
 src/lib/utils/card-reference.ts              ✅ Created
 src/lib/utils/card-hydration.ts              ✅ Created
 src/lib/utils/version-delta.ts               ✅ Created
@@ -370,8 +373,8 @@ src/lib/utils/version-reconstruction.ts      ✅ Created
 src/lib/types/card-reference.ts          ✅ Updated (MaybeboardCategoryReference metadata)
 src/lib/storage/types.ts                 ✅ Updated (IndexedDB storage provider enum)
 src/lib/storage/filesystem-folder-provider.ts  ✅ Updated (slim format methods)
+src/lib/storage/storage-manager.ts       ✅ Updated (migration integration)
 src/lib/types/deck.ts                    (Phase 7 - DeckManifestV2)
-src/lib/storage/storage-manager.ts       (Phase 7 - dual storage integration)
 src/lib/utils/version-control.ts         (Phase 7 - delta integration)
 src/lib/utils/zip.ts                     (optional - providers handle DeckArchive)
 src/lib/stores/deck-store.ts             (Phase 7 - CardReference support)

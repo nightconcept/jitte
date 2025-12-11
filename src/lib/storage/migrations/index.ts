@@ -15,6 +15,11 @@ import type {
 	SchemaVersion,
 	StoredMigrationRecord
 } from './types';
+import { v1ToV2Migration } from './v1-to-v2';
+import { localStorageCleanupMigration } from './localstorage-cleanup';
+
+// Re-export types for external use
+export type { MigrationProgressCallback, MigrationProgress, MigrationStatus, MigrationResult } from './types';
 
 // Current target schema version
 export const CURRENT_SCHEMA_VERSION: SchemaVersion = '2.0';
@@ -29,12 +34,14 @@ const MIGRATION_STORE = 'completed-migrations';
  * Add new migrations here in order
  */
 const migrations: MigrationEntry[] = [
-	// Migrations will be registered here
-	// Example:
-	// {
-	//   migration: new V1ToV2Migration(),
-	//   order: 1
-	// }
+	{
+		migration: v1ToV2Migration,
+		order: 1
+	},
+	{
+		migration: localStorageCleanupMigration,
+		order: 2
+	}
 ];
 
 /**
