@@ -1,11 +1,11 @@
 # Storage Redesign: Slim Format + Delta-Based Versioning
 
-> **Status**: In Progress (Phases 1-3 Complete)
+> **Status**: In Progress (Phases 1-5 Complete)
 > **Created**: 2024-12-10
 > **Last Updated**: 2024-12-10
 >
-> **Completed**: Phase 1 (Foundation), Phase 2 (Card Reference), Phase 3 (Delta System)
-> **Next**: Phase 4 (Storage Providers), Phase 5 (Serialization), Phase 6 (Migration)
+> **Completed**: Phase 1 (Foundation), Phase 2 (Card Reference), Phase 3 (Delta System), Phase 4 (Storage Providers), Phase 5 (Serialization)
+> **Next**: Phase 6 (Migration), Phase 7 (Store Updates), Phase 8 (UI Integration)
 
 ## Problem Statement
 
@@ -282,20 +282,22 @@ interface StoredFolderHandle {
   - `reconstructVersion(targetVersion: string, bases: VersionBase[], deltas: VersionDelta[]): CardReferencesByCategory`
 - [ ] **3.3** Update `src/lib/utils/version-control.ts` to use delta system
 
-### Phase 4: Storage Providers (Updated)
+### Phase 4: Storage Providers ✅
 
-- [ ] **4.1** Create `src/lib/storage/indexeddb-deck-provider.ts` - new IndexedDB provider for decks
-- [ ] **4.2** Update `src/lib/storage/filesystem-folder-provider.ts` to use slim format
-- [ ] **4.3** Create `src/lib/storage/dual-storage-manager.ts` - orchestrates dual writes
-- [ ] **4.4** Implement folder handle persistence and permission re-request
+- [x] **4.1** Create `src/lib/storage/indexeddb-deck-provider.ts` - new IndexedDB provider for decks
+- [x] **4.2** Update `src/lib/storage/filesystem-folder-provider.ts` to use slim format
+- [x] **4.3** Create `src/lib/storage/dual-storage-manager.ts` - orchestrates dual writes
+- [x] **4.4** Implement folder handle persistence and permission re-request
 
-### Phase 5: Serialization (Updated)
+### Phase 5: Serialization ✅
 
-- [ ] **5.1** Update `src/lib/utils/deck-serializer.ts`:
-  - Add `serializeDeckToSlimJSON(deck: Deck): string`
-  - Add `deserializeSlimDeck(json: string): CardReferencesByCategory`
-  - Keep old methods for migration compatibility
-- [ ] **5.2** Update `src/lib/utils/zip.ts` for new archive structure
+- [x] **5.1** Create `src/lib/storage/deck-serializer.ts`:
+  - `serializeToBase()` / `serializeCardsToSlimJson()` - convert cards to slim format
+  - `parseVersionFileContentAsync()` - parse and hydrate version content
+  - `maybeboardToSlimFormat()` / `slimMaybeboardToFull()` - maybeboard conversion
+  - `stashToSlimFormat()` / `slimStashToArchiveFormat()` - stash conversion
+  - `detectVersionFormat()` / `convertLegacyToSlim()` - format detection + migration
+- [ ] **5.2** Update `src/lib/utils/zip.ts` for new archive structure (optional - providers work with DeckArchive)
 
 ### Phase 6: Migration System
 
@@ -346,32 +348,35 @@ interface StoredFolderHandle {
 
 ### New Files
 ```
-src/lib/types/card-reference.ts
-src/lib/types/version-delta.ts
-src/lib/storage/deck-database.ts
-src/lib/storage/dual-storage-manager.ts
-src/lib/storage/indexeddb-deck-provider.ts
-src/lib/storage/migrations/types.ts
-src/lib/storage/migrations/index.ts
-src/lib/storage/migrations/v1-to-v2.ts
-src/lib/storage/migrations/localstorage-to-indexeddb.ts
-src/lib/storage/migrations/import-old-jitte.ts
-src/lib/utils/card-reference.ts
-src/lib/utils/version-delta.ts
-src/lib/utils/version-reconstruction.ts
+src/lib/types/card-reference.ts              ✅ Created
+src/lib/types/version-delta.ts               ✅ Created
+src/lib/storage/deck-database.ts             ✅ Created
+src/lib/storage/dual-storage-manager.ts      ✅ Created
+src/lib/storage/indexeddb-deck-provider.ts   ✅ Created
+src/lib/storage/deck-serializer.ts           ✅ Created
+src/lib/storage/migrations/types.ts          ✅ Created
+src/lib/storage/migrations/index.ts          ✅ Created
+src/lib/storage/migrations/v1-to-v2.ts       (Phase 6)
+src/lib/storage/migrations/localstorage-to-indexeddb.ts  (Phase 6)
+src/lib/storage/migrations/import-old-jitte.ts           (Phase 6)
+src/lib/utils/card-reference.ts              ✅ Created
+src/lib/utils/card-hydration.ts              ✅ Created
+src/lib/utils/version-delta.ts               ✅ Created
+src/lib/utils/version-reconstruction.ts      ✅ Created
 ```
 
 ### Modified Files
 ```
-src/lib/types/deck.ts                    # Add DeckManifestV2
-src/lib/storage/storage-manager.ts       # Integrate dual storage
-src/lib/storage/filesystem-folder-provider.ts  # Slim format
-src/lib/utils/deck-serializer.ts         # Add slim serialization
-src/lib/utils/version-control.ts         # Delta integration
-src/lib/utils/zip.ts                     # New archive structure
-src/lib/stores/deck-store.ts             # CardReference support
-src/lib/stores/deck-manager.ts           # Dual storage + migrations
-src/lib/api/card-service.ts              # Batch fetch helper
+src/lib/types/card-reference.ts          ✅ Updated (MaybeboardCategoryReference metadata)
+src/lib/storage/types.ts                 ✅ Updated (IndexedDB storage provider enum)
+src/lib/storage/filesystem-folder-provider.ts  ✅ Updated (slim format methods)
+src/lib/types/deck.ts                    (Phase 7 - DeckManifestV2)
+src/lib/storage/storage-manager.ts       (Phase 7 - dual storage integration)
+src/lib/utils/version-control.ts         (Phase 7 - delta integration)
+src/lib/utils/zip.ts                     (optional - providers handle DeckArchive)
+src/lib/stores/deck-store.ts             (Phase 7 - CardReference support)
+src/lib/stores/deck-manager.ts           (Phase 7 - dual storage + migrations)
+src/lib/api/card-service.ts              (optional - batch fetch already exists)
 ```
 
 ---

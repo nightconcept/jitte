@@ -87,6 +87,14 @@ export interface MaybeboardCategoryReference {
 	id: string;
 	name: string;
 	cards: CardReference[];
+	/** Optional description */
+	description?: string;
+	/** Order index for display */
+	order: number;
+	/** ISO timestamp of creation */
+	createdAt: string;
+	/** ISO timestamp of last update */
+	updatedAt: string;
 }
 
 /**

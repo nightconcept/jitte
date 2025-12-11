@@ -8,10 +8,12 @@ import type { DeckArchive } from '$lib/utils/zip';
  * Storage provider types
  */
 export enum StorageProvider {
-	/** Browser localStorage (fallback) */
+	/** Browser localStorage (fallback, legacy) */
 	LocalStorage = 'localStorage',
 	/** File System Access API (folder structure) */
-	FolderStorage = 'folderStorage'
+	FolderStorage = 'folderStorage',
+	/** IndexedDB storage (new default) */
+	IndexedDB = 'indexedDB'
 }
 
 /**

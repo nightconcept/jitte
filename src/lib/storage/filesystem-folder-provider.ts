@@ -7,6 +7,9 @@ import { getDeckFilename, getDeckFolderName, extractDeckName } from '$lib/utils/
 import type { DeckArchive } from '$lib/utils/zip';
 import type { DeckListEntry, IStorageProvider, StorageCapabilities, StorageResult } from './types';
 import { StorageErrorCode, StorageProvider } from './types';
+import type { CardReferencesByCategory } from '$lib/types/card-reference';
+import type { VersionBase, VersionDelta, VersionContent } from '$lib/types/version-delta';
+import { isVersionBase, isVersionDelta } from '$lib/types/version-delta';
 
 /**
  * FileSystem Folder implementation of IStorageProvider
@@ -693,6 +696,480 @@ export class FileSystemFolderProvider implements IStorageProvider {
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Failed to get available space',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	// ==================== SLIM FORMAT METHODS ====================
+
+	/**
+	 * Save a version in slim format (base or delta)
+	 */
+	async saveVersionSlim(
+		deckName: string,
+		branch: string,
+		version: string,
+		content: VersionContent
+	): Promise<StorageResult<void>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			// Get or create deck folder structure
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName, {
+				create: true
+			});
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches', {
+				create: true
+			});
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch, {
+				create: true
+			});
+
+			// Save as JSON file
+			const fileName = `v${version}.json`;
+			await this.writeJsonFile(branchHandle, fileName, content);
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to save version',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Load a specific version in slim format
+	 */
+	async loadVersionSlim(
+		deckName: string,
+		branch: string,
+		version: string
+	): Promise<StorageResult<VersionContent>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches');
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch);
+
+			// Try JSON format first (new slim format)
+			const jsonFileName = `v${version}.json`;
+			try {
+				const content = await this.readJsonFile(branchHandle, jsonFileName);
+
+				// Validate it's a proper slim format
+				if (isVersionBase(content) || isVersionDelta(content)) {
+					return {
+						success: true,
+						data: content
+					};
+				}
+
+				// JSON file exists but is not in slim format (legacy JSON)
+				return {
+					success: false,
+					error: 'Version file is not in slim format',
+					errorCode: StorageErrorCode.InvalidData
+				};
+			} catch {
+				// JSON file doesn't exist, check for legacy .txt format
+				const txtFileName = `v${version}.txt`;
+				try {
+					await this.readTextFile(branchHandle, txtFileName);
+					return {
+						success: false,
+						error: 'Version is in legacy format, requires migration',
+						errorCode: StorageErrorCode.InvalidData
+					};
+				} catch {
+					return {
+						success: false,
+						error: `Version ${version} not found`,
+						errorCode: StorageErrorCode.NotFound
+					};
+				}
+			}
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				return {
+					success: false,
+					error: `Deck "${deckName}" or branch "${branch}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to load version',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * List all versions for a branch with their types (base/delta)
+	 */
+	async listVersionsSlim(
+		deckName: string,
+		branch: string
+	): Promise<StorageResult<Array<{ version: string; isBase: boolean; fileName: string }>>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches');
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch);
+
+			const versions: Array<{ version: string; isBase: boolean; fileName: string }> = [];
+
+			for await (const entry of branchHandle.values()) {
+				if (entry.kind === 'file' && entry.name.startsWith('v') && entry.name.endsWith('.json')) {
+					const fileName = entry.name;
+					// Extract version number (remove 'v' prefix and '.json' suffix)
+					const version = fileName.slice(1, -5);
+
+					try {
+						const content = await this.readJsonFile(branchHandle, fileName);
+						const isBase = isVersionBase(content);
+
+						versions.push({
+							version,
+							isBase,
+							fileName
+						});
+					} catch {
+						// Skip files that can't be parsed
+						console.warn(`[FileSystemFolderProvider] Could not parse version file: ${fileName}`);
+					}
+				}
+			}
+
+			// Sort by version (semantic versioning)
+			versions.sort((a, b) => {
+				const partsA = a.version.split('.').map(Number);
+				const partsB = b.version.split('.').map(Number);
+
+				for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+					const partA = partsA[i] || 0;
+					const partB = partsB[i] || 0;
+					if (partA !== partB) return partA - partB;
+				}
+				return 0;
+			});
+
+			return {
+				success: true,
+				data: versions
+			};
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				return {
+					success: false,
+					error: `Deck "${deckName}" or branch "${branch}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to list versions',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Save maybeboard in slim format (CardReferencesByCategory)
+	 */
+	async saveMaybeboardSlim(
+		deckName: string,
+		categoryId: string,
+		cards: CardReferencesByCategory
+	): Promise<StorageResult<void>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName, {
+				create: true
+			});
+			const maybeboardHandle = await deckFolderHandle.getDirectoryHandle('maybeboards', {
+				create: true
+			});
+
+			// Save the category with slim card references
+			const categoryData = {
+				id: categoryId,
+				cards,
+				schemaVersion: '2.0' as const
+			};
+
+			await this.writeJsonFile(maybeboardHandle, `${categoryId}.json`, categoryData);
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to save maybeboard',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Load maybeboard category in slim format
+	 */
+	async loadMaybeboardSlim(
+		deckName: string,
+		categoryId: string
+	): Promise<StorageResult<{ id: string; cards: CardReferencesByCategory }>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			const maybeboardHandle = await deckFolderHandle.getDirectoryHandle('maybeboards');
+
+			const content = await this.readJsonFile(maybeboardHandle, `${categoryId}.json`);
+
+			// Check if it's slim format (has schemaVersion 2.0)
+			if (content.schemaVersion === '2.0') {
+				return {
+					success: true,
+					data: {
+						id: content.id,
+						cards: content.cards
+					}
+				};
+			}
+
+			// Legacy format - needs migration
+			return {
+				success: false,
+				error: 'Maybeboard is in legacy format, requires migration',
+				errorCode: StorageErrorCode.InvalidData
+			};
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				return {
+					success: false,
+					error: `Maybeboard category "${categoryId}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to load maybeboard',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Save stash in slim format
+	 */
+	async saveStashSlim(
+		deckName: string,
+		branch: string,
+		cards: CardReferencesByCategory
+	): Promise<StorageResult<void>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName, {
+				create: true
+			});
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches', {
+				create: true
+			});
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch, {
+				create: true
+			});
+
+			// Save stash as JSON with slim format
+			const stashData = {
+				schemaVersion: '2.0' as const,
+				cards
+			};
+
+			await this.writeJsonFile(branchHandle, 'stash.json', stashData);
+
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to save stash',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Load stash in slim format
+	 */
+	async loadStashSlim(
+		deckName: string,
+		branch: string
+	): Promise<StorageResult<CardReferencesByCategory>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches');
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch);
+
+			// Try new JSON format first
+			try {
+				const content = await this.readJsonFile(branchHandle, 'stash.json');
+
+				if (content.schemaVersion === '2.0') {
+					return {
+						success: true,
+						data: content.cards
+					};
+				}
+
+				// JSON exists but not slim format
+				return {
+					success: false,
+					error: 'Stash is in legacy format',
+					errorCode: StorageErrorCode.InvalidData
+				};
+			} catch {
+				// Try legacy .txt format
+				try {
+					await this.readTextFile(branchHandle, 'stash.txt');
+					return {
+						success: false,
+						error: 'Stash is in legacy text format, requires migration',
+						errorCode: StorageErrorCode.InvalidData
+					};
+				} catch {
+					// No stash exists
+					return {
+						success: false,
+						error: 'No stash found',
+						errorCode: StorageErrorCode.NotFound
+					};
+				}
+			}
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				return {
+					success: false,
+					error: `Deck "${deckName}" or branch "${branch}" not found`,
+					errorCode: StorageErrorCode.NotFound
+				};
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to load stash',
+				errorCode: StorageErrorCode.Unknown
+			};
+		}
+	}
+
+	/**
+	 * Delete a stash
+	 */
+	async deleteStash(deckName: string, branch: string): Promise<StorageResult<void>> {
+		if (!this.directoryHandle) {
+			return {
+				success: false,
+				error: 'Storage not initialized',
+				errorCode: StorageErrorCode.NotSupported
+			};
+		}
+
+		try {
+			const deckFolderName = getDeckFolderName(deckName);
+
+			const deckFolderHandle = await this.directoryHandle.getDirectoryHandle(deckFolderName);
+			const branchesHandle = await deckFolderHandle.getDirectoryHandle('branches');
+			const branchHandle = await branchesHandle.getDirectoryHandle(branch);
+
+			// Try to delete both formats
+			try {
+				await branchHandle.removeEntry('stash.json');
+			} catch {
+				// stash.json doesn't exist
+			}
+
+			try {
+				await branchHandle.removeEntry('stash.txt');
+			} catch {
+				// stash.txt doesn't exist
+			}
+
+			return { success: true };
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'NotFoundError') {
+				// Deck/branch doesn't exist, stash is effectively deleted
+				return { success: true };
+			}
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to delete stash',
 				errorCode: StorageErrorCode.Unknown
 			};
 		}
