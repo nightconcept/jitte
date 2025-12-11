@@ -10,7 +10,8 @@ import { migrateLandsCategory, recategorizeLands } from '$lib/utils/cube-categor
 import type { Maybeboard } from '$lib/types/maybeboard';
 import type { Card } from '$lib/types/card';
 import { getStorageManager } from '$lib/storage/storage-manager';
-import type { DeckListEntry } from '$lib/storage/types';
+import type { DeckListEntry, StorageConfig } from '$lib/storage/types';
+import type { MigrationResult, MigrationProgress } from '$lib/storage/migrations';
 import { deckStore } from './deck-store';
 import { createVersion } from '$lib/utils/version-control';
 import { createDeckManifest } from '$lib/utils/deck-factory';
@@ -34,6 +35,11 @@ interface AppState {
 	isLoading: boolean;
 	error: string | null;
 	isInitialized: boolean;
+	// Storage and migration state
+	storageConfig: StorageConfig | null;
+	migrationResult: MigrationResult | null;
+	isMigrating: boolean;
+	migrationProgress: MigrationProgress | null;
 }
 
 const ACTIVE_DECK_KEY = 'jitte:activeDeckName';
@@ -48,7 +54,11 @@ function createDeckManager() {
 		activeManifest: null,
 		isLoading: false,
 		error: null,
-		isInitialized: false
+		isInitialized: false,
+		storageConfig: null,
+		migrationResult: null,
+		isMigrating: false,
+		migrationProgress: null
 	};
 
 	const { subscribe, set, update } = writable<AppState>(initialState);
@@ -56,25 +66,56 @@ function createDeckManager() {
 	const storage = getStorageManager();
 
 	/**
-	 * Initialize storage
+	 * Initialize storage with automatic migrations
 	 */
 	async function initializeStorage(): Promise<void> {
 		update((state) => ({ ...state, isLoading: true, error: null }));
 
-		// Initialize the storage manager
-		const initResult = await storage.initialize();
+		// Initialize the storage manager with migrations
+		const initResult = await storage.initializeWithMigrations(
+			undefined, // Use default provider detection
+			(progress) => {
+				// Update migration progress for UI
+				update((state) => ({
+					...state,
+					isMigrating: true,
+					migrationProgress: progress
+				}));
+			}
+		);
 
 		if (!initResult.success) {
 			update((state) => ({
 				...state,
 				isLoading: false,
+				isMigrating: false,
 				error: initResult.error || 'Failed to initialize storage',
-				isInitialized: false
+				isInitialized: false,
+				// Store partial results even on failure
+				storageConfig: initResult.data || null,
+				migrationResult: initResult.data?.migrationResult || null
 			}));
 			return;
 		}
 
-		update((state) => ({ ...state, isInitialized: true }));
+		// Store the config and migration results
+		update((state) => ({
+			...state,
+			isInitialized: true,
+			isMigrating: false,
+			migrationProgress: null,
+			storageConfig: initResult.data || null,
+			migrationResult: initResult.data?.migrationResult || null
+		}));
+
+		// Log migration results if any
+		if (initResult.data?.migrationResult) {
+			const mr = initResult.data.migrationResult;
+			console.log(`[DeckManager] Migration complete: ${mr.itemsMigrated || 0} items migrated in ${mr.durationMs}ms`);
+			if (mr.warnings?.length) {
+				console.warn('[DeckManager] Migration warnings:', mr.warnings);
+			}
+		}
 
 		// Load deck list
 		await refreshDeckList();
@@ -931,6 +972,104 @@ function createDeckManager() {
 		return storage;
 	}
 
+	/**
+	 * Get storage status information for UI display
+	 */
+	function getStorageStatus(): {
+		provider: string | null;
+		isInitialized: boolean;
+		folderPath: string | null;
+		hasMigrated: boolean;
+		migrationWarnings: string[] | null;
+	} {
+		const state = get({ subscribe });
+		return {
+			provider: state.storageConfig?.provider || null,
+			isInitialized: state.isInitialized,
+			folderPath: state.storageConfig?.directoryPath || null,
+			hasMigrated: state.migrationResult?.success === true && (state.migrationResult?.itemsMigrated || 0) > 0,
+			migrationWarnings: state.migrationResult?.warnings || null
+		};
+	}
+
+	/**
+	 * Import a deck from a .jitte file (handles both old and new formats)
+	 */
+	async function importDeckFromArchive(archive: import('$lib/utils/zip').DeckArchive): Promise<{
+		success: boolean;
+		deckName?: string;
+		error?: string;
+		wasConverted?: boolean;
+	}> {
+		update((state) => ({ ...state, isLoading: true, error: null }));
+
+		try {
+			// Check if this is an old format file
+			const { isOldJitteFormat, importOldJitteFile } = await import('$lib/storage/migrations/import-old-jitte');
+
+			if (isOldJitteFormat(archive)) {
+				// Use the migration import for old format
+				console.log('[DeckManager] Detected old format .jitte file, converting...');
+				const importResult = await importOldJitteFile(archive, (progress) => {
+					update((state) => ({
+						...state,
+						isMigrating: true,
+						migrationProgress: progress
+					}));
+				});
+
+				update((state) => ({
+					...state,
+					isLoading: false,
+					isMigrating: false,
+					migrationProgress: null
+				}));
+
+				if (importResult.success && importResult.deckName) {
+					// Refresh deck list and load the imported deck
+					await refreshDeckList();
+					await loadDeck(importResult.deckName);
+				}
+
+				return {
+					success: importResult.success,
+					deckName: importResult.deckName,
+					error: importResult.error,
+					wasConverted: importResult.wasConverted
+				};
+			}
+
+			// New format - save directly
+			const deckName = archive.manifest.name;
+			const result = await storage.saveDeck(deckName, archive);
+
+			if (result.success) {
+				await refreshDeckList();
+				await loadDeck(deckName);
+			}
+
+			update((state) => ({ ...state, isLoading: false }));
+
+			return {
+				success: result.success,
+				deckName: result.success ? deckName : undefined,
+				error: result.error,
+				wasConverted: false
+			};
+		} catch (error) {
+			update((state) => ({
+				...state,
+				isLoading: false,
+				isMigrating: false,
+				error: error instanceof Error ? error.message : 'Import failed'
+			}));
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Import failed'
+			};
+		}
+	}
 
 	return {
 		subscribe,
@@ -948,7 +1087,9 @@ function createDeckManager() {
 		deleteBranchFromDeck,
 		updateVersioningScheme,
 		clearError,
-		getStorage
+		getStorage,
+		getStorageStatus,
+		importDeckFromArchive
 	};
 }
 
