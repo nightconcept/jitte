@@ -816,21 +816,9 @@
 			deckStore.setEditMode(true);
 		}
 
-		// Build a map of existing cards by name for fast lookup
+		// Build a map of existing cards by name for fast lookup (format-agnostic)
 		const existingCardsMap = new Map<string, Card>();
-		const categories: CardCategory[] = [
-			CardCategory.Commander,
-			CardCategory.Companion,
-			CardCategory.Planeswalker,
-			CardCategory.Creature,
-			CardCategory.Instant,
-			CardCategory.Sorcery,
-			CardCategory.Artifact,
-			CardCategory.Enchantment,
-			CardCategory.Land
-		];
-		for (const category of categories) {
-			const categoryCards = $deckStore.deck.cards[category] || [];
+		for (const categoryCards of Object.values($deckStore.deck.cards)) {
 			for (const card of categoryCards) {
 				existingCardsMap.set(card.name.toLowerCase(), card);
 			}

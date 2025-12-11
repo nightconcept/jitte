@@ -1134,11 +1134,19 @@ function createDeckStore() {
 			update((state) => {
 				if (!state) return state;
 
-				// Categorize the new cards
-				const categorizedCards = categorizeDeck(cards);
+				// Get format service for current deck format
+				const formatService = getFormatService(state.deck.format);
 
-				// Preserve the commander(s) from the current deck
-				categorizedCards[CardCategory.Commander] = state.deck.cards[CardCategory.Commander] || [];
+				// Categorize the new cards using format-aware service
+				const categorizedCards = formatService.categorizeCards(
+					cards,
+					state.deck.categorizationMode
+				);
+
+				// Preserve special cards (commanders for Commander format)
+				if (isCommanderDeck(state.deck)) {
+					categorizedCards[CardCategory.Commander] = state.deck.cards[CardCategory.Commander] || [];
+				}
 
 				// Create new deck with categorized cards
 				const newDeck: Deck = {
