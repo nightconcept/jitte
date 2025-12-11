@@ -15,7 +15,7 @@
 
 import type { Migration, MigrationProgressCallback, MigrationResult } from './types';
 import { deckDatabase } from '../deck-database';
-import { getMigrationStatus } from './index';
+import { getCompletedMigrations } from './index';
 
 // Storage keys for old localStorage format
 const DECK_LIST_KEY = 'jitte-deck-list';
@@ -75,8 +75,11 @@ export class LocalStorageCleanupMigration implements Migration {
 
 	async canMigrate(): Promise<boolean> {
 		// Check if v1-to-v2 migration is complete
-		const status = await getMigrationStatus();
-		if (!status.completedMigrations.includes('v1-to-v2')) {
+		// Note: We use getCompletedMigrations() directly to avoid recursion,
+		// since getMigrationStatus() calls canMigrate() on all migrations
+		const completed = await getCompletedMigrations();
+		const completedIds = completed.map((m) => m.id);
+		if (!completedIds.includes('v1-to-v2')) {
 			// v1-to-v2 not complete, don't run cleanup yet
 			return false;
 		}

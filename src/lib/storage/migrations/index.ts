@@ -74,8 +74,9 @@ async function getMigrationDb(): Promise<IDBDatabase> {
 
 /**
  * Get completed migrations from database
+ * Exported for use by migrations that need to check prerequisites
  */
-async function getCompletedMigrations(): Promise<StoredMigrationRecord[]> {
+export async function getCompletedMigrations(): Promise<StoredMigrationRecord[]> {
 	const db = await getMigrationDb();
 	const tx = db.transaction([MIGRATION_STORE], 'readonly');
 	const store = tx.objectStore(MIGRATION_STORE);
