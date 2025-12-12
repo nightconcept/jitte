@@ -1,39 +1,63 @@
 /**
  * Deck Serialization Utilities
  * Converts between Deck objects and archive format for storage
+ *
+ * As of v2.0, uses slim CardReference format for storage (~25x smaller).
+ * Backward compatible with v1.0 (full card objects).
  */
 
 import type { Deck, DeckManifest, CommanderDeck } from '$lib/types/deck';
 import { isCommanderDeck, isCubeDeck } from '$lib/types/deck';
-import type { Maybeboard } from '$lib/types/maybeboard';
+import type { Maybeboard, MaybeboardCategory } from '$lib/types/maybeboard';
 import type { Card, CardsByCategory } from '$lib/types/card';
+import type { CardReferencesByCategory, MaybeboardReference, MaybeboardCategoryReference } from '$lib/types/card-reference';
+import type { VersionBase } from '$lib/types/version-delta';
 import { serializePlaintext, parsePlaintext } from './decklist-parser';
 import { CardCategory } from '$lib/types/card';
 import { getAllCubeCategories } from './cube-categorization';
 import type { DeckArchive } from './zip';
 import { scryfallToCard } from './card-converter';
 import { DeckFormat } from '$lib/formats/format-registry';
+import { cardsToReferences, cardToReference, referencesToCards } from './card-reference';
+import { hydrateCardReferences, prewarmCache } from './card-hydration';
 
 /**
- * Deck version file format (JSON)
+ * Deck version file format (JSON) - Legacy v1.0
  */
-interface DeckVersionData {
-	schemaVersion: string;
+interface DeckVersionDataV1 {
+	schemaVersion: '1.0';
 	lastModified: string;
 	cards: CardsByCategory;
 }
 
 /**
+ * Slim schema version constant
+ */
+const SLIM_SCHEMA_VERSION = '2.0' as const;
+
+/**
  * Convert a Deck to JSON format for storage
+ * Uses slim CardReference format (schemaVersion 2.0) for ~25x storage reduction
  */
 export function serializeDeckToJSON(deck: Deck): string {
-	const versionData: DeckVersionData = {
-		schemaVersion: '1.0',
-		lastModified: new Date().toISOString(),
-		cards: deck.cards
+	// Convert full cards to slim references
+	const refs = cardsToReferences(deck.cards);
+
+	const versionBase: VersionBase = {
+		schemaVersion: SLIM_SCHEMA_VERSION,
+		version: deck.currentVersion,
+		cards: refs
 	};
 
-	return JSON.stringify(versionData, null, 2);
+	return JSON.stringify(versionBase, null, 2);
+}
+
+/**
+ * Pre-cache cards before saving for instant hydration on load
+ * Call this before serializeDeckToJSON to ensure cards are cached
+ */
+export async function prewarmCacheBeforeSave(deck: Deck): Promise<void> {
+	await prewarmCache(deck.cards);
 }
 
 /**
@@ -123,19 +147,93 @@ async function enrichCard(card: Card): Promise<Card> {
 }
 
 /**
- * Parse JSON deck format
- * Cards are returned as-is from storage (use deserializeDeckFromJSONWithEnrichment for pricing enrichment)
+ * Check if parsed JSON is slim format (v2.0)
+ */
+function isSlimFormat(data: unknown): data is VersionBase {
+	if (typeof data !== 'object' || data === null) return false;
+	const obj = data as Record<string, unknown>;
+	return obj.schemaVersion === SLIM_SCHEMA_VERSION && 'cards' in obj;
+}
+
+/**
+ * Check if parsed JSON is legacy format (v1.0)
+ */
+function isLegacyFormat(data: unknown): data is DeckVersionDataV1 {
+	if (typeof data !== 'object' || data === null) return false;
+	const obj = data as Record<string, unknown>;
+	// v1.0 has schemaVersion '1.0' or missing, and has 'cards' with full card objects
+	return (obj.schemaVersion === '1.0' || !obj.schemaVersion) && 'cards' in obj;
+}
+
+/**
+ * Parse JSON deck format (synchronous, legacy v1.0 only)
+ * For slim format, use deserializeDeckFromJSONAsync instead
+ * @deprecated Use deserializeDeckFromJSONAsync for new code
  */
 export function deserializeDeckFromJSON(jsonContent: string): CardsByCategory {
 	try {
-		const versionData = JSON.parse(jsonContent) as DeckVersionData;
+		const parsed = JSON.parse(jsonContent);
 
-		// Validate schema version
-		if (versionData.schemaVersion !== '1.0') {
-			console.warn(`Unknown schema version: ${versionData.schemaVersion}, attempting to parse anyway`);
+		// Handle slim format - throw error since hydration is async
+		if (isSlimFormat(parsed)) {
+			throw new Error('Slim format (v2.0) requires async deserialization - use deserializeDeckFromJSONAsync');
 		}
 
-		return versionData.cards;
+		// Handle legacy format
+		if (isLegacyFormat(parsed)) {
+			return parsed.cards;
+		}
+
+		// Unknown format but has cards - try to use it
+		if (parsed.cards && typeof parsed.cards === 'object') {
+			console.warn(`Unknown schema version: ${parsed.schemaVersion}, attempting to parse anyway`);
+			return parsed.cards;
+		}
+
+		throw new Error('Invalid deck JSON format');
+	} catch (error) {
+		if (error instanceof Error && error.message.includes('Slim format')) {
+			throw error;
+		}
+		console.error('Failed to parse deck JSON:', error);
+		throw new Error('Invalid deck JSON format');
+	}
+}
+
+/**
+ * Parse JSON deck format asynchronously
+ * Handles both slim (v2.0) and legacy (v1.0) formats
+ */
+export async function deserializeDeckFromJSONAsync(jsonContent: string): Promise<CardsByCategory> {
+	try {
+		const parsed = JSON.parse(jsonContent);
+
+		// Handle slim format - hydrate CardReferences to full Cards
+		if (isSlimFormat(parsed)) {
+			console.log('[deserializeDeck] Slim format v2.0 detected, hydrating cards...');
+			const result = await hydrateCardReferences(parsed.cards);
+
+			if (result.errors.length > 0) {
+				console.warn(`[deserializeDeck] ${result.errors.length} cards could not be hydrated`);
+			}
+
+			console.log(`[deserializeDeck] Hydration complete: ${result.stats.cachedCount} cached, ${result.stats.fetchedCount} fetched, ${result.stats.durationMs}ms`);
+			return result.cards;
+		}
+
+		// Handle legacy format - cards are already full objects
+		if (isLegacyFormat(parsed)) {
+			console.log('[deserializeDeck] Legacy format v1.0 detected');
+			return parsed.cards;
+		}
+
+		// Unknown format but has cards - try to use it
+		if (parsed.cards && typeof parsed.cards === 'object') {
+			console.warn(`Unknown schema version: ${parsed.schemaVersion}, attempting to parse anyway`);
+			return parsed.cards;
+		}
+
+		throw new Error('Invalid deck JSON format');
 	} catch (error) {
 		console.error('Failed to parse deck JSON:', error);
 		throw new Error('Invalid deck JSON format');
@@ -147,16 +245,21 @@ export function deserializeDeckFromJSON(jsonContent: string): CardsByCategory {
  * This ensures cards get fallback pricing if their specific edition has no pricing
  */
 export async function deserializeDeckFromJSONWithEnrichment(jsonContent: string): Promise<CardsByCategory> {
-	const cards = deserializeDeckFromJSON(jsonContent);
+	// Use new async deserializer that handles both formats
+	const cards = await deserializeDeckFromJSONAsync(jsonContent);
 
-	// Check each category for cards missing pricing
-	for (const [category, categoryCards] of Object.entries(cards)) {
-		for (let i = 0; i < categoryCards.length; i++) {
-			const card = categoryCards[i];
-			// If card has no pricing, re-fetch to get enriched pricing
-			if (card.price === undefined) {
-				console.log(`[deserializeDeckFromJSON] Enriching ${card.name} - missing pricing`);
-				categoryCards[i] = await enrichCard(card);
+	// For slim format, hydration already fetched fresh data with pricing
+	// For legacy format, check each category for cards missing pricing
+	const parsed = JSON.parse(jsonContent);
+	if (isLegacyFormat(parsed)) {
+		for (const [category, categoryCards] of Object.entries(cards)) {
+			for (let i = 0; i < categoryCards.length; i++) {
+				const card = categoryCards[i];
+				// If card has no pricing, re-fetch to get enriched pricing
+				if (card.price === undefined) {
+					console.log(`[deserializeDeckFromJSON] Enriching ${card.name} - missing pricing`);
+					categoryCards[i] = await enrichCard(card);
+				}
 			}
 		}
 	}
@@ -344,4 +447,105 @@ export async function extractDeckFromArchive(archive: DeckArchive): Promise<{
 		maybeboard,
 		versionContent
 	};
+}
+
+// ==================== Maybeboard Serialization Helpers ====================
+
+/**
+ * Convert a full Maybeboard to slim MaybeboardReference format
+ * Use this when you want to store maybeboard in slim format
+ */
+export function maybeboardToSlim(maybeboard: Maybeboard): MaybeboardReference {
+	return {
+		categories: maybeboard.categories.map((cat): MaybeboardCategoryReference => ({
+			id: cat.id,
+			name: cat.name,
+			cards: cat.cards.map(cardToReference),
+			description: cat.description,
+			order: cat.order,
+			createdAt: cat.createdAt,
+			updatedAt: cat.updatedAt
+		})),
+		defaultCategoryId: maybeboard.defaultCategoryId
+	};
+}
+
+/**
+ * Convert a single maybeboard category to slim format
+ */
+export function maybeboardCategoryToSlim(category: MaybeboardCategory): MaybeboardCategoryReference {
+	return {
+		id: category.id,
+		name: category.name,
+		cards: category.cards.map(cardToReference),
+		description: category.description,
+		order: category.order,
+		createdAt: category.createdAt,
+		updatedAt: category.updatedAt
+	};
+}
+
+/**
+ * Hydrate a slim MaybeboardReference back to full Maybeboard
+ */
+export async function slimMaybeboardToFull(slim: MaybeboardReference): Promise<Maybeboard> {
+	// Collect all card references for batch hydration
+	const allRefs: CardReferencesByCategory = {};
+	for (const cat of slim.categories) {
+		allRefs[cat.id] = cat.cards;
+	}
+
+	// Hydrate all cards at once
+	const hydrated = await hydrateCardReferences(allRefs);
+
+	return {
+		categories: slim.categories.map((cat): MaybeboardCategory => ({
+			id: cat.id,
+			name: cat.name,
+			cards: hydrated.cards[cat.id] || [],
+			description: cat.description,
+			order: cat.order,
+			createdAt: cat.createdAt,
+			updatedAt: cat.updatedAt
+		})),
+		defaultCategoryId: slim.defaultCategoryId
+	};
+}
+
+/**
+ * Hydrate a single slim maybeboard category
+ */
+export async function slimCategoryToFull(slim: MaybeboardCategoryReference): Promise<MaybeboardCategory> {
+	const refs: CardReferencesByCategory = { [slim.id]: slim.cards };
+	const hydrated = await hydrateCardReferences(refs);
+
+	return {
+		id: slim.id,
+		name: slim.name,
+		cards: hydrated.cards[slim.id] || [],
+		description: slim.description,
+		order: slim.order,
+		createdAt: slim.createdAt,
+		updatedAt: slim.updatedAt
+	};
+}
+
+/**
+ * Check if a maybeboard category object is in slim format
+ */
+export function isSlimMaybeboardCategory(category: unknown): category is MaybeboardCategoryReference {
+	if (typeof category !== 'object' || category === null) return false;
+	const cat = category as Record<string, unknown>;
+
+	// Check if cards array contains CardReferences (has scryfallId but NOT full card fields like imageUrls)
+	if (!Array.isArray(cat.cards) || cat.cards.length === 0) return false;
+
+	const firstCard = cat.cards[0] as Record<string, unknown>;
+	// Slim format has scryfallId but doesn't have type_line or imageUrls
+	return (
+		'scryfallId' in firstCard &&
+		!('type_line' in firstCard) &&
+		!('imageUrls' in firstCard) &&
+		!('types' in firstCard)
+	);
 }

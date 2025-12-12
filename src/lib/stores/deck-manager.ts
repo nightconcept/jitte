@@ -252,10 +252,13 @@ function createDeckManager() {
 			update((state) => ({ ...state, isLoading: true, error: null }));
 
 			try {
-				const { serializeDeckToJSON, createDeckArchive } = await import('$lib/utils/deck-serializer');
+				const { serializeDeckToJSON, createDeckArchive, prewarmCacheBeforeSave } = await import('$lib/utils/deck-serializer');
 
 				const deck = currentState.deck;
 				console.log('[deckManager.saveDeck] Current deck:', deck);
+
+				// Pre-cache cards for instant hydration on load (slim format needs this)
+				await prewarmCacheBeforeSave(deck);
 
 				// Create initial manifest
 				const manifest = createDeckManifest(deck);
@@ -327,10 +330,13 @@ function createDeckManager() {
 					throw new Error('Failed to load existing deck');
 				}
 
-				const { serializeDeckToJSON } = await import('$lib/utils/deck-serializer');
+				const { serializeDeckToJSON, prewarmCacheBeforeSave } = await import('$lib/utils/deck-serializer');
 
 				const archive = loadResult.data;
 				const deck = currentState.deck;
+
+				// Pre-cache cards for instant hydration on load (slim format needs this)
+				await prewarmCacheBeforeSave(deck);
 
 				// Create new version using the manifest
 				const { manifest: updatedManifest, version: newVersionString } = createVersion(
