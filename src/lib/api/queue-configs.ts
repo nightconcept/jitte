@@ -17,6 +17,7 @@ import type { QueueConfig } from './request-queue';
  * - printing: Get specific printing (medium priority, no cancel)
  * - bulk: Batch operations (low priority, no cancel)
  * - import: Deck import operations (low priority, no cancel)
+ * - hydration: Card hydration for slim format (low-medium priority, no cancel)
  * - general: Default for one-off requests (medium priority, no cancel)
  */
 export const SCRYFALL_QUEUE_CONFIG: QueueConfig = {
@@ -64,6 +65,10 @@ export const SCRYFALL_QUEUE_CONFIG: QueueConfig = {
 		},
 		import: {
 			priority: 2,
+			cancellationStrategy: 'no-cancel'
+		},
+		hydration: {
+			priority: 4,
 			cancellationStrategy: 'no-cancel'
 		},
 		general: {
