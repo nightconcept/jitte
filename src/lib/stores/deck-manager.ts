@@ -16,6 +16,7 @@ import { deckStore } from './deck-store';
 import { createVersion } from '$lib/utils/version-control';
 import { createDeckManifest } from '$lib/utils/deck-factory';
 import { DeckFormat } from '$lib/formats/format-registry';
+import { enrichDeckPricing } from '$lib/utils/pricing-enrichment';
 
 /**
  * Deck list item for display
@@ -157,6 +158,28 @@ function createDeckManager() {
 	}
 
 	/**
+	 * Enrich pricing in the background after deck loads
+	 * This is non-blocking and updates the store when complete
+	 */
+	async function enrichPricingInBackground(deck: Deck): Promise<void> {
+		// Set pricing status to loading
+		deckStore.setPricingStatus('loading');
+
+		try {
+			// Enrich all cards with pricing
+			const enrichedCards = await enrichDeckPricing(deck.cards);
+
+			// Update the store with enriched cards (also sets status to 'loaded')
+			deckStore.updateCardsPricing(enrichedCards);
+
+			console.log('[deckManager] Pricing enrichment completed');
+		} catch (error) {
+			console.error('[deckManager] Pricing enrichment failed:', error);
+			deckStore.setPricingStatus('error');
+		}
+	}
+
+	/**
 	 * Load a deck into the active state
 	 */
 	async function loadDeck(deckName: string): Promise<void> {
@@ -211,6 +234,9 @@ function createDeckManager() {
 
 				// Persist active deck name
 				localStorage.setItem(ACTIVE_DECK_KEY, deckName);
+
+				// Trigger async pricing enrichment (non-blocking)
+				enrichPricingInBackground(deck);
 			} catch (error) {
 				update((state) => ({
 					...state,

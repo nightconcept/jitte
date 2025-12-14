@@ -354,6 +354,11 @@ export interface DeckStatistics {
 }
 
 /**
+ * Pricing enrichment status
+ */
+export type PricingStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
+/**
  * Working deck state (in memory during editing)
  */
 export interface WorkingDeck {
@@ -377,6 +382,9 @@ export interface WorkingDeck {
 
 	/** Timestamp of last auto-stash */
 	lastStashAt?: string;
+
+	/** Pricing enrichment status (lazy loading) */
+	pricingStatus: PricingStatus;
 }
 
 /**

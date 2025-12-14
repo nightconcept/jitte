@@ -238,13 +238,12 @@ async function fetchCardsByIds(ids: string[]): Promise<ScryfallCard[]> {
 	// Use the existing card service infrastructure
 	// The collection endpoint accepts { id: string } identifiers
 	const { scryfallClient } = await import('$lib/api/scryfall-client');
-	const { enrichScryfallCardsPricing } = await import('$lib/utils/pricing-enrichment');
 
 	const identifiers = ids.map((id) => ({ id }));
 	const result = await scryfallClient.getCardCollection(identifiers, 'hydration');
 
-	// Enrich pricing for all fetched cards
-	await enrichScryfallCardsPricing(result.data);
+	// NOTE: Pricing enrichment is now handled lazily AFTER deck loads
+	// to avoid blocking the UI. See enrichDeckPricing() in pricing-enrichment.ts
 
 	return result.data;
 }

@@ -184,3 +184,80 @@ export function getPricingCacheStats(): {
 		inFlightCount: inFlightRequests.size
 	};
 }
+
+import type { Card, CardsByCategory } from '$lib/types/card';
+
+/**
+ * Enrich all cards in a deck with pricing data (lazy loading)
+ *
+ * This function should be called AFTER the deck is loaded and displayed
+ * to enrich pricing in the background without blocking the UI.
+ *
+ * @param cards - Cards organized by category (CardsByCategory)
+ * @param onProgress - Optional callback for progress updates
+ * @returns Promise that resolves with updated cards when enrichment is complete
+ */
+export async function enrichDeckPricing(
+	cards: CardsByCategory,
+	onProgress?: (enrichedCount: number, totalCount: number) => void
+): Promise<CardsByCategory> {
+	// Count total cards needing enrichment
+	let totalCount = 0;
+	let enrichedCount = 0;
+
+	// Collect all cards that need enrichment (no price and has oracleId)
+	const cardsNeedingEnrichment: { category: string; index: number; card: Card }[] = [];
+
+	for (const [category, categoryCards] of Object.entries(cards)) {
+		for (let i = 0; i < categoryCards.length; i++) {
+			const card = categoryCards[i];
+			// Check if card needs pricing - no price field and has oracleId
+			if (!card.price && card.oracleId) {
+				cardsNeedingEnrichment.push({ category, index: i, card });
+				totalCount++;
+			}
+		}
+	}
+
+	if (cardsNeedingEnrichment.length === 0) {
+		console.log('[pricing-enrichment] All cards already have pricing, skipping enrichment');
+		// Return the original cards - caller should still set pricingStatus to 'loaded'
+		return cards;
+	}
+
+	console.log(`[pricing-enrichment] Enriching ${totalCount} cards with pricing in background...`);
+
+	// Create a deep copy of cards to avoid mutating the original
+	const updatedCards: CardsByCategory = {};
+	for (const [category, categoryCards] of Object.entries(cards)) {
+		updatedCards[category] = categoryCards.map((card) => ({ ...card }));
+	}
+
+	// Process cards - fetch pricing for each
+	for (const { category, index, card } of cardsNeedingEnrichment) {
+		try {
+			const fallbackPrice = await getFallbackPricingForOracleId(card.oracleId!);
+
+			if (fallbackPrice) {
+				// Update the card in our copy with the price field
+				const priceNum = parseFloat(fallbackPrice);
+				updatedCards[category][index] = {
+					...updatedCards[category][index],
+					price: priceNum,
+					priceUpdatedAt: Date.now()
+				};
+			}
+
+			enrichedCount++;
+			onProgress?.(enrichedCount, totalCount);
+		} catch (error) {
+			console.error(`[pricing-enrichment] Failed to enrich ${card.name}:`, error);
+			enrichedCount++;
+			onProgress?.(enrichedCount, totalCount);
+		}
+	}
+
+	console.log(`[pricing-enrichment] Completed enriching ${enrichedCount} cards`);
+
+	return updatedCards;
+}

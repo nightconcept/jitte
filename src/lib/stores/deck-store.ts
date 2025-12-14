@@ -10,7 +10,8 @@ import type {
 	DeckManifest,
 	DeckStatistics,
 	CreateBranchOptions,
-	CategorizationMode
+	CategorizationMode,
+	PricingStatus
 } from '$lib/types/deck';
 import { isCommanderDeck } from '$lib/types/deck';
 import type { Maybeboard } from '$lib/types/maybeboard';
@@ -63,7 +64,8 @@ function createDeckStore() {
 				maybeboard,
 				statistics,
 				isEditing: true, // Default to unlocked (editing enabled)
-				hasUnsavedChanges: false
+				hasUnsavedChanges: false,
+				pricingStatus: 'idle'
 			});
 		},
 
@@ -77,7 +79,8 @@ function createDeckStore() {
 				maybeboard,
 				statistics,
 				isEditing: true, // Default to unlocked (editing enabled)
-				hasUnsavedChanges: false
+				hasUnsavedChanges: false,
+				pricingStatus: 'idle'
 			});
 		},
 
@@ -630,6 +633,41 @@ function createDeckStore() {
 				return {
 					...state,
 					statistics
+				};
+			});
+		},
+
+		/**
+		 * Set pricing enrichment status
+		 */
+		setPricingStatus(status: PricingStatus): void {
+			update((state) => {
+				if (!state) return state;
+				return {
+					...state,
+					pricingStatus: status
+				};
+			});
+		},
+
+		/**
+		 * Update cards with enriched pricing data
+		 * This updates both the cards and recalculates statistics (for total price)
+		 */
+		updateCardsPricing(updatedCards: CardsByCategory): void {
+			update((state) => {
+				if (!state) return state;
+
+				const newDeck: Deck = {
+					...state.deck,
+					cards: updatedCards
+				};
+
+				return {
+					...state,
+					deck: newDeck,
+					statistics: calculateStatistics(newDeck),
+					pricingStatus: 'loaded' as PricingStatus
 				};
 			});
 		},

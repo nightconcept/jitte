@@ -33,6 +33,7 @@
 	// Derived values
 	let deck = $derived(deckStoreState?.deck);
 	let statistics = $derived(deckStoreState?.statistics);
+	let pricingStatus = $derived(deckStoreState?.pricingStatus ?? 'idle');
 	let commander = $derived(deck && isCommanderDeck(deck) ? deck.cards['commander']?.[0] : undefined);
 	let commanderImageUrl = $derived(commander?.imageUrls?.artCrop || commander?.imageUrls?.large);
 	let bracketLabel = $derived(
@@ -41,6 +42,7 @@
 	let isCommanderFormat = $derived(deck ? isCommanderDeck(deck) : false);
 	let isCubeFormat = $derived(deck ? isCubeDeck(deck) : false);
 	let gameChangersInDeck = $derived(isCommanderFormat && deck ? getAllGameChangers(deck) : []);
+	let isPricingLoading = $derived(pricingStatus === 'loading' || pricingStatus === 'idle');
 
 	// Salt score state
 	let saltScore = $state<DeckSaltScore | null>(null);
@@ -299,11 +301,35 @@
 			<!-- Right: Price -->
 			<div class="text-right">
 				<div class="text-sm text-[var(--color-text-secondary)] mb-1">Estimated Cost:</div>
-				<div class="font-bold text-lg text-green-500">
-					${statistics?.totalPrice?.toLocaleString('en-US', {
-						minimumFractionDigits: 2,
-						maximumFractionDigits: 2
-					}) || '0.00'}
+				<div class="font-bold text-lg text-green-500 flex items-center justify-end gap-2">
+					{#if isPricingLoading}
+						<svg
+							class="animate-spin h-4 w-4 text-[var(--color-text-tertiary)]"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							></path>
+						</svg>
+					{/if}
+					<span>
+						${statistics?.totalPrice?.toLocaleString('en-US', {
+							minimumFractionDigits: 2,
+							maximumFractionDigits: 2
+						}) || '0.00'}
+					</span>
 				</div>
 			</div>
 		</div>
