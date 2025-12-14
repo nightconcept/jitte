@@ -146,8 +146,9 @@
 	{#snippet children()}
 		<!-- Branch Selector -->
 		<div class="px-6 py-3 border-b border-[var(--color-border)]">
-			<label class="text-sm text-[var(--color-text-secondary)] mr-3">Branch:</label>
+			<label for="changelog-branch-select" class="text-sm text-[var(--color-text-secondary)] mr-3">Branch:</label>
 			<select
+				id="changelog-branch-select"
 				bind:value={selectedBranch}
 				class="px-3 py-1.5 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-sm"
 			>

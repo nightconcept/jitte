@@ -559,11 +559,11 @@
 
 			<!-- Threshold Selector -->
 			{#if proxyShoppingEnabled}
-				<div class="space-y-2">
-					<label class="block text-sm font-medium text-[var(--color-text-primary)]">
+				<fieldset class="space-y-2">
+					<legend class="block text-sm font-medium text-[var(--color-text-primary)]">
 						Price Threshold
-					</label>
-					<div class="flex items-center gap-2 flex-wrap">
+					</legend>
+					<div class="flex items-center gap-2 flex-wrap" role="group" aria-label="Price threshold presets">
 						{#each [1, 1.5, 2, 5, 10] as preset}
 							<button
 								onclick={() => selectedPreset = preset}
@@ -597,13 +597,13 @@
 					<p class="text-xs text-[var(--color-text-secondary)]">
 						Cards above ${priceThreshold.toFixed(2)} will be proxied. Cards without pricing data will be proxied (usually expensive).
 					</p>
-				</div>
+				</fieldset>
 
-				<div class="space-y-2">
-					<label class="block text-sm font-medium text-[var(--color-text-primary)]">
+				<fieldset class="space-y-2">
+					<legend class="block text-sm font-medium text-[var(--color-text-primary)]">
 						Proxy Cost Per Card
-					</label>
-					<div class="flex items-center gap-2 flex-wrap">
+					</legend>
+					<div class="flex items-center gap-2 flex-wrap" role="group" aria-label="Proxy cost presets">
 						{#each [1, 1.5, 2, 4] as preset}
 							<button
 								onclick={() => selectedProxyCostPreset = preset}
@@ -637,7 +637,7 @@
 					<p class="text-xs text-[var(--color-text-secondary)]">
 						Estimated cost per proxy card. Note: Consider shipping for both lists. Proxy shipping is usually cheaper (single vendor) vs. shopping list (potentially multiple vendors).
 					</p>
-				</div>
+				</fieldset>
 			{/if}
 		</div>
 

@@ -635,7 +635,6 @@
 									handleDrop(currentFolder.parentId);
 								}
 							}}
-							role="row"
 							aria-label="Parent folder drop zone"
 							onclick={navigateUp}
 						>
@@ -657,7 +656,6 @@
 								class="hover:bg-[var(--color-accent-blue)]/10 transition-colors group"
 								ondragover={handleDragOver}
 								ondrop={() => handleDrop(item.folder.id)}
-								role="row"
 								aria-label="Folder drop zone"
 							>
 								<td class="px-6 py-2">

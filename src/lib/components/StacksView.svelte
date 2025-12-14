@@ -304,6 +304,7 @@
 	{/if}
 
 	<!-- Category Header -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div
 		class="stacks-category-header {isDraggableCategory ? 'stacks-category-header-draggable' : ''} {isDraggedCategory ? 'stacks-category-header-dragged' : ''} {isDragOverCategory ? 'stacks-category-header-dragover' : ''}"
 		draggable={isDraggableCategory}
@@ -312,7 +313,7 @@
 		ondragover={(e) => isDraggableCategory && onCategoryDragOver?.(e, category)}
 		ondrop={(e) => isDraggableCategory && onCategoryDrop?.(e, category)}
 		role={isDraggableCategory ? 'button' : undefined}
-		tabindex={isDraggableCategory ? 0 : undefined}
+		tabindex={isDraggableCategory ? 0 : -1}
 	>
 		{#if categoryIcon}
 			<i class="ms {categoryIcon} text-xl text-[var(--color-text-primary)]"></i>

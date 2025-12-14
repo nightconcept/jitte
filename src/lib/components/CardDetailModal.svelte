@@ -536,13 +536,13 @@
 									</div>
 
 									<!-- Color Identity Editor -->
-									<div>
-										<label class="text-sm font-semibold text-[var(--color-text-secondary)] block mb-1">
+									<fieldset>
+										<legend class="text-sm font-semibold text-[var(--color-text-secondary)] block mb-1">
 											Colors
 											{#if card.customColorIdentity !== undefined}
 												<span class="text-xs text-[var(--color-brand-primary)] ml-1">(customized)</span>
 											{/if}
-										</label>
+										</legend>
 										<div class="flex flex-wrap gap-2">
 											{#each ['W', 'U', 'B', 'R', 'G', 'C'] as color}
 												<button
@@ -558,7 +558,7 @@
 												</button>
 											{/each}
 										</div>
-									</div>
+									</fieldset>
 
 									<!-- Category Editor -->
 									<div>

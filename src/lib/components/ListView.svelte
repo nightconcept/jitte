@@ -1200,6 +1200,8 @@
             ondragover={(e) => handleDragOverCategory(e, category)}
             ondragleave={handleDragLeaveCategory}
             ondrop={(e) => handleDropOnCategory(e, category)}
+            role="group"
+            aria-label="{categoryLabels[category]} drop zone"
           >
             <VisualSpoilerView
               {cards}
@@ -1242,6 +1244,8 @@
             ondragover={(e) => handleDragOverCategory(e, category)}
             ondragleave={handleDragLeaveCategory}
             ondrop={(e) => handleDropOnCategory(e, category)}
+            role="group"
+            aria-label="{categoryLabels[category]} drop zone"
           >
             <StacksView
               {cards}
@@ -1273,7 +1277,7 @@
     <!-- Text Views -->
     {#if deck?.format === DeckFormat.Cube && categorizationMode === 'default'}
       <!-- Cube 8-Column Text View -->
-      <div class="cube-text-columns-container" onmousemove={handleMouseMove}>
+      <div class="cube-text-columns-container" onmousemove={handleMouseMove} role="region" aria-label="Cube card grid">
         <div class="cube-text-columns">
           {#each categoryOrder as category}
             {@const cards = getCategoryCards(category)}
@@ -1317,6 +1321,7 @@
                                 onmouseenter={(e) => handleCubeCardHover(card, e)}
                                 onmouseleave={() => handleCubeCardHover(null)}
                                 onclick={() => (detailModalCard = { name: card.name, category: subcategory })}
+                                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = { name: card.name, category: subcategory }; }}}
                                 oncontextmenu={(e) => handleCubeContextMenu(e, card, subcategory)}
                                 role="button"
                                 tabindex="0"
@@ -1359,6 +1364,7 @@
                                     onmouseenter={(e) => handleCubeCardHover(card, e)}
                                     onmouseleave={() => handleCubeCardHover(null)}
                                     onclick={() => (detailModalCard = { name: card.name, category })}
+                                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = { name: card.name, category }; }}}
                                     oncontextmenu={(e) => handleCubeContextMenu(e, card, category)}
                                     role="button"
                                     tabindex="0"
@@ -1399,6 +1405,7 @@
                                     onmouseenter={(e) => handleCubeCardHover(card, e)}
                                     onmouseleave={() => handleCubeCardHover(null)}
                                     onclick={() => (detailModalCard = { name: card.name, category })}
+                                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailModalCard = { name: card.name, category }; }}}
                                     oncontextmenu={(e) => handleCubeContextMenu(e, card, category)}
                                     role="button"
                                     tabindex="0"

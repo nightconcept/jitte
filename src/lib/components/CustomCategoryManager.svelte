@@ -137,6 +137,7 @@
             <div class="flex items-center justify-between p-3 bg-[var(--color-surface)] rounded border border-[var(--color-border)]">
               {#if editingCategoryId === category.id}
                 <!-- Edit mode -->
+                <!-- svelte-ignore a11y_autofocus -->
                 <input
                   type="text"
                   bind:value={editingCategoryName}
@@ -205,6 +206,7 @@
           <label for="new-category-name" class="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
             Category Name
           </label>
+          <!-- svelte-ignore a11y_autofocus -->
           <input
             id="new-category-name"
             type="text"
