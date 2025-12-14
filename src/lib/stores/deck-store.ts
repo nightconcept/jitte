@@ -1235,8 +1235,13 @@ function createDeckStore() {
 			const rows: string[] = [header];
 
 			for (const card of allCards) {
+				// For double-faced cards, use only the front face name (before " // ")
+				const cardName = card.name.includes(' // ')
+					? card.name.split(' // ')[0]
+					: card.name;
+
 				const row = [
-					escapeCSV(card.name),
+					escapeCSV(cardName),
 					card.cmc ?? 0,
 					escapeCSV(getTypeLine(card)),
 					getColorString(card.colorIdentity),
