@@ -1164,6 +1164,103 @@ function createDeckStore() {
 		},
 
 		/**
+		 * Export the current cube to CubeCobra CSV format
+		 * Returns CSV content matching CubeCobra's export format
+		 */
+		exportToCubeCobraCSV(): string | null {
+			const state = get({ subscribe });
+			if (!state) return null;
+
+			const allCards: Card[] = [];
+
+			// For cube, we use all CubeCardCategories (including land subcategories)
+			const categories = getAllCubeCategories();
+
+			for (const category of categories) {
+				const categoryCards = state.deck.cards[category] || [];
+				allCards.push(...categoryCards);
+			}
+
+			// Helper to escape CSV fields
+			const escapeCSV = (value: string): string => {
+				if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+					return `"${value.replace(/"/g, '""')}"`;
+				}
+				return `"${value}"`;
+			};
+
+			// Helper to get color string from colorIdentity
+			const getColorString = (colorIdentity?: ('W' | 'U' | 'B' | 'R' | 'G' | 'C')[]): string => {
+				if (!colorIdentity || colorIdentity.length === 0) return '';
+				// Filter out 'C' (colorless) and join remaining colors
+				return colorIdentity.filter((c) => c !== 'C').join('');
+			};
+
+			// Helper to get Color Category (for CubeCobra's color-based filtering)
+			const getColorCategory = (colorIdentity?: ('W' | 'U' | 'B' | 'R' | 'G' | 'C')[]): string => {
+				if (!colorIdentity || colorIdentity.length === 0) return 'null';
+				const colors = colorIdentity.filter((c) => c !== 'C');
+				if (colors.length === 0) return 'null';
+				if (colors.length > 1) return 'null'; // Multicolored
+				const colorMap: Record<string, string> = {
+					W: 'White',
+					U: 'Blue',
+					B: 'Black',
+					R: 'Red',
+					G: 'Green'
+				};
+				return colorMap[colors[0]] || 'null';
+			};
+
+			// Helper to reconstruct type line
+			const getTypeLine = (card: Card): string => {
+				// Try to get from card faces first
+				if (card.cardFaces && card.cardFaces[0]?.typeLine) {
+					return card.cardFaces[0].typeLine;
+				}
+				// Reconstruct from types and subtypes
+				const types = card.types || [];
+				const subtypes = card.subtypes || [];
+				if (subtypes.length > 0) {
+					return `${types.join(' ')} - ${subtypes.join(' ')}`;
+				}
+				return types.join(' ');
+			};
+
+			// CSV Header
+			const header =
+				'name,CMC,Type,Color,Set,Collector Number,Rarity,Color Category,status,Finish,maybeboard,image URL,image Back URL,tags,Notes,MTGO ID,Custom';
+
+			// Build CSV rows
+			const rows: string[] = [header];
+
+			for (const card of allCards) {
+				const row = [
+					escapeCSV(card.name),
+					card.cmc ?? 0,
+					escapeCSV(getTypeLine(card)),
+					getColorString(card.colorIdentity),
+					escapeCSV(card.setCode?.toLowerCase() || ''),
+					escapeCSV(card.collectorNumber || ''),
+					'rare', // Default rarity - not currently stored
+					getColorCategory(card.colorIdentity),
+					'Owned', // Default status
+					'Non-foil', // Default finish
+					'false', // Not maybeboard (we export main deck only)
+					'', // image URL
+					'', // image Back URL
+					escapeCSV(''), // tags
+					escapeCSV(''), // Notes
+					-1, // MTGO ID - not currently stored
+					'false' // Custom
+				].join(',');
+				rows.push(row);
+			}
+
+			return rows.join('\n');
+		},
+
+		/**
 		 * Replace the entire deck with a new set of cards
 		 * Used for bulk edit operations like importing a plaintext decklist
 		 * Preserves the commander(s) from the current deck

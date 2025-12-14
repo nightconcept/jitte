@@ -639,7 +639,34 @@
 		}
 	}
 
-	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt') {
+	async function handleExport(platform: 'plaintext' | 'moxfield' | 'archidekt' | 'cubecobra') {
+		// Handle CubeCobra CSV export separately
+		if (platform === 'cubecobra') {
+			const csvContent = deckStore.exportToCubeCobraCSV();
+			if (!csvContent) {
+				toastStore.warning('No cube loaded to export');
+				return;
+			}
+
+			try {
+				// Download as CSV file
+				const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `${$deckManager.activeDeckName || 'cube'}.csv`;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+				toastStore.success('Cube exported as CubeCobra CSV!');
+			} catch (error) {
+				console.error('Failed to export CubeCobra CSV:', error);
+				toastStore.error('Failed to export. Check console for details.');
+			}
+			return;
+		}
+
 		// Use cube-specific format for plaintext export when deck is a cube
 		const plaintext =
 			platform === 'plaintext' && isCube
