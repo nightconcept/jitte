@@ -7,6 +7,8 @@ import type { DeckManifest } from '$lib/types/deck';
 import type { DeckArchive } from './zip';
 import { CardCategory } from '$lib/types/card';
 import { DeckFormat } from '$lib/formats/format-registry';
+import { isVersionBase } from '$lib/types/version-delta';
+import { hydrateCardReferences } from '$lib/utils/card-hydration';
 
 /**
  * Commander information with name and colors
@@ -67,7 +69,16 @@ export async function extractCommanderInfo(archive: DeckArchive): Promise<Comman
 		if (versionFileJson) {
 			// JSON format - parse directly
 			const data = JSON.parse(versionFileJson);
-			categorizedCards = data.cards || {};
+
+			// Check if this is slim format (v2.0) which needs hydration
+			if (isVersionBase(data)) {
+				// Slim format - hydrate card references to get full card data
+				const hydrationResult = await hydrateCardReferences(data.cards);
+				categorizedCards = hydrationResult.cards;
+			} else {
+				// Legacy format - cards are already full Card objects
+				categorizedCards = data.cards || {};
+			}
 		} else if (versionFileTxt) {
 			// TXT format - deserialize
 			categorizedCards = await deserializeDeck(versionFileTxt);
