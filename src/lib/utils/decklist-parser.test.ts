@@ -127,6 +127,31 @@ Deck:
 		expect(result.cards[0].name).toBe("Atraxa, Praetors' Voice");
 	});
 
+	it('should parse cards with colons in their names', () => {
+		const input = '1 Summon: Bahamut';
+		const result = parsePlaintext(input);
+
+		expect(result.cards).toHaveLength(1);
+		expect(result.cards[0]).toEqual({
+			quantity: 1,
+			name: 'Summon: Bahamut'
+		});
+		expect(result.errors).toHaveLength(0);
+	});
+
+	it('should not skip cards with colons as section headers', () => {
+		const input = `Commander:
+1 Summon: Bahamut
+Deck:
+1 Summon: Leviathan`;
+
+		const result = parsePlaintext(input);
+
+		expect(result.cards).toHaveLength(2);
+		expect(result.cards[0].name).toBe('Summon: Bahamut');
+		expect(result.cards[1].name).toBe('Summon: Leviathan');
+	});
+
 	it('should report parse errors', () => {
 		const input = `1 Lightning Bolt
 2 Counterspell`;

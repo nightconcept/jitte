@@ -82,7 +82,7 @@ export function parsePlaintext(text: string): ParseResult {
 		}
 
 		// Skip comment lines and section headers (e.g., "Commander:", "Deck:", "Sideboard:")
-		if (line.startsWith('//') || line.endsWith(':')) {
+		if (line.startsWith('//') || /^[A-Za-z]+:$/.test(line)) {
 			continue;
 		}
 

@@ -88,7 +88,7 @@
 
       try {
         // Build search query with format filter
-        let query = searchQuery;
+        let query = `"${searchQuery}"`;
 
         // Add format filter (skip for Cube as it's not a real Scryfall format)
         if (deckFormat !== 'cube') {

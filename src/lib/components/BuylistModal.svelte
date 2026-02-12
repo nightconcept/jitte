@@ -416,6 +416,88 @@
 		}
 	}
 
+	/**
+	 * Generate a difflist for Cube Cobra
+	 * Format: "CardToAdd <- CardToRemove" for pairs, "+CardName" for unpaired adds, "-CardName" for unpaired removes
+	 */
+	function generateDifflistText(): string {
+		if (!diff) return '';
+
+		// Expand cards by quantity (each copy is a separate entry for pairing)
+		const addedCards: string[] = [];
+		for (const card of diff.added) {
+			const qty = card.quantityDelta || card.newQuantity || 1;
+			for (let i = 0; i < qty; i++) {
+				addedCards.push(card.name);
+			}
+		}
+		// Include modified cards with positive quantity delta as adds
+		for (const card of diff.modified) {
+			if (card.quantityDelta && card.quantityDelta > 0) {
+				for (let i = 0; i < card.quantityDelta; i++) {
+					addedCards.push(card.name);
+				}
+			}
+		}
+
+		const removedCards: string[] = [];
+		for (const card of diff.removed) {
+			const qty = Math.abs(card.quantityDelta || 0);
+			for (let i = 0; i < qty; i++) {
+				removedCards.push(card.name);
+			}
+		}
+		// Include modified cards with negative quantity delta as removes
+		for (const card of diff.modified) {
+			if (card.quantityDelta && card.quantityDelta < 0) {
+				for (let i = 0; i < Math.abs(card.quantityDelta); i++) {
+					removedCards.push(card.name);
+				}
+			}
+		}
+
+		const lines: string[] = [];
+
+		// Pair up adds and removes
+		const pairCount = Math.min(addedCards.length, removedCards.length);
+		for (let i = 0; i < pairCount; i++) {
+			lines.push(`${addedCards[i]} <- ${removedCards[i]}`);
+		}
+
+		// Unpaired adds
+		for (let i = pairCount; i < addedCards.length; i++) {
+			lines.push(`+${addedCards[i]}`);
+		}
+
+		// Unpaired removes
+		for (let i = pairCount; i < removedCards.length; i++) {
+			lines.push(`-${removedCards[i]}`);
+		}
+
+		return lines.join('\n');
+	}
+
+	/**
+	 * Copy the difflist to clipboard for Cube Cobra
+	 */
+	async function copyDifflist() {
+		const difflistText = generateDifflistText();
+
+		if (!difflistText) {
+			toastStore.warning('No changes to copy');
+			return;
+		}
+
+		try {
+			await navigator.clipboard.writeText(difflistText);
+			const lineCount = difflistText.split('\n').length;
+			toastStore.success(`Copied ${lineCount} changes to clipboard (Cube Cobra format)`);
+		} catch (error) {
+			console.error('Failed to copy to clipboard:', error);
+			toastStore.error('Failed to copy to clipboard');
+		}
+	}
+
 	function handleClose() {
 		diff = null;
 		priceDiff = 0;
@@ -926,6 +1008,16 @@
 					>
 						Copy Buylist
 					</button>
+					{#if mode === 'compare'}
+						<button
+							onclick={copyDifflist}
+							disabled={!diff || (diff.added.length === 0 && diff.removed.length === 0 && diff.modified.length === 0)}
+							title="Formats changes for Cube Cobra: 'CardToAdd <- CardToRemove' for swaps, '+Card' for adds, '-Card' for removes"
+							class="px-4 py-2 rounded bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Copy Difflist
+						</button>
+					{/if}
 				{/if}
 			</div>
 			<button
