@@ -74,6 +74,11 @@ export class CardService {
 				order: 'name'
 			});
 
+			if (!results) {
+				console.warn('[CardService] searchCards: search cancelled by queue (null result)');
+				return [];
+			}
+
 			return results.data.slice(0, limit).map((card) => this.formatCardForSearch(card));
 		} catch (error) {
 			if (error instanceof ScryfallApiError) {
@@ -117,6 +122,11 @@ export class CardService {
 				page
 			});
 
+			if (!results) {
+				console.warn('[CardService] searchCardsAll: search cancelled by queue (null result)');
+				return { cards: [], totalCards: 0 };
+			}
+
 			allCards.push(...results.data.map((card) => this.formatCardForSearch(card)));
 
 			// Follow pagination to get all results
@@ -127,6 +137,10 @@ export class CardService {
 					order: 'name',
 					page
 				});
+				if (!results) {
+					console.warn('[CardService] searchCardsAll: pagination cancelled by queue (null result)');
+					break;
+				}
 				allCards.push(...results.data.map((card) => this.formatCardForSearch(card)));
 			}
 

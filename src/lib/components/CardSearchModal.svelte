@@ -259,6 +259,7 @@
   }
 
   async function selectCard(result: CardSearchResult) {
+    console.log('[CardSearchModal] selectCard called:', { name: result.name, set: result.set, collector: result.collector_number });
     selectedResult = result;
     loadingCardDetails = true;
 
@@ -267,14 +268,18 @@
       let scryfallCard;
 
       if (result.set && result.collector_number) {
+        console.log('[CardSearchModal] Fetching by set/collector:', result.set, result.collector_number);
         scryfallCard = await cardService.getCardBySetAndNumber(
           result.set,
           result.collector_number,
           result.name,
         );
       } else {
+        console.log('[CardSearchModal] Fetching by name:', result.name);
         scryfallCard = await cardService.getCardByName(result.name);
       }
+
+      console.log('[CardSearchModal] Scryfall result:', scryfallCard ? scryfallCard.name : 'NULL');
 
       if (!scryfallCard) {
         toastStore.error(
@@ -288,6 +293,7 @@
 
       // Convert to our Card type (pricing already enriched by cardService)
       const card = scryfallToCard(scryfallCard);
+      console.log('[CardSearchModal] Converted card:', { name: card.name, types: card.types, colorIdentity: card.colorIdentity });
 
       selectedCardFull = card;
       selectedScryfallCard = scryfallCard;
@@ -296,7 +302,7 @@
       // Reset to front face when new card is selected
       currentFaceIndex = 0;
     } catch (error) {
-      console.error("Error selecting card:", error);
+      console.error('[CardSearchModal] selectCard error:', error);
       toastStore.error("Failed to fetch card data");
       loadingCardDetails = false;
     }

@@ -156,11 +156,13 @@
   }
 
   async function selectCard(result: CardSearchResult) {
+    console.log('[CardSearch] selectCard called:', { name: result.name, set: result.set, collector: result.collector_number });
     try {
       // Fetch full card data - prefer set/collector for exact printing, fallback to name
       let scryfallCard;
 
       if (result.set && result.collector_number) {
+        console.log('[CardSearch] Fetching by set/collector:', result.set, result.collector_number);
         // Try to fetch the exact printing from the search result
         scryfallCard = await cardService.getCardBySetAndNumber(
           result.set,
@@ -168,9 +170,12 @@
           result.name, // Fallback to name if set/collector fails
         );
       } else {
+        console.log('[CardSearch] Fetching by name:', result.name);
         // No set/collector info, fetch by name only
         scryfallCard = await cardService.getCardByName(result.name);
       }
+
+      console.log('[CardSearch] Scryfall result:', scryfallCard ? scryfallCard.name : 'NULL');
 
       if (!scryfallCard) {
         toastStore.error(
@@ -183,6 +188,7 @@
 
       // Convert to our Card type (pricing already enriched by cardService)
       const card = scryfallToCard(scryfallCard);
+      console.log('[CardSearch] Converted card:', { name: card.name, types: card.types, colorIdentity: card.colorIdentity });
 
       // Add to deck or maybeboard
       if (addToMaybeboard) {
@@ -190,6 +196,7 @@
       } else {
         deckStore.addCard(card);
       }
+      console.log('[CardSearch] Card added successfully');
 
       // Clear search
       searchQuery = "";
@@ -206,7 +213,7 @@
         `An error occurred while trying to add the card to your deck.\n\nCard Name: ${result.name}\nSet: ${result.set} (${result.collector_number})\n\nError: ${errorMessage}\n\n${errorStack ? `Stack Trace:\n${errorStack}` : ""}`,
       );
 
-      console.error("Error adding card:", {
+      console.error('[CardSearch] selectCard error:', {
         cardName: result.name,
         set: result.set,
         collectorNumber: result.collector_number,
