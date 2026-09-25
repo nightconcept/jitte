@@ -264,7 +264,7 @@
   }
 </script>
 
-<div class="relative">
+<div class="@container relative">
   <div class="relative">
     <input
       bind:this={searchInputRef}
@@ -278,17 +278,17 @@
       }}
       type="text"
       placeholder="Search for cards..."
-      class="w-full pl-4 pr-24 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+      class="w-full pl-4 pr-10 @min-[220px]:pr-24 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
     />
 
     <!-- Search button -->
     <button
       onclick={() => (modalOpen = true)}
-      class="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
+      class="absolute right-2 top-1/2 -translate-y-1/2 px-2 @min-[220px]:px-3 py-1.5 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
       title="Open advanced search"
     >
       <svg
-        class="w-4 h-4"
+        class="w-4 h-4 shrink-0"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -300,7 +300,7 @@
           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
         />
       </svg>
-      <span>Search</span>
+      <span class="hidden @min-[220px]:inline">Search</span>
     </button>
   </div>
 

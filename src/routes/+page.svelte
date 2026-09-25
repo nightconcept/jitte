@@ -1254,7 +1254,6 @@
 			onSwitchBranch={handleSwitchBranch}
 			onNewBranch={handleNewBranch}
 			onDeleteBranch={handleDeleteBranch}
-			onSettings={handleSettings}
 			onRecommendations={handleRecommendations}
 		/>
 
