@@ -24,14 +24,17 @@ A local-first web application for managing Magic: The Gathering Commander/EDH de
 ## Getting Started
 
 ```sh
+# Install the Node, Python, and pnpm versions from mise.toml
+mise install
+
 # Install dependencies
-pnpm install
+mise run install
 
 # Start development server
-pnpm dev
+mise exec -- pnpm dev
 
 # Build for production
-pnpm build
+mise exec -- pnpm build
 ```
 
 ## Attribution

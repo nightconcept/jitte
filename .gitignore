@@ -25,7 +25,3 @@ vite.config.ts.timestamp-*
 # Version tracking
 .base-version
 package.json.backup
-
-.devenv/
-.direnv/
-.devenv.flake.nix
