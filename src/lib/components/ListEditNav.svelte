@@ -157,7 +157,7 @@
 </script>
 
 <nav
-	class="sticky top-0 z-40 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3"
+	class="@container sticky top-0 z-40 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3"
 >
 	<div class="flex items-center justify-between">
 		<!-- Left: Branch, Version, Save -->
@@ -330,9 +330,10 @@
 			<button
 				onclick={onSave}
 				disabled={!canSave}
-				class="px-4 py-2 text-sm bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[38px]"
+				class="shrink-0 px-3 @min-[1550px]:px-4 py-2 text-sm bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[38px]"
+				title="Save"
 			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -340,7 +341,7 @@
 						d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
 					/>
 				</svg>
-				Save
+				<span class="hidden @min-[1550px]:inline">Save</span>
 			</button>
 		</div>
 
@@ -448,7 +449,7 @@
 			{#if isCommander}
 				<button
 					onclick={onRecommendations}
-					class="shrink px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white transition-colors h-[38px] flex items-center gap-2 font-medium text-sm overflow-hidden"
+					class="shrink-0 px-3 @min-[1550px]:px-4 py-2 rounded bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-secondary)] text-white transition-colors h-[38px] flex items-center gap-2 font-medium text-sm"
 					title="Get EDHREC recommendations"
 				>
 					<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -459,7 +460,7 @@
 							d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
 						/>
 					</svg>
-					<span class="hidden lg:inline truncate">Recommendations</span>
+					<span class="hidden @min-[1550px]:inline">Recommendations</span>
 				</button>
 			{/if}
 
