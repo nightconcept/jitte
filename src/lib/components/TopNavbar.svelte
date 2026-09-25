@@ -87,9 +87,9 @@
 <nav
   class="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-6 py-3"
 >
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-center justify-between gap-y-2">
     <!-- Left: Logo and Actions -->
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <!-- Jitte Logo/Icon -->
       <div class="flex items-center gap-2">
         <div

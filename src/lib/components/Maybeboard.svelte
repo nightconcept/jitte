@@ -241,7 +241,7 @@
 <aside
   class="{isCollapsed
     ? 'w-12'
-    : 'w-80'} bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col sticky top-[64px] self-start h-[calc(100vh-64px)] relative transition-all duration-200"
+    : 'w-80'} bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] flex flex-col self-start relative transition-all duration-200"
 >
   <!-- Collapsible Header -->
   <button

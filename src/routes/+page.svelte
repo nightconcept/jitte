@@ -1137,7 +1137,7 @@
 	<title>{pageTitle}</title>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-[var(--color-bg-primary)]">
+<div class="min-h-screen min-w-0 flex flex-col bg-[var(--color-bg-primary)]">
 	<!-- Top Navigation Bar -->
 	<TopNavbar
 		hasDeck={$deckStore !== null}

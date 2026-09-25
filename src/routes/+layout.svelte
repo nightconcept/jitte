@@ -7,7 +7,7 @@
 	const { children } = $props();
 </script>
 
-<div class="flex flex-col min-h-screen">
+<div class="flex flex-col min-h-screen overflow-x-hidden">
 	<div class="flex-1">
 		{@render children()}
 	</div>
