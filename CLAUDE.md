@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Storage**: Browser localStorage + FileSystem Access API
 - **APIs**: Scryfall (primary card data source)
 - **Build**: Vite with automated versioning
-- **Code Quality**: Biome for linting/formatting
+- **Code Quality**: Oxlint and Oxfmt for linting/formatting
 
 ### Project Structure
 
@@ -801,8 +801,8 @@ Git-like branching with semantic versioning (MAJOR.MINOR.PATCH):
 pnpm dev              # Start dev server
 pnpm build            # Build for production
 pnpm check            # Type-check with svelte-check
-pnpm format           # Format with Biome
-pnpm lint             # Lint with Biome
+pnpm format           # Format with Oxfmt
+pnpm lint             # Lint with Oxlint
 pnpm test             # Run tests (Vitest)
 pnpm theme:list       # List available color schemes
 pnpm theme:generate   # Apply theme from theme-config.json

@@ -1,0 +1,20 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"ignorePatterns": ["**/*.svelte", "**/*.min.js"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "warn"
+	},
+	"rules": {
+		"eslint/no-unused-vars": "warn",
+		"eslint/prefer-const": "warn",
+		"unicorn/no-empty-file": "off",
+		"unicorn/no-array-sort": "off",
+		"unicorn/prefer-add-event-listener": "off",
+		"eslint/no-control-regex": "off",
+		"eslint/no-param-reassign": "off",
+		"typescript/no-explicit-any": "off",
+		"typescript/no-non-null-assertion": "off",
+		"typescript/no-wrapper-object-types": "off"
+	}
+}

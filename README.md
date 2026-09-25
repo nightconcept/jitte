@@ -19,7 +19,7 @@ A local-first web application for managing Magic: The Gathering Commander/EDH de
 - **Tailwind CSS 4**
 - **Scryfall API** for card data
 - **FileSystem Access API** + localStorage for storage
-- **Biome** for linting and formatting
+- **Oxlint and Oxfmt** for linting and formatting
 
 ## Getting Started
 
