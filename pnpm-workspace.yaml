@@ -3,3 +3,5 @@ minimumReleaseAgeStrict: true
 allowBuilds:
   '@tailwindcss/oxide': true
   esbuild: true
+overrides:
+  rollup: 4.52.0
