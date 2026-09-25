@@ -1,5 +1,8 @@
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
+minimumReleaseAgeExclude:
+  - pnpm
+  - '@pnpm/exe.*'
 allowBuilds:
   '@tailwindcss/oxide': true
   esbuild: true
