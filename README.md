@@ -1,6 +1,8 @@
 # Jitte
 
-A local-first web application for managing Magic: The Gathering Commander/EDH decklists with git-style version control.
+A local-first web application for managing Magic: The Gathering decklists across formats with git-style version control.
+
+For contributors and coding agents, start with [AGENTS.md](AGENTS.md) and the [documentation map](docs/repo/README.md).
 
 ## Features
 
@@ -24,17 +26,14 @@ A local-first web application for managing Magic: The Gathering Commander/EDH de
 ## Getting Started
 
 ```sh
-# Install the Node, Python, and pnpm versions from mise.toml
-mise install
-
 # Install dependencies
-mise run install
+pnpm install
 
 # Start development server
-mise exec -- pnpm dev
+pnpm dev
 
 # Build for production
-mise exec -- pnpm build
+pnpm build
 ```
 
 ## Attribution

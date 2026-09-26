@@ -1,5 +1,7 @@
 # Storage Redesign: Slim Format + Delta-Based Versioning
 
+This is a historical plan. Use [current architecture](../repo/architecture.md#deck-state-and-storage) for active storage paths.
+
 > **Status**: Complete (Phases 1-8)
 > **Created**: 2024-12-10
 > **Last Updated**: 2024-12-11
@@ -349,7 +351,6 @@ interface StoredFolderHandle {
 - [ ] **9.4** Test cache miss scenario (batch fetch)
 - [ ] **9.5** Test folder sync + IndexedDB redundancy
 - [ ] **9.6** Remove deprecated code paths
-- [ ] **9.7** Update CLAUDE.md with new storage architecture
 
 ---
 
