@@ -58,11 +58,7 @@ export class EDHRECService {
 	}
 
 	constructor() {
-		this.client = new EDHRECClient({
-			minDelayMs: 2000, // 30 requests per minute
-			useCorsProxy: true, // Required for browser access
-			corsProxyUrl: 'https://corsproxy.io/?'
-		});
+		this.client = new EDHRECClient();
 		this.parser = new EDHRECParser();
 		this.cache = new EDHRECCache();
 	}

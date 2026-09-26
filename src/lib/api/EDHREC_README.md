@@ -9,30 +9,15 @@ This directory contains the EDHREC API integration for Jitte. EDHREC (EDH/Comman
 - **May violate EDHREC's Terms of Service**
 - **Could break if EDHREC redesigns their website**
 - **Should be used respectfully with conservative rate limiting**
-- **⚠️ Requires CORS proxy for browser-based requests** (enabled by default)
+- **Requires a SvelteKit server** to fetch EDHREC pages for the browser
 
 **Recommendation:** Contact EDHREC for official API access before deploying to production.
 
-### CORS Issue & Solution
+### Browser access
 
-**Problem:** Browsers block cross-origin requests to EDHREC due to CORS security policies.
+Browsers cannot fetch EDHREC pages directly because of CORS. The client requests `/api/edhrec/...` on the app's origin; the SvelteKit route fetches EDHREC and returns the page. This route requires a server-capable deployment.
 
-**Current Solution (2025-01):** CORS proxy is **DISABLED** by default because corsproxy.io is unreliable and often blocked by corporate/school networks. Direct requests are attempted instead.
-
-**Testing corsproxy.io availability:**
-- Open in browser: `https://corsproxy.io/?https://edhrec.com/commanders/atraxa-praetors-voice`
-- If it fails, corsproxy.io is either down or blocked by your network
-
-**Known Limitations:**
-- Direct requests may fail due to CORS (browser security)
-- CORS proxies are unreliable (corsproxy.io, cors-anywhere, etc.)
-- Some networks actively block CORS proxy services
-- EDHREC features may not work in browser environments
-
-**Production Solutions:**
-1. **Server-side proxy:** Create your own backend proxy to forward requests
-2. **Official API:** Contact EDHREC for official API access (recommended)
-3. **Disable feature:** Use feature flags in `src/lib/config/features.ts`
+The former corsproxy.io URL now returns HTTP 403 (`keyless_legacy_url`).
 
 ## Architecture
 
@@ -53,29 +38,9 @@ src/lib/
 
 ## Configuration
 
-### CORS Proxy Configuration
+### Server route
 
-**Current Configuration (2025-01):**
-```typescript
-// In edhrec-service.ts
-constructor() {
-  this.client = new EDHRECClient({
-    minDelayMs: 2000,
-    useCorsProxy: false, // DISABLED - corsproxy.io is unreliable/blocked
-    corsProxyUrl: 'https://corsproxy.io/?' // Not used when disabled
-  });
-}
-```
-
-**To re-enable CORS proxy (if corsproxy.io works for you):**
-```typescript
-useCorsProxy: true, // Re-enable if you have access to corsproxy.io
-```
-
-**Alternative CORS Proxies:**
-- `https://corsproxy.io/?` (often blocked by corporate/school networks)
-- `https://cors-anywhere.herokuapp.com/` (requires request, often down)
-- Your own server-side proxy (recommended for production)
+`src/routes/api/edhrec/[...path]/+server.ts` accepts commander pages, card pages, and the top salt page. The browser client uses that route for all three requests.
 
 ### Rate Limiting
 
@@ -338,46 +303,21 @@ edhrecService.clearCache();
 
 ## Troubleshooting
 
-### "NetworkError when attempting to fetch resource" (CORS Error)
-**Symptoms:** Salt score shows "N/A", console shows CORS/network errors
+### Network errors
 
-**Causes:**
-- Browser blocking cross-origin requests to EDHREC
-- CORS proxy not enabled or not working
-- CORS proxy service is down
-
-**Solutions:**
-1. **Verify CORS proxy is enabled** (should be by default):
-   ```typescript
-   // In src/lib/api/edhrec-service.ts
-   useCorsProxy: true // Should be enabled
-   ```
-
-2. **Try alternative CORS proxy:**
-   ```typescript
-   corsProxyUrl: 'https://cors-anywhere.herokuapp.com/'
-   ```
-
-3. **Check browser console** for specific error details
-
-4. **Test with curl** (EDHREC should respond):
-   ```bash
-   curl https://edhrec.com/top/salt
-   ```
-
-5. **Long-term:** Set up your own server-side proxy or contact EDHREC for API access
+- Check the browser network response for `/api/edhrec/...`.
+- Check that the deployment runs SvelteKit server routes and can reach EDHREC.
+- If EDHREC returns an error, the route passes its status through.
 
 ### "Could not find __NEXT_DATA__ in page HTML"
 - EDHREC changed their page structure
 - Parser needs to be updated
 - Check `edhrec-parser.ts`
-- CORS proxy may have modified the response
 
 ### "Request timeout" or network errors
 - EDHREC may be down
 - Network connectivity issues
 - Rate limiting may be too aggressive (increase delay)
-- CORS proxy may be slow (adds latency)
 
 ### Cache growing too large
 - Call `edhrecService.clearCache()` periodically

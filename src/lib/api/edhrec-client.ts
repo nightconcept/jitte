@@ -5,7 +5,6 @@
  *
  * Rate Limiting Strategy:
  * - 30 requests per minute maximum (1 request every 2 seconds)
- * - User agent identifies as "Jitte Deck Manager"
  * - Respects robots.txt (manual check required)
  * - Aggressive caching to minimize requests
  *
@@ -20,34 +19,18 @@ import { EDHRECParser } from './edhrec-parser';
 import { EDHRECError } from '$lib/types/edhrec';
 
 export interface EDHRECClientConfig {
-	/** Base URL for EDHREC (default: https://edhrec.com) */
-	baseUrl?: string;
 	/** Minimum delay between requests in ms (default: 2000ms = 30 req/min) */
 	minDelayMs?: number;
-	/** User agent string */
-	userAgent?: string;
 	/** Request timeout in ms (default: 10000) */
 	timeoutMs?: number;
-	/** Use CORS proxy (for development only) */
-	useCorsProxy?: boolean;
-	/** CORS proxy URL (default: https://corsproxy.io/?) */
-	corsProxyUrl?: string;
 }
 
 export class EDHRECClient {
 	private queueManager: RequestQueueManager;
-	private baseUrl: string;
-	private userAgent: string;
 	private timeoutMs: number;
-	private useCorsProxy: boolean;
-	private corsProxyUrl: string;
 
 	constructor(config: EDHRECClientConfig = {}) {
-		this.baseUrl = config.baseUrl || 'https://edhrec.com';
-		this.userAgent = config.userAgent || 'Jitte Deck Manager (https://github.com/user/jitte)';
 		this.timeoutMs = config.timeoutMs || 10000;
-		this.useCorsProxy = config.useCorsProxy ?? false;
-		this.corsProxyUrl = config.corsProxyUrl || 'https://corsproxy.io/?';
 
 		// Use custom rate limit if provided, otherwise use default from config
 		const queueConfig = { ...EDHREC_QUEUE_CONFIG };
@@ -63,13 +46,13 @@ export class EDHRECClient {
 	 */
 	async fetchCommanderPage(commander: string): Promise<string> {
 		const slug = EDHRECParser.sanitizeName(commander);
-		const url = `${this.baseUrl}/commanders/${slug}`;
+		const path = `commanders/${slug}`;
 
 		return this.queueManager.enqueue({
 			type: 'commander',
 			params: { commanderName: commander },
 			id: '',
-			fn: async () => this.fetchUrl(url)
+			fn: async () => this.fetchUrl(path)
 		});
 	}
 
@@ -77,13 +60,13 @@ export class EDHRECClient {
 	 * Fetch the salt score top 100 page
 	 */
 	async fetchSaltScorePage(): Promise<string> {
-		const url = `${this.baseUrl}/top/salt`;
+		const path = 'top/salt';
 
 		return this.queueManager.enqueue({
 			type: 'general',
 			params: {},
 			id: '',
-			fn: async () => this.fetchUrl(url)
+			fn: async () => this.fetchUrl(path)
 		});
 	}
 
@@ -92,46 +75,32 @@ export class EDHRECClient {
 	 */
 	async fetchCardPage(cardName: string): Promise<string> {
 		const slug = EDHRECParser.sanitizeName(cardName);
-		const url = `${this.baseUrl}/cards/${slug}`;
+		const path = `cards/${slug}`;
 
 		return this.queueManager.enqueue({
 			type: 'salt_score',
 			params: { cardName },
 			id: '',
-			fn: async () => this.fetchUrl(url)
+			fn: async () => this.fetchUrl(path)
 		});
 	}
 
 	/**
-	 * Fetch URL with error handling (no rate limiting - handled by queue manager)
+	 * Fetch a page through the same-origin route (rate limiting is handled by the queue manager)
 	 */
-	private async fetchUrl(url: string): Promise<string> {
+	private async fetchUrl(path: string): Promise<string> {
 		try {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
-			// Apply CORS proxy if enabled
-			const fetchUrl = this.useCorsProxy
-				? `${this.corsProxyUrl}${encodeURIComponent(url)}`
-				: url;
-
-			const response = await fetch(fetchUrl, {
-				headers: {
-					'User-Agent': this.userAgent,
-					Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-					'Accept-Language': 'en-US,en;q=0.5',
-					'Accept-Encoding': 'gzip, deflate, br',
-					DNT: '1',
-					Connection: 'keep-alive',
-					'Upgrade-Insecure-Requests': '1'
-				},
+			const response = await fetch(`/api/edhrec/${path}`, {
 				signal: controller.signal
 			});
 
 			clearTimeout(timeoutId);
 
 			if (!response.ok) {
-				throw new EDHRECError(`EDHREC request failed for ${url}`, response.status);
+				throw new EDHRECError(`EDHREC request failed for ${path}`, response.status);
 			}
 
 			return await response.text();
@@ -143,15 +112,6 @@ export class EDHRECClient {
 			if (error instanceof Error) {
 				if (error.name === 'AbortError') {
 					throw new EDHRECError(`Request timeout after ${this.timeoutMs}ms`);
-				}
-
-				// Check for CORS-specific errors
-				if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-					throw new EDHRECError(
-						`CORS Error: Browser blocked request to EDHREC. This is a browser security restriction. Solutions: 1) Enable CORS proxy in settings, 2) Use a server-side proxy, or 3) Contact EDHREC for API access. See console for details.`,
-						undefined,
-						error
-					);
 				}
 
 				throw new EDHRECError(
