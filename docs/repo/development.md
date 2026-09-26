@@ -21,7 +21,7 @@ Check neighboring code and tests before you add a helper or dependency.
 
 ## UI and theme
 
-Read [`STYLE.md`](../../STYLE.md) for component and spacing conventions.
+Read the [design system](style.md) for component and spacing conventions.
 Use [`z-index.ts`](../../src/lib/constants/z-index.ts) for shared overlay levels.
 Use [`ManaSymbol.svelte`](../../src/lib/components/ManaSymbol.svelte) for mana icons.
 Read [`theme/README.md`](../../theme/README.md) for theme generation.
