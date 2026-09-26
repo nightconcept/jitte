@@ -1,13 +1,13 @@
 /**
  * Modern format ban list
  * Source: https://magic.wizards.com/en/banned-restricted
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const modernBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [
 		{ cardName: 'Amped Raptor', bannedDate: '2024-06-14' },
@@ -34,6 +34,7 @@ export const modernBanList: FormatBanList = {
 		{ cardName: 'Hypergenesis', bannedDate: '2011-01-01' },
 		{ cardName: 'Jegantha, the Wellspring', bannedDate: '2020-04-24' },
 		{ cardName: 'Krark-Clan Ironworks', bannedDate: '2004-06-04' },
+		{ cardName: 'Lotus Field', bannedDate: '2026-04-24' },
 		{ cardName: 'Lurrus of the Dream-Den', bannedDate: '2020-04-24' },
 		{ cardName: 'Mental Misstep', bannedDate: '2011-05-13' },
 		{ cardName: 'Mycosynth Lattice', bannedDate: '2018-06-08' },
@@ -41,6 +42,7 @@ export const modernBanList: FormatBanList = {
 		{ cardName: 'Nadu, Winged Wisdom', bannedDate: '2024-06-14' },
 		{ cardName: 'Oko, Thief of Crowns', bannedDate: '2020-01-13' },
 		{ cardName: 'Once Upon a Time', bannedDate: '2020-01-13' },
+		{ cardName: 'Phlage, Titan of Fire\'s Fury', bannedDate: '2024-06-14' },
 		{ cardName: 'Ponder', bannedDate: '2011-01-01' },
 		{ cardName: 'Punishing Fire', bannedDate: '2011-09-20' },
 		{ cardName: 'Rite of Flame', bannedDate: '2011-01-01' },
@@ -55,12 +57,10 @@ export const modernBanList: FormatBanList = {
 		{ cardName: 'Tibalt\'s Trickery', bannedDate: '2021-02-05' },
 		{ cardName: 'Treasure Cruise', bannedDate: '2015-01-19' },
 		{ cardName: 'Tree of Tales', bannedDate: '2011-01-01' },
-		{ cardName: 'Umezawa\'s Jitte', bannedDate: '2005-02-04' },
 		{ cardName: 'Underworld Breach', bannedDate: '2020-01-24' },
 		{ cardName: 'Up the Beanstalk', bannedDate: '2023-09-08' },
 		{ cardName: 'Uro, Titan of Nature\'s Wrath', bannedDate: '2020-01-24' },
 		{ cardName: 'Vault of Whispers', bannedDate: '2011-01-01' },
-		{ cardName: 'Violent Outburst', bannedDate: '2009-04-30' },
 		{ cardName: 'Yorion, Sky Nomad', bannedDate: '2020-04-24' }
 	]
 };

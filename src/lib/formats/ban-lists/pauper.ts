@@ -1,13 +1,13 @@
 /**
  * Pauper format ban list
  * Source: https://magic.wizards.com/en/banned-restricted
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const pauperBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [
 		{ cardName: '_____ Bird Gets the Worm', bannedDate: '2022-10-07' },
@@ -22,7 +22,6 @@ export const pauperBanList: FormatBanList = {
 		{ cardName: 'Assemble the Rank and Vile', bannedDate: '2016-08-26' },
 		{ cardName: 'Atog', bannedDate: '2011-01-10' },
 		{ cardName: 'Basking Broodscale', bannedDate: '2024-06-14' },
-		{ cardName: 'Bonder\'s Ornament', bannedDate: '2023-08-04' },
 		{ cardName: 'Brago\'s Favor', bannedDate: '2014-06-06' },
 		{ cardName: 'Carnival Carnivore', bannedDate: '2022-10-07' },
 		{ cardName: 'Chatterstorm', bannedDate: '2021-06-18' },
@@ -59,16 +58,19 @@ export const pauperBanList: FormatBanList = {
 		{ cardName: 'Monastery Swiftspear', bannedDate: '2022-11-18' },
 		{ cardName: 'Muzzio\'s Preparations', bannedDate: '2014-06-06' },
 		{ cardName: 'Mystic Sanctuary', bannedDate: '2024-02-09' },
+		{ cardName: 'Narcomoeba', bannedDate: '2018-10-05' },
 		{ cardName: 'Natural Unity', bannedDate: '2016-08-26' },
 		{ cardName: 'Peregrine Drake', bannedDate: '2023-01-13' },
 		{ cardName: 'Petting Zookeeper', bannedDate: '2022-10-07' },
 		{ cardName: 'Pradesh Gypsies', bannedDate: '1999-04-21' },
+		{ cardName: 'Price of Progress', bannedDate: '2016-06-10' },
 		{ cardName: 'Prize Wall', bannedDate: '2022-10-07' },
 		{ cardName: 'Rad Rascal', bannedDate: '2022-10-07' },
 		{ cardName: 'Ride Guide', bannedDate: '2022-10-07' },
 		{ cardName: 'Robo-Piñata', bannedDate: '2022-10-07' },
 		{ cardName: 'Seasoned Buttoneer', bannedDate: '2022-10-07' },
 		{ cardName: 'Secrets of Paradise', bannedDate: '2014-06-06' },
+		{ cardName: 'Seeker of Skybreak', bannedDate: '2001-04-11' },
 		{ cardName: 'Sentinel Dispatch', bannedDate: '2014-06-06' },
 		{ cardName: 'Sinkhole', bannedDate: '2016-06-10' },
 		{ cardName: 'Sojourner\'s Companion', bannedDate: '2021-06-18' },

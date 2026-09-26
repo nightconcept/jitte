@@ -1,13 +1,13 @@
 /**
  * Oathbreaker format ban list
  * Source: https://oathbreakermtg.org/banned-list/
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const oathbreakerBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://oathbreakermtg.org/banned-list/',
 	banned: [
 		{ cardName: '_____ _____ _____ Trespasser', bannedDate: '2022-10-07' },

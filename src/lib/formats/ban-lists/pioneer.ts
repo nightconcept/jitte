@@ -1,18 +1,19 @@
 /**
  * Pioneer format ban list
  * Source: https://magic.wizards.com/en/banned-restricted
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const pioneerBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [
 		{ cardName: 'Amalia Benavides Aguirre', bannedDate: '2023-11-17' },
 		{ cardName: 'Balustrade Spy', bannedDate: '2024-01-12' },
 		{ cardName: 'Bloodstained Mire', bannedDate: '2024-06-14' },
+		{ cardName: 'Cori-Steel Cutter', bannedDate: '2025-04-11' },
 		{ cardName: 'Expressive Iteration', bannedDate: '2025-04-11' },
 		{ cardName: 'Felidar Guardian', bannedDate: '2017-01-20' },
 		{ cardName: 'Field of the Dead', bannedDate: '2019-07-12' },

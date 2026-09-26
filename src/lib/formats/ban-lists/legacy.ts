@@ -1,13 +1,13 @@
 /**
  * Legacy format ban list
  * Source: https://magic.wizards.com/en/banned-restricted
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const legacyBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [
 		{ cardName: '_____ _____ _____ Trespasser', bannedDate: '2022-10-07' },
@@ -34,6 +34,7 @@ export const legacyBanList: FormatBanList = {
 		{ cardName: 'Black Lotus', bannedDate: '2014-06-16' },
 		{ cardName: 'Brago\'s Favor', bannedDate: '2014-06-06' },
 		{ cardName: 'Bronze Tablet', bannedDate: '1995-04-01' },
+		{ cardName: 'Candelabra of Tawnos', bannedDate: '2011-01-10' },
 		{ cardName: 'Carnival Carnivore', bannedDate: '2022-10-07' },
 		{ cardName: 'Channel', bannedDate: '2017-11-17' },
 		{ cardName: 'Chaos Orb', bannedDate: '1993-12-01' },
@@ -151,6 +152,7 @@ export const legacyBanList: FormatBanList = {
 		{ cardName: 'Survival of the Fittest', bannedDate: '2015-05-06' },
 		{ cardName: 'Sword-Swallowing Seraph', bannedDate: '2022-10-07' },
 		{ cardName: 'Tempest Efreet', bannedDate: '1995-04-01' },
+		{ cardName: 'The Fantasticar', bannedDate: '2026-06-26' },
 		{ cardName: 'The Most Dangerous Gamer', bannedDate: '2022-10-07' },
 		{ cardName: 'Ticketomaton', bannedDate: '2022-10-07' },
 		{ cardName: 'Time Vault', bannedDate: '2014-06-16' },
@@ -162,6 +164,7 @@ export const legacyBanList: FormatBanList = {
 		{ cardName: 'Treasure Cruise', bannedDate: '2025-04-11' },
 		{ cardName: 'Troll of Khazad-dûm', bannedDate: '2023-06-23' },
 		{ cardName: 'Tusk and Whiskers', bannedDate: '2022-10-07' },
+		{ cardName: 'Undercity Informer', bannedDate: '2013-02-01' },
 		{ cardName: 'Underworld Breach', bannedDate: '2020-01-24' },
 		{ cardName: 'Unexpected Potential', bannedDate: '2014-06-06' },
 		{ cardName: 'Vampiric Tutor', bannedDate: '2023-01-13' },

@@ -1,13 +1,13 @@
 /**
  * Vintage format ban list
  * Source: https://magic.wizards.com/en/banned-restricted
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const vintageBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://magic.wizards.com/en/banned-restricted',
 	banned: [
 		{ cardName: '_____ _____ _____ Trespasser', bannedDate: '2022-10-07' },
@@ -150,6 +150,7 @@ export const vintageBanList: FormatBanList = {
 		{ cardName: 'Necropotence', bannedDate: '2017-11-17' },
 		{ cardName: 'Sol Ring', bannedDate: '2025-08-01' },
 		{ cardName: 'Strip Mine', bannedDate: '2014-06-16' },
+		{ cardName: 'The Fantasticar', bannedDate: '2026-06-26' },
 		{ cardName: 'Thorn of Amethyst', bannedDate: '2007-10-12' },
 		{ cardName: 'Time Vault', bannedDate: '2014-06-16' },
 		{ cardName: 'Time Walk', bannedDate: '2014-06-16' },

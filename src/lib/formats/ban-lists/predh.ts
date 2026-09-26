@@ -1,19 +1,18 @@
 /**
  * Pre-EDH format ban list
  * Source: https://www.predhcommander.com/home
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const predhBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://www.predhcommander.com/home',
 	banned: [
 		{ cardName: 'Amulet of Quoz', bannedDate: '1995-06-03' },
 		{ cardName: 'Ancestral Recall', bannedDate: '2014-06-16' },
 		{ cardName: 'Balance', bannedDate: '2016-06-10' },
-		{ cardName: 'Biorhythm', bannedDate: '2005-07-29' },
 		{ cardName: 'Black Lotus', bannedDate: '2014-06-16' },
 		{ cardName: 'Bronze Tablet', bannedDate: '1995-04-01' },
 		{ cardName: 'Channel', bannedDate: '2017-11-17' },

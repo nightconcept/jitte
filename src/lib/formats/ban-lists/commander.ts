@@ -1,13 +1,13 @@
 /**
  * Commander format ban list
  * Source: https://mtgcommander.net/index.php/banned-list/
- * Last updated: 2025-11-21
+ * Last updated: 2026-09-26
  */
 
 import type { FormatBanList } from './types';
 
 export const commanderBanList: FormatBanList = {
-	lastUpdated: '2025-11-21',
+	lastUpdated: '2026-09-26',
 	source: 'https://mtgcommander.net/index.php/banned-list/',
 	banned: [
 		{ cardName: 'Adriana\'s Valor', bannedDate: '2016-08-26' },
@@ -17,7 +17,6 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Assemble the Rank and Vile', bannedDate: '2016-08-26' },
 		{ cardName: 'Backup Plan', bannedDate: '2014-06-06' },
 		{ cardName: 'Balance', bannedDate: '2011-09-20' },
-		{ cardName: 'Biorhythm', bannedDate: '2011-09-20' },
 		{ cardName: 'Black Lotus', bannedDate: '2011-09-20' },
 		{ cardName: 'Brago\'s Favor', bannedDate: '2014-06-06' },
 		{ cardName: 'Bronze Tablet', bannedDate: '1995-04-01' },
@@ -56,7 +55,6 @@ export const commanderBanList: FormatBanList = {
 		{ cardName: 'Leovold, Emissary of Trest', bannedDate: '2017-04-24' },
 		{ cardName: 'Library of Alexandria', bannedDate: '2011-09-20' },
 		{ cardName: 'Limited Resources', bannedDate: '2011-09-20' },
-		{ cardName: 'Lutri, the Spellchaser', bannedDate: '2020-04-17' },
 		{ cardName: 'Mana Crypt', bannedDate: '2024-09-23' },
 		{ cardName: 'Mox Emerald', bannedDate: '2011-09-20' },
 		{ cardName: 'Mox Jet', bannedDate: '2011-09-20' },

@@ -292,8 +292,6 @@ function generateBanListFile(
 	}
 ): string {
 	const today = new Date().toISOString().split('T')[0];
-	const hasDeckFormat = ['commander', 'cube', 'standard', 'modern'].includes(formatKey);
-
 	// Sort by card name
 	banned.sort((a, b) => a.cardName.localeCompare(b.cardName));
 	if (restricted) {
@@ -310,18 +308,15 @@ function generateBanListFile(
 			.join(',\n')}\n\t]`
 		: '';
 
-	const formatImport = hasDeckFormat ? `import { DeckFormat } from '../format-registry';\n` : '';
-	const formatField = hasDeckFormat ? `\n\tformat: DeckFormat.${formatKey.charAt(0).toUpperCase() + formatKey.slice(1)},` : '';
-
 	return `/**
  * ${formatConfig.displayName} format ban list
  * Source: ${formatConfig.source}
  * Last updated: ${today}
  */
 
-${formatImport}import type { FormatBanList } from './types';
+import type { FormatBanList } from './types';
 
-export const ${formatKey}BanList: FormatBanList = {${formatField}
+export const ${formatKey}BanList: FormatBanList = {
 	lastUpdated: '${today}',
 	source: '${formatConfig.source}',
 	banned: [
